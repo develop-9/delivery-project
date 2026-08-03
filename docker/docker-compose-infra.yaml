@@ -1,0 +1,107 @@
+services:
+  # Eureka Server
+  # 모든 마이크로서비스의 등록 및 조회
+  eureka-server:
+    build:
+      context: ..
+      dockerfile: eureka-server/Dockerfile
+      args:
+        JAR_FILE: eureka-server/build/libs/*.jar
+
+    container_name: eureka-server
+
+    ports:
+      - "8761:8761"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - delivery-network
+
+  # API Gateway
+  # 모든 클라이언트 요청의 단일 진입점 및 라우팅
+#  api-gateway:
+#    build:
+#      context: ..
+#      dockerfile: api-gateway/Dockerfile
+#      args:
+#        JAR_FILE: api-gateway/build/libs/*.jar
+#
+#    container_name: api-gateway
+#
+#    ports:
+#      - "8080:8080"
+#
+#    depends_on:
+#      eureka-server:
+#        condition: service_healthy
+#
+#    networks:
+#      - delivery-network
+
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+volumes:
+  postgres-data:
+  redis-data:
+
+
+networks:
+  delivery-network:
+    name: delivery-network
+    driver: bridge

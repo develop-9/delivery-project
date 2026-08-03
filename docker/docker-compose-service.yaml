@@ -1,0 +1,27 @@
+services:
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: user-service/Dockerfile
+      args:
+        JAR_FILE: user-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    container_name: user-service
+
+    ports:
+      - "9000:9000"
+
+    networks:
+      - delivery-network
+
+
+
+
+
+networks:
+  delivery-network:
+    external: true
