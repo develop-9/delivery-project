@@ -55,6 +55,33 @@ class JwtProviderTest {
 	}
 
 	@Test
+	void 같은_사용자에게_연속으로_발급한_RefreshToken은_서로_달라야_한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		// iat/exp가 초 단위라 같은 초 안에 연속 호출하면 페이로드가 같아질 수 있어서, jti(고유 ID)로 구분되는지 확인
+		String token1 = jwtProvider.generateRefreshToken(userId);
+		String token2 = jwtProvider.generateRefreshToken(userId);
+
+		// then
+		assertThat(token1).isNotEqualTo(token2);
+	}
+
+	@Test
+	void 같은_사용자에게_연속으로_발급한_AccessToken은_서로_달라야_한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		String token1 = jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER);
+		String token2 = jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER);
+
+		// then
+		assertThat(token1).isNotEqualTo(token2);
+	}
+
+	@Test
 	void 유효한_토큰은_validateToken이_예외를_던지지_않는다() {
 		// given
 		String token = jwtProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);

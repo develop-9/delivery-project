@@ -20,8 +20,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
+import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
+import com.delivery_project.user_service.user.application.result.UserRefreshResult;
 import com.delivery_project.user_service.user.application.result.UserSignupResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
@@ -225,6 +227,133 @@ class AuthCommandServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	@Test
+	void 정상_토큰_재발급시_새_토큰_쌍을_발급하고_RefreshToken을_교체한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("old-refresh-token");
+
+		when(jwtProvider.getUserId("old-refresh-token")).thenReturn(userId);
+		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("old-refresh-token"));
+		when(userRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
+		when(jwtProvider.generateRefreshToken(userId)).thenReturn("new-refresh-token");
+		when(jwtProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(jwtProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+
+		// when
+		UserRefreshResult result = authCommandService.refresh(command);
+
+		// then
+		assertThat(result.accessToken()).isEqualTo("new-access-token");
+		assertThat(result.refreshToken()).isEqualTo("new-refresh-token");
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.save(userId, "new-refresh-token", Duration.ofMillis(1_209_600_000L));
+	}
+
+	@Test
+	void 저장된_RefreshToken과_다르면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("stolen-old-token");
+
+		when(jwtProvider.getUserId("stolen-old-token")).thenReturn(userId);
+		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("current-token"));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
+	}
+
+	@Test
+	void Redis에_RefreshToken이_없으면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("some-token");
+
+		when(jwtProvider.getUserId("some-token")).thenReturn(userId);
+		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
+	}
+
+	@Test
+	void 재발급시_사용자를_찾을_수_없으면_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("valid-token");
+
+		when(jwtProvider.getUserId("valid-token")).thenReturn(userId);
+		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
+		when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
+	void 승인되지_않은_사용자는_재발급시_USER_NOT_APPROVED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		User pendingUser = User.builder()
+				.username("pendinguser2")
+				.password("encoded-password")
+				.name("대기자")
+				.slackId("U2234567890")
+				.role(Role.COMPANY_MANAGER)
+				.companyId(UUID.randomUUID())
+				.build();
+		ReflectionTestUtils.setField(pendingUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("valid-token");
+
+		when(jwtProvider.getUserId("valid-token")).thenReturn(userId);
+		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
+		when(userRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	@Test
+	void 정상_로그아웃시_RefreshToken을_삭제한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		when(jwtProvider.resolveToken("Bearer access-token")).thenReturn("access-token");
+		when(jwtProvider.getUserId("access-token")).thenReturn(userId);
+
+		// when
+		authCommandService.logout("Bearer access-token");
+
+		// then
+		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(userId);
+	}
+
+	@Test
+	void Authorization_헤더가_없으면_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given
+		when(jwtProvider.resolveToken(null)).thenThrow(new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.logout(null))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
 	}
 
 	private User createApprovedUser(String username, String encodedPassword, Role role) {

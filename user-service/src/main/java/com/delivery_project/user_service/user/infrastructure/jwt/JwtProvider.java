@@ -24,6 +24,7 @@ import io.jsonwebtoken.security.Keys;
 public class JwtProvider {
 
 	private static final String ROLE_CLAIM = "role";
+	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final SecretKey secretKey;
 	private final long accessTokenExpirationMillis;
@@ -42,6 +43,7 @@ public class JwtProvider {
 	public String generateAccessToken(UUID userId, Role role) {
 		Instant now = Instant.now();
 		return Jwts.builder()
+				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.claim(ROLE_CLAIM, role.name())
 				.issuedAt(Date.from(now))
@@ -53,6 +55,7 @@ public class JwtProvider {
 	public String generateRefreshToken(UUID userId) {
 		Instant now = Instant.now();
 		return Jwts.builder()
+				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(refreshTokenExpirationMillis)))
@@ -62,6 +65,13 @@ public class JwtProvider {
 
 	public void validateToken(String token) {
 		parseClaims(token);
+	}
+
+	public String resolveToken(String authorizationHeader) {
+		if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
+		}
+		return authorizationHeader.substring(BEARER_PREFIX.length());
 	}
 
 	public long getAccessTokenExpirationSeconds() {

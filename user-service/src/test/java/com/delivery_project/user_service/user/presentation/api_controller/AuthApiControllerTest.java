@@ -11,11 +11,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
+import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -39,6 +42,9 @@ class AuthApiControllerTest {
 
 	@PersistenceContext
 	private EntityManager entityManager;
+
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	@Test
 	void 회원가입_성공시_201과_PENDING_상태를_반환한다() {
@@ -268,5 +274,117 @@ class AuthApiControllerTest {
 				.hasStatus(403)
 				.bodyJson()
 				.extractingPath("$.error.errorCode").isEqualTo("USER_NOT_APPROVED");
+	}
+
+	@Test
+	void 정상_토큰_재발급시_새_토큰을_반환하고_이전_RefreshToken은_더_이상_쓸_수_없다() {
+		// given
+		Tokens tokens = signupApprovedUserAndLogin("refresh1", "U5555555555");
+		String refreshBody = """
+				{
+				  "refreshToken": "%s"
+				}
+				""".formatted(tokens.refreshToken());
+
+		try {
+			// when & then
+			assertThat(mvc.post().uri("/api/v1/auth/refresh")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(refreshBody))
+					.hasStatus(200)
+					.bodyJson()
+					.extractingPath("$.data.refreshToken").isNotEqualTo(tokens.refreshToken());
+
+			// 이전 refreshToken 재사용 시도는 실패해야 한다
+			assertThat(mvc.post().uri("/api/v1/auth/refresh")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(refreshBody))
+					.hasStatus(401)
+					.bodyJson()
+					.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_EXPIRED");
+		} finally {
+			refreshTokenRepository.deleteByUserId(tokens.userId());
+		}
+	}
+
+	@Test
+	void 형식이_잘못된_RefreshToken은_401을_반환한다() {
+		// given
+		String body = """
+				{
+				  "refreshToken": "not-a-valid-jwt"
+				}
+				""";
+
+		// when & then
+		assertThat(mvc.post().uri("/api/v1/auth/refresh")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+				.hasStatus(401)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_INVALID");
+	}
+
+	@Test
+	void 정상_로그아웃시_204를_반환하고_RefreshToken이_삭제된다() {
+		// given
+		Tokens tokens = signupApprovedUserAndLogin("logoutuser", "U6666666666");
+
+		// when & then
+		assertThat(mvc.post().uri("/api/v1/auth/logout")
+				.header("Authorization", "Bearer " + tokens.accessToken()))
+				.hasStatus(204);
+
+		assertThat(refreshTokenRepository.findByUserId(tokens.userId())).isEmpty();
+	}
+
+	@Test
+	void Authorization_헤더가_없으면_로그아웃시_401을_반환한다() {
+		// when & then
+		assertThat(mvc.post().uri("/api/v1/auth/logout"))
+				.hasStatus(401)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_INVALID");
+	}
+
+	private record Tokens(UUID userId, String accessToken, String refreshToken) {
+	}
+
+	private Tokens signupApprovedUserAndLogin(String username, String slackId) {
+		String signupBody = """
+				{
+				  "username": "%s",
+				  "password": "Abcd1234!",
+				  "name": "테스트유저",
+				  "slackId": "%s",
+				  "role": "COMPANY_MANAGER",
+				  "companyId": "%s"
+				}
+				""".formatted(username, slackId, UUID.randomUUID());
+		mvc.post().uri("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(signupBody).exchange();
+
+		entityManager.flush();
+		entityManager.clear();
+		jdbcTemplate.update("UPDATE p_users SET approval_status = 'APPROVED' WHERE username = ?", username);
+
+		UUID userId = userRepository.findByUsername(username).orElseThrow().getId();
+
+		String loginBody = """
+				{
+				  "username": "%s",
+				  "password": "Abcd1234!"
+				}
+				""".formatted(username);
+		MvcTestResult result = mvc.post().uri("/api/v1/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(loginBody)
+				.exchange();
+
+		try {
+			JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+			return new Tokens(userId, data.get("accessToken").asText(), data.get("refreshToken").asText());
+		} catch (Exception e) {
+			throw new IllegalStateException("로그인 응답 파싱 실패", e);
+		}
 	}
 }
