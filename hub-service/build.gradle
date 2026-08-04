@@ -1,0 +1,98 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.delivery-project'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2025.1.2")
+}
+
+dependencies {
+	// Spring Web
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// Spring Data JPA
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Validation
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// Spring Boot Actuator
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+	// Eureka Discovery Client
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+
+	// OpenFeign
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+
+	// Swagger
+	// 팀 컨벤션은 2.8.9 이지만 그 버전은 Spring Boot 3 계열용이다.
+	// Boot 4 는 spring-data-commons 4 를 쓰고 거기서 TypeInformation 이 제거되어,
+	// QueryDSL 이 클래스패스에 있으면 springdoc 2.8.9 는 기동 자체가 실패한다. (팀 확인 필요)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+
+	// QueryDSL
+	implementation "com.querydsl:querydsl-jpa:5.0.0:jakarta"
+	annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
+	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
+
+	// Database
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+// 부트 실행 jar 만 남긴다. plain jar 가 함께 생기면
+// Dockerfile 의 build/libs/*.jar 글롭이 2개를 잡아 COPY 가 실패한다.
+tasks.named('jar') {
+	enabled = false
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
