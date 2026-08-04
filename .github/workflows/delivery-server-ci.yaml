@@ -1,0 +1,85 @@
+name: Delivery Service CI
+
+# PR 생성 또는 업데이트 시 CI 실행
+# develop, main 브랜치로 들어오는 Pull Request를 대상으로 검증 수행
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'delivery-service/**'
+      - '.github/workflows/delivery-service-ci.yaml'
+
+# Workflow에서 사용할 권한 설정
+# 현재 CI에서는 Repository Code 읽기만 필요하기 때문에 최소 권한 부여
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # 실행 환경에서 수행할 작업 이름
+    # Java 21 환경에서 빌드 및 테스트를 수행한다는 의미
+    name: Delivery Service - Java 21 빌드 및 테스트
+
+    # GitHub Actions가 실행될 서버 환경
+    # Ubuntu 최신 버전 환경에서 실행
+    runs-on: ubuntu-latest
+
+    # 테스트에서 사용할 PostgreSQL 16 컨테이너
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: delivery
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d delivery"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    # 모든 run 명령을 서비스 디렉터리에서 실행
+    defaults:
+      run:
+        working-directory: delivery-service
+
+    steps:
+      # 1. Repository Checkout
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v6
+
+      # 2. Java 21 설치 및 Gradle Cache 설정
+      - name: Java 21 설치
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # 3. Gradle Wrapper 검증
+      - name: Gradle Wrapper 검증
+        uses: gradle/actions/wrapper-validation@v4
+
+      # 4. Gradle 실행 권한 부여
+      - name: Gradle 실행 권한 부여
+        run: chmod +x gradlew
+
+      # 5. Application Build 및 Test 실행
+      - name: Delivery Service 빌드 및 테스트
+        env:
+          POSTGRES_DB: delivery
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PASSWORD: postgres
+        run: ./gradlew build --no-daemon
+
+      # 6. 테스트 실패 시 결과 업로드
+      - name: 테스트 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: delivery-service/build/reports/tests/
