@@ -18,6 +18,27 @@ services:
     networks:
       - delivery-network
 
+  delivery-service:
+    build:
+      context: ..
+      dockerfile: delivery-service/Dockerfile
+      args:
+        JAR_FILE: delivery-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    environment:
+      POSTGRES_HOST: postgres
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+
+    container_name: delivery-service
+
+    ports:
+      - "9001:9001"
+
+    networks:
+      - delivery-network
 
 
 
