@@ -40,7 +40,23 @@ services:
     networks:
       - delivery-network
 
+  company-service:
+    build:
+      context: ..
+      dockerfile: company-service/Dockerfile
+      args:
+        JAR_FILE: company-service/build/libs/*.jar
 
+    env_file:
+      - ../.env
+
+    container_name: company-service
+
+    ports:
+      - "9002:9002"
+
+    networks:
+      - delivery-network
 
 
 networks:
