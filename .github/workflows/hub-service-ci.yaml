@@ -28,6 +28,7 @@ jobs:
 
     # Hub Service는 JPA/Redis를 쓰기 때문에 테스트가 Spring Context를 띄울 때
     # 실제 연결 가능한 DB/Redis가 필요함 (eureka-server와 다른 점)
+    # POSTGRES_DB는 application.yaml의 DB명 기본값(hub_db)과 반드시 같아야 한다
     services:
       postgres:
         image: postgres:16
@@ -86,20 +87,12 @@ jobs:
 
 
       # 5. Application Build 및 Test 실행
-      # application.yaml의 접속 정보 placeholder에는 기본값이 없다.
-      # 값을 주입하지 않으면 placeholder 해석 단계에서 기동이 실패하므로
-      # 위 서비스 컨테이너를 가리키도록 여기서 명시적으로 넘긴다.
-      # eureka는 CI에 레지스트리가 없어 등록 재시도로 시간만 쓰므로 꺼둔다.
+      # postgres/redis 서비스 컨테이너 값이 application.yaml의 기본값과
+      # 일치하도록 맞춰뒀기 때문에 별도 env 오버라이드 없이도 연결됨
+      # (테스트는 src/test/resources/application.yaml이 값을 직접 갖고 있고
+      #  eureka.client.enabled: false도 거기서 끄므로 env가 필요 없다)
+      # JWT 관련 secrets는 hub-service가 아직 토큰을 파싱하지 않아 넘기지 않음
       - name: Hub Service 빌드 및 테스트
-        env:
-          HUB_DB_URL: jdbc:postgresql://localhost:5432/hub_db
-          HUB_DB_USERNAME: postgres
-          HUB_DB_PASSWORD: postgres
-          HUB_REDIS_HOST: localhost
-          HUB_REDIS_PORT: 6379
-          EUREKA_SERVER_URL: http://localhost:8761/eureka
-          EUREKA_CLIENT_ENABLED: false
-
         run: ./gradlew build --no-daemon
 
 
