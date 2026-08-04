@@ -64,6 +64,14 @@ public class JwtProvider {
 		parseClaims(token);
 	}
 
+	public long getAccessTokenExpirationSeconds() {
+		return accessTokenExpirationMillis / 1000;
+	}
+
+	public long getRefreshTokenExpirationMillis() {
+		return refreshTokenExpirationMillis;
+	}
+
 	public UUID getUserId(String token) {
 		return UUID.fromString(parseClaims(token).getSubject());
 	}

@@ -9,8 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.command_service.AuthCommandService;
+import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserSignupResult;
+import com.delivery_project.user_service.user.presentation.request.UserLoginRequest;
 import com.delivery_project.user_service.user.presentation.request.UserSignupRequest;
+import com.delivery_project.user_service.user.presentation.response.UserLoginResponse;
 import com.delivery_project.user_service.user.presentation.response.UserSignupResponse;
 
 import jakarta.validation.Valid;
@@ -28,5 +31,12 @@ public class AuthApiController {
 		UserSignupResult result = authCommandService.signup(request.toCommand());
 		UserSignupResponse response = UserSignupResponse.from(result);
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
+	}
+
+	@PostMapping("/login")
+	public ResponseEntity<SuccessResponse<UserLoginResponse>> login(@Valid @RequestBody UserLoginRequest request) {
+		UserLoginResult result = authCommandService.login(request.toCommand());
+		UserLoginResponse response = UserLoginResponse.from(result);
+		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 }
