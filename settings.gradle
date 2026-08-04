@@ -1,0 +1,11 @@
+rootProject.name = 'delivery-project'
+
+// 각자 서비스 폴더를 만들 때 본인 PR에서 주석 해제
+ include 'eureka-server'
+// include 'api-gateway'
+// include 'user-service'
+// include 'delivery-service'
+// include 'company-service'
+// include 'slack-service'
+// include 'order-service'
+// include 'hub-service'
