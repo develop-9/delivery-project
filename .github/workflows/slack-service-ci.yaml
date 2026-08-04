@@ -1,0 +1,85 @@
+name: Slack Service CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "slack-service/**"
+      - ".github/workflows/slack-service-ci.yaml"
+
+  push:
+    branches:
+      - develop
+    paths:
+      - "slack-service/**"
+      - ".github/workflows/slack-service-ci.yaml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: slack-service
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: delivery_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d delivery_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: delivery_db
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: false
+      EUREKA_CLIENT_FETCH_REGISTRY: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: slack-service/*.gradle*
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Build and test
+        run: ./gradlew clean build
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slack-service-test-report
+          path: slack-service/build/reports/tests/
+          if-no-files-found: ignore
