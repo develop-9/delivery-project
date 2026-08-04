@@ -1,0 +1,103 @@
+package com.delivery_project.user_service.user.infrastructure.jwt;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+import com.delivery_project.user_service.global.exception.BusinessException;
+import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.domain.entity.Role;
+
+class JwtProviderTest {
+
+	private static final String SECRET = "test-secret-key-for-jwt-provider-unit-test-32bytes-min";
+
+	private final JwtProvider jwtProvider = new JwtProvider(SECRET, 3_600_000L, 1_209_600_000L);
+
+	@Test
+	void AccessToken에서_userId를_꺼낼_수_있다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		String token = jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER);
+
+		// then
+		assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
+	}
+
+	@Test
+	void AccessToken에서_role을_꺼낼_수_있다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		String token = jwtProvider.generateAccessToken(userId, Role.HUB_MANAGER);
+
+		// then
+		assertThat(jwtProvider.getRole(token)).isEqualTo(Role.HUB_MANAGER);
+	}
+
+	@Test
+	void RefreshToken에는_role_claim이_없다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		String token = jwtProvider.generateRefreshToken(userId);
+
+		// then
+		assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
+		assertThat(jwtProvider.getRole(token)).isNull();
+	}
+
+	@Test
+	void 유효한_토큰은_validateToken이_예외를_던지지_않는다() {
+		// given
+		String token = jwtProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
+
+		// when & then
+		jwtProvider.validateToken(token);
+	}
+
+	@Test
+	void 만료된_토큰은_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
+		// given
+		JwtProvider expiredTokenProvider = new JwtProvider(SECRET, -1_000L, -1_000L);
+		String token = expiredTokenProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
+
+		// when & then
+		assertThatThrownBy(() -> jwtProvider.validateToken(token))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
+	}
+
+	@Test
+	void 형식이_깨진_토큰은_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given
+		String malformedToken = "not-a-valid-jwt-token";
+
+		// when & then
+		assertThatThrownBy(() -> jwtProvider.validateToken(malformedToken))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
+	void 다른_시크릿으로_서명된_토큰은_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given
+		JwtProvider otherProvider = new JwtProvider("different-secret-key-for-jwt-provider-unit-test-32bytes", 3_600_000L, 1_209_600_000L);
+		String token = otherProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
+
+		// when & then
+		assertThatThrownBy(() -> jwtProvider.validateToken(token))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+}
