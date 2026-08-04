@@ -1,11 +1,21 @@
 package com.delivery_project.user_service.global.exception;
 
+import java.util.NoSuchElementException;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
-import com.delivery_project.user_service.global.response.CommonResponse;
+import com.delivery_project.user_service.global.response.ErrorResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,31 +23,65 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	@ExceptionHandler(BusinessException.class)
-	public ResponseEntity<CommonResponse<Void>> handleBusinessException(BusinessException e) {
-		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
-		return ResponseEntity.status(e.getErrorCode().getHttpStatus())
-				.body(CommonResponse.error(e.getErrorCode()));
+	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode) {
+		return ResponseEntity.status(errorCode.getHttpStatus())
+				.body(ErrorResponse.from(errorCode));
 	}
 
-	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<CommonResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
-		log.info("[Global] 입력값 검증 실패 message={}", e.getMessage());
-		return ResponseEntity.status(ErrorCode.INVALID_REQUEST.getHttpStatus())
-				.body(CommonResponse.error(ErrorCode.INVALID_REQUEST));
+	@ExceptionHandler(BusinessException.class)
+	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
+		return createResponse(e.getErrorCode());
 	}
 
 	@ExceptionHandler(IllegalStateException.class)
-	public ResponseEntity<CommonResponse<Void>> handleIllegalStateException(IllegalStateException e) {
+	public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException e) {
 		log.info("[Global] 잘못된 상태 요청 message={}", e.getMessage());
-		return ResponseEntity.status(ErrorCode.INVALID_STATE.getHttpStatus())
-				.body(CommonResponse.error(ErrorCode.INVALID_STATE));
+		return createResponse(ErrorCode.INVALID_STATE);
+	}
+
+	@ExceptionHandler(NoSuchElementException.class)
+	public ResponseEntity<ErrorResponse> handleNoSuchElementException(NoSuchElementException e) {
+		log.info("[Global] 리소스 조회 실패 message={}", e.getMessage());
+		return createResponse(ErrorCode.NOT_FOUND);
+	}
+
+	@ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+	public ResponseEntity<ErrorResponse> handleAccessDeniedException(Exception e) {
+		log.info("[Global] 접근 권한 없음 message={}", e.getMessage());
+		return createResponse(ErrorCode.AUTH_FORBIDDEN);
+	}
+
+	@ExceptionHandler({
+			MethodArgumentNotValidException.class,
+			BindException.class,
+			MissingServletRequestPartException.class,
+			MissingServletRequestParameterException.class
+	})
+	public ResponseEntity<ErrorResponse> handleInvalidInputValueException(Exception e) {
+		log.info("[Global] 입력값 검증 실패 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+	}
+
+	@ExceptionHandler({
+			MethodArgumentTypeMismatchException.class,
+			HttpMessageNotReadableException.class,
+			IllegalArgumentException.class
+	})
+	public ResponseEntity<ErrorResponse> handleInvalidRequestException(Exception e) {
+		log.info("[Global] 잘못된 요청 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_REQUEST);
+	}
+
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException e) {
+		log.info("[Global] 지원하지 않는 미디어 타입 message={}", e.getMessage());
+		return createResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
 	}
 
 	@ExceptionHandler(Exception.class)
-	public ResponseEntity<CommonResponse<Void>> handleException(Exception e) {
+	public ResponseEntity<ErrorResponse> handleException(Exception e) {
 		log.error("[Global] 예상하지 못한 예외 발생", e);
-		return ResponseEntity.internalServerError()
-				.body(CommonResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
+		return createResponse(ErrorCode.INTERNAL_SERVER_ERROR);
 	}
 }
