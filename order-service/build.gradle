@@ -28,10 +28,12 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 	//Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	//zipkin, 액츄에이터
+	//액츄에이터
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
-	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+	//zipkin 분산 추적
+	// Boot 4부터 자동설정이 기술별 모듈로 분리되어, raw 라이브러리만으로는
+	// ZipkinAutoConfiguration이 클래스패스에 없어 트레이스가 전송되지 않음
+	implementation 'org.springframework.boot:spring-boot-starter-zipkin'
 	//JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	// validate
@@ -46,6 +48,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'

@@ -30,3 +30,11 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  tracing:
+    sampling:
+      # 개발 단계에서는 전량 수집, 운영 전환 시 0.1 수준으로 조정
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        # Boot 4 기준 프로퍼티 (구 management.zipkin.tracing.*은 deprecation level=error)
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

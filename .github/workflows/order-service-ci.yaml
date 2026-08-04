@@ -9,7 +9,7 @@ on:
       - main
     paths:
       - "order-service/**"
-      - ".github/workflows/order-service-ci.yml"
+      - ".github/workflows/order-service-ci.yaml"
 
 # Workflow에서 사용할 권한 설정
 # 현재 CI에서는 Repository Code 읽기만 필요하기 때문에 최소 권한 부여
