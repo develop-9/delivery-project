@@ -19,6 +19,42 @@ services:
       - delivery-network
 
 
+  # Hub Service
+  # 허브 및 허브 간 이동정보 관리
+  hub-service:
+    build:
+      context: ..
+      dockerfile: hub-service/Dockerfile
+      args:
+        JAR_FILE: hub-service/build/libs/*.jar
+
+    # 비밀값(DB 계정 · JWT 키 · 지도 API 키)은 .env 에서 읽는다.
+    env_file:
+      - ../hub-service/.env
+
+    # 접속 호스트는 컨테이너 네트워크 기준으로 덮어쓴다.
+    # compose 의 environment 는 env_file 보다 우선하므로 .env 의 localhost 값을 대체한다.
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      HUB_DB_URL: jdbc:postgresql://postgres:5432/hub_db
+      HUB_REDIS_HOST: redis
+      HUB_REDIS_PORT: 6379
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+
+    container_name: hub-service
+
+    ports:
+      - "9005:9005"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9005/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
 
 
 
