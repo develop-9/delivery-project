@@ -31,6 +31,7 @@ services:
     environment:
       POSTGRES_HOST: postgres
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
 
     container_name: delivery-service
 
