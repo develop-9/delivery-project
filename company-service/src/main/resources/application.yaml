@@ -1,0 +1,54 @@
+server:
+  port: 9002
+
+
+spring:
+  application:
+    name: company-service
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    properties:
+      hibernate:
+        default_schema: user_db
+        format_sql: true
+
+    show-sql: true
+
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+    export:
+      zipkin:
+        endpoint: http://zipkin:9411/api/v2/spans
+
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+
+
+logging:
+  level:
+    root: INFO
