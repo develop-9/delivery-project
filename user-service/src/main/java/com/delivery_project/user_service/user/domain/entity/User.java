@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.hibernate.annotations.SQLRestriction;
 
-import com.delivery_project.user_service.global.common.BaseEntity;
+import com.delivery_project.user_service.global.common.BaseDeletableEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SQLRestriction("deleted_at IS NULL")
-public class User extends BaseEntity {
+public class User extends BaseDeletableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)

@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.Column;
@@ -23,22 +22,4 @@ public abstract class BaseEntity {
 
 	@Column(name = "created_by", updatable = false)
 	private UUID createdBy;
-
-	@LastModifiedDate
-	@Column(name = "updated_at", nullable = false)
-	private Instant updatedAt;
-
-	@Column(name = "updated_by")
-	private UUID updatedBy;
-
-	@Column(name = "deleted_at")
-	private Instant deletedAt;
-
-	@Column(name = "deleted_by")
-	private UUID deletedBy;
-
-	public void delete(UUID deletedBy) {
-		this.deletedAt = Instant.now();
-		this.deletedBy = deletedBy;
-	}
 }

@@ -1,4 +1,4 @@
-package com.delivery_project.user_service.user.domain.repository;
+package com.delivery_project.user_service.user.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,11 +15,12 @@ import org.springframework.context.annotation.Import;
 import com.delivery_project.user_service.global.config.JpaAuditingConfig;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
+import com.delivery_project.user_service.user.domain.repository.UserRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(JpaAuditingConfig.class)
-class UserRepositoryTest {
+@Import({JpaAuditingConfig.class, UserRepositoryImpl.class})
+class UserRepositoryImplTest {
 
 	@Autowired
 	private UserRepository userRepository;
