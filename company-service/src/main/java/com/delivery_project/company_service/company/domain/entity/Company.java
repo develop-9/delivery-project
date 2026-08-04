@@ -40,4 +40,11 @@ public class Company extends BaseDeletableEntity {
         this.name = name;
         this.address = address;
     }
+
+    public void update(UUID hubId, CompanyType type, String name, String address) {
+        this.hubId = hubId;
+        this.type = type;
+        this.name = name;
+        this.address = address;
+    }
 }
