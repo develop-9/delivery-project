@@ -23,8 +23,9 @@ ext {
 
 dependencies {
 	// Spring Web
+	// webflux 는 넣지 않는다. hub-service 는 서블릿(MVC) 스택이고,
+	// 외부 지도 API 호출(D8)은 spring-web 에 있는 RestClient 로 처리한다.
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
 	// Spring Data JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
