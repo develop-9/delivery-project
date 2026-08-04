@@ -40,6 +40,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     # 모든 run 명령을 서비스 디렉터리에서 실행
     defaults:
@@ -68,10 +77,13 @@ jobs:
         run: chmod +x gradlew
 
       # 5. Application Build 및 Test 실행
-      # postgres/redis 서비스 컨테이너 값이 application.yaml의 기본값과
-      # 일치하도록 맞춰뒀기 때문에 별도 env 오버라이드 없이도 연결됨
+      # application.yaml의 DB 접속값은 기본값이 없으므로 여기서 명시적으로 주입한다.
+      # services.postgres.env는 컨테이너 내부 설정이라 러너 프로세스에는 전달되지 않음
       - name: Order Service 빌드 및 테스트
         env:
+          POSTGRES_DB: order
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PASSWORD: postgres
           # CI에는 Zipkin 수집기가 없으므로 트레이스 전송을 끔
           TRACING_SAMPLING_PROBABILITY: "0.0"
 
