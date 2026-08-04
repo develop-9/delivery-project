@@ -12,14 +12,14 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
-import com.delivery_project.user_service.global.config.JpaAuditingConfig;
+import com.delivery_project.user_service.global.config.JpaConfig;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaAuditingConfig.class, JpaUserRepository.class})
+@Import({JpaConfig.class, JpaUserRepository.class})
 class JpaUserRepositoryTest {
 
 	@Autowired
