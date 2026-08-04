@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,5 +48,55 @@ class CompanyRepositoryImplTest {
 
         verify(springDataCompanyRepository)
                 .save(company);
+    }
+
+    @Test
+    @DisplayName("업체 ID로 업체를 조회한다.")
+    void findById_success() {
+        // Given
+        UUID companyId = UUID.randomUUID();
+
+        Company company = Company.builder()
+                .hubId(UUID.randomUUID())
+                .type(CompanyType.PRODUCER)
+                .name("테스트 업체")
+                .address("서울특별시 강남구")
+                .build();
+
+        when(springDataCompanyRepository.findById(companyId))
+                .thenReturn(Optional.of(company));
+
+        // When
+        Optional<Company> result =
+                companyRepository.findById(companyId);
+
+        // Then
+        assertThat(result)
+                .isPresent()
+                .contains(company);
+
+        verify(springDataCompanyRepository)
+                .findById(companyId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 업체 ID로 조회하면 빈 Optional을 반환한다.")
+    void findById_empty() {
+        // Given
+        UUID companyId = UUID.randomUUID();
+
+        when(springDataCompanyRepository.findById(companyId))
+                .thenReturn(Optional.empty());
+
+        // When
+        Optional<Company> result =
+                companyRepository.findById(companyId);
+
+        // Then
+        assertThat(result)
+                .isEmpty();
+
+        verify(springDataCompanyRepository)
+                .findById(companyId);
     }
 }
