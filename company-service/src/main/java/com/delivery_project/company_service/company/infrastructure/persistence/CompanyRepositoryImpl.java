@@ -12,7 +12,7 @@ public class CompanyRepositoryImpl implements CompanyRepository {
     private final SpringDataCompanyRepository springDataCompanyRepository;
 
     @Override
-    public void save(Company company) {
-        springDataCompanyRepository.save(company);
+    public Company save(Company company) {
+        return springDataCompanyRepository.save(company);
     }
 }

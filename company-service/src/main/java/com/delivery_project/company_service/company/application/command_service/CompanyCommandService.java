@@ -30,13 +30,13 @@ public class CompanyCommandService {
                 .address(companyCreateCommand.address())
                 .build();
 
-        companyRepository.save(company);
+        Company savedCompany = companyRepository.save(company);
 
         log.info(
                 "업체 생성 완료. companyId={}",
-                company.getId()
+                savedCompany.getId()
         );
 
-        return CompanyCreateResult.from(company.getId());
+        return CompanyCreateResult.from(savedCompany.getId());
     }
 }
