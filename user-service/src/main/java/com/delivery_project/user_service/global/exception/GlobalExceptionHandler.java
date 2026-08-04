@@ -27,6 +27,13 @@ public class GlobalExceptionHandler {
 				.body(CommonResponse.error(ErrorCode.INVALID_REQUEST));
 	}
 
+	@ExceptionHandler(IllegalStateException.class)
+	public ResponseEntity<CommonResponse<Void>> handleIllegalStateException(IllegalStateException e) {
+		log.info("[Global] 잘못된 상태 요청 message={}", e.getMessage());
+		return ResponseEntity.status(ErrorCode.INVALID_STATE.getHttpStatus())
+				.body(CommonResponse.error(ErrorCode.INVALID_STATE));
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<CommonResponse<Void>> handleException(Exception e) {
 		log.error("[Global] 예상하지 못한 예외 발생", e);

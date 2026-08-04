@@ -28,6 +28,7 @@ public enum ErrorCode {
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
 
 	// 409
+	INVALID_STATE(HttpStatus.CONFLICT, "요청을 처리할 수 없는 상태입니다."),
 	USER_DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
 	USER_DUPLICATE_SLACK_ID(HttpStatus.CONFLICT, "이미 등록된 Slack ID입니다."),
 	USER_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 가입 신청입니다."),
