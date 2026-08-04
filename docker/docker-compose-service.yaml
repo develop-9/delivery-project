@@ -35,7 +35,7 @@ services:
     container_name: delivery-service
 
     ports:
-      - "9004:9004"
+      - "9001:9001"
 
     networks:
       - delivery-network
