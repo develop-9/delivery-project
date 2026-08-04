@@ -18,8 +18,47 @@ services:
     networks:
       - delivery-network
 
+  delivery-service:
+    build:
+      context: ..
+      dockerfile: delivery-service/Dockerfile
+      args:
+        JAR_FILE: delivery-service/build/libs/*.jar
 
-  # Hub Service
+    env_file:
+      - ../.env
+
+    environment:
+      POSTGRES_HOST: postgres
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: delivery-service
+
+    ports:
+      - "9001:9001"
+
+    networks:
+      - delivery-network
+
+  company-service:
+    build:
+      context: ..
+      dockerfile: company-service/Dockerfile
+      args:
+        JAR_FILE: company-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    container_name: company-service
+
+    ports:
+      - "9002:9002"
+
+    networks:
+      - delivery-network
+
   hub-service:
     build:
       context: ..
@@ -40,6 +79,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
 
     container_name: hub-service
 
@@ -55,7 +95,6 @@ services:
 
     networks:
       - delivery-network
-
 
 
 networks:

@@ -8,8 +8,8 @@ on:
       - develop
       - main
     paths:
-      - 'eureka-server/**'
-      - '.github/workflows/eureka-server-ci.yaml'
+      - 'company-service/**'
+      - '.github/workflows/company-service-ci.yaml'
 
 
 # Workflow에서 사용할 권한 설정
@@ -22,17 +22,37 @@ jobs:
   build:
     # 실행 환경에서 수행할 작업 이름
     # Java 21 환경에서 빌드 및 테스트를 수행한다는 의미
-    name: Eureka Server - Java 21 빌드 및 테스트
+    name: Company Service - Java 21 빌드 및 테스트
 
     # GitHub Actions가 실행될 서버 환경
     # Ubuntu 최신 버전 환경에서 실행
     runs-on: ubuntu-latest
 
 
+    # DB/Redis를 쓰는 서비스만 필요
+    #
+    # 컨테이너 값(POSTGRES_DB/USER/PASSWORD)은 각자 application.yml의
+    # 로컬 기본값과 맞춰두면 별도 시크릿 설정 없이 바로 연결됩니다
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: delivery
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d delivery"
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
+
+
     # 모든 run 명령을 서비스 디렉터리에서 실행
     defaults:
       run:
-        working-directory: eureka-server
+        working-directory: company-service
 
 
     steps:
@@ -62,7 +82,7 @@ jobs:
 
 
       # 5. Application Build 및 Test 실행
-      - name: Eureka Server 빌드 및 테스트
+      - name: Company Service 빌드 및 테스트
         env:
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           JWT_ACCESSTOKEN_EXPIRATION: ${{ secrets.JWT_ACCESSTOKEN_EXPIRATION }}
@@ -79,4 +99,5 @@ jobs:
 
         with:
           name: test-report
-          path: eureka-server/build/reports/tests/
+          # working-directory는 uses: 액션엔 적용 안 되므로, path에 서비스 폴더를 직접 붙여야 함
+          path: company-service/build/reports/tests/

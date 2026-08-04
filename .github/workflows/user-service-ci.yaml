@@ -8,8 +8,8 @@ on:
       - develop
       - main
     paths:
-      - 'eureka-server/**'
-      - '.github/workflows/eureka-server-ci.yaml'
+      - 'user-service/**'
+      - '.github/workflows/user-service-ci.yaml'
 
 
 # Workflow에서 사용할 권한 설정
@@ -21,18 +21,42 @@ permissions:
 jobs:
   build:
     # 실행 환경에서 수행할 작업 이름
-    # Java 21 환경에서 빌드 및 테스트를 수행한다는 의미
-    name: Eureka Server - Java 21 빌드 및 테스트
+    name: User Service - Java 21 빌드 및 테스트
 
     # GitHub Actions가 실행될 서버 환경
-    # Ubuntu 최신 버전 환경에서 실행
     runs-on: ubuntu-latest
+
+    # User Service는 JPA/Redis를 쓰기 때문에 테스트가 Spring Context를 띄울 때
+    # 실제 연결 가능한 DB/Redis가 필요함 (eureka-server와 다른 점)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: delivery_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
 
     # 모든 run 명령을 서비스 디렉터리에서 실행
     defaults:
       run:
-        working-directory: eureka-server
+        working-directory: user-service
 
 
     steps:
@@ -62,7 +86,9 @@ jobs:
 
 
       # 5. Application Build 및 Test 실행
-      - name: Eureka Server 빌드 및 테스트
+      # postgres/redis 서비스 컨테이너 값이 application.yaml의 기본값과
+      # 일치하도록 맞춰뒀기 때문에 별도 env 오버라이드 없이도 연결됨
+      - name: User Service 빌드 및 테스트
         env:
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           JWT_ACCESSTOKEN_EXPIRATION: ${{ secrets.JWT_ACCESSTOKEN_EXPIRATION }}
@@ -79,4 +105,4 @@ jobs:
 
         with:
           name: test-report
-          path: eureka-server/build/reports/tests/
+          path: user-service/build/reports/tests/
