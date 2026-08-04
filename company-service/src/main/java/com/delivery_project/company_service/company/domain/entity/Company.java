@@ -1,11 +1,9 @@
 package com.delivery_project.company_service.company.domain.entity;
 
+import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.global.common.BaseDeletableEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
@@ -17,6 +15,7 @@ import java.util.UUID;
 @Getter
 @SQLRestriction("deleted_at IS NULL")
 public class Company extends BaseDeletableEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -33,4 +32,12 @@ public class Company extends BaseDeletableEntity {
 
     @Column(name = "address", nullable = false)
     private String address;
+
+    @Builder
+    public Company(UUID hubId, CompanyType type, String name, String address) {
+        this.hubId = hubId;
+        this.type = type;
+        this.name = name;
+        this.address = address;
+    }
 }
