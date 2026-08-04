@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class UserRepositoryImpl implements UserRepository {
+public class JpaUserRepository implements UserRepository {
 
 	private final SpringDataUserRepository springDataUserRepository;
 
