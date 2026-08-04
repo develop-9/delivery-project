@@ -65,6 +65,43 @@ services:
     networks:
       - delivery-network
 
+  hub-service:
+    build:
+      context: ..
+      dockerfile: hub-service/Dockerfile
+      args:
+        JAR_FILE: hub-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    # env_file 보다 우선한다. 루트 .env 는 호스트 실행 기준 값(localhost·POSTGRES_PORT 등)을
+    # 담고 있어 그대로 쓰면 컨테이너 안에서 어긋난다. 컨테이너 기준 값으로 덮어쓴다.
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: hub_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: hub-service
+
+    ports:
+      - "9005:9005"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9005/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
 
 networks:
   delivery-network:

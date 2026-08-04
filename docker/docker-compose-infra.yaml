@@ -57,8 +57,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
+    # 호스트 포트만 바꿀 수 있게 한다. 컨테이너 안은 항상 5432 다.
+    # 네이티브 PostgreSQL 이 5432 를 점유한 PC 에서는 .env 에 POSTGRES_PORT 를 지정한다.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
