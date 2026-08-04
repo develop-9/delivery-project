@@ -1,6 +1,6 @@
 package com.delivery_project.user_service.user.domain.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.hibernate.annotations.SQLRestriction;
@@ -53,7 +53,7 @@ public class User extends BaseEntity {
 	private ApprovalStatus approvalStatus;
 
 	@Column(name = "approved_at")
-	private LocalDateTime approvedAt;
+	private Instant approvedAt;
 
 	@Column(name = "approved_by")
 	private UUID approvedBy;

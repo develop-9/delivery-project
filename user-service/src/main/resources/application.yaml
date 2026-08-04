@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: user-service
+  jackson:
+    time-zone: UTC
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
     username: ${POSTGRES_USERNAME:postgres}
