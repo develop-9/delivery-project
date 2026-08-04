@@ -79,4 +79,4 @@ jobs:
 
         with:
           name: test-report
-          path: build/reports/tests/
+          path: eureka-server/build/reports/tests/
