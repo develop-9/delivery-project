@@ -42,6 +42,9 @@ dependencies {
 	// Spring Boot Actuator
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+	// Zipkin 분산 추적 (팀 표준)
+	implementation 'org.springframework.boot:spring-boot-starter-zipkin'
+
 	// Eureka Discovery Client
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
@@ -79,6 +82,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

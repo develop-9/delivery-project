@@ -70,6 +70,10 @@ management:
     discovery:
       enabled: false
 
+  # zipkin 이 없는 환경에서 span 전송 재시도로 시간만 쓰므로 끈다.
+  tracing:
+    enabled: false
+
 logging:
   level:
     com.delivery_project.hub_service: debug
