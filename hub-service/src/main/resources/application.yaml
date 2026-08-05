@@ -80,7 +80,16 @@ spring:
     activate:
       on-profile: local
 
+  # ddl-auto 가 테이블을 만든 뒤 db/schema.sql 이 제약을 덧붙인다.
+  # 부분 인덱스·CHECK 는 ddl-auto 가 만들지 못해 이 스크립트가 없으면 안전망이 비는 상태가 된다.
+  # defer-datasource-initialization 이 있어야 Hibernate 다음에 실행된다 (기본은 그 전).
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+
   jpa:
+    defer-datasource-initialization: true
     show-sql: true
     hibernate:
       ddl-auto: update
