@@ -1,12 +1,11 @@
 package com.delivery_project.company_service.company.presentation.api_controller;
 
+import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
-import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyGetResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
+import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.ErrorResponse;
+import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
@@ -170,7 +170,7 @@ public interface CompanyApi {
     );
 
     @Operation(
-            summary = "업체 수정",
+            summary = "업체 조회",
             description = "모든 유저가 업체 하나의 정보를 조회합니다."
     )
     @ApiResponses(value = {
@@ -197,5 +197,71 @@ public interface CompanyApi {
                     required = true
             )
             @PathVariable UUID companyId
+    );
+
+    @Operation(
+            summary = "업체 검색",
+            description = "모든 사용자가 업체 목록을 페이지네이션 및 검색 조건에 따라 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "업체 목록 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 또는 잘못된 검색 조건",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<SuccessResponse<PageResponse<CompanyGetAllDataResponse>>> getAllCompany(
+            @Parameter(
+                    description = "조회할 페이지 번호",
+                    example = "0",
+                    required = false
+            )
+            @RequestParam Integer page,
+
+            @Parameter(
+                    description = "페이지당 조회할 업체 수",
+                    example = "10",
+                    required = false
+            )
+            @RequestParam Integer size,
+
+            @Parameter(
+                    description = "정렬 기준",
+                    example = "createdAt,desc",
+                    required = false
+            )
+            @RequestParam(required = false) String sort,
+
+            @Parameter(
+                    description = "업체명 검색 조건",
+                    example = "삼성",
+                    required = false
+            )
+            @RequestParam(required = false) String companyName,
+
+            @Parameter(
+                    description = "업체 유형 검색 조건",
+                    example = "PRODUCER",
+                    required = false
+            )
+            @RequestParam(required = false) CompanyType companyType,
+
+            @Parameter(
+                    description = "Hub ID 검색 조건",
+                    example = "550e8400-e29b-41d4-a716-446655440000",
+                    required = false
+            )
+            @RequestParam(required = false) UUID hubId
     );
 }

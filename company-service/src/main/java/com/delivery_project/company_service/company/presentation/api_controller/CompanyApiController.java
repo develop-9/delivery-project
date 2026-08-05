@@ -1,21 +1,14 @@
 package com.delivery_project.company_service.company.presentation.api_controller;
 
-import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
-import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
-import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
+import com.delivery_project.company_service.company.application.command.*;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
-import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
-import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
-import com.delivery_project.company_service.company.application.result.CompanyGetResult;
-import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
+import com.delivery_project.company_service.company.application.result.*;
+import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
-import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyGetResponse;
-import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
+import com.delivery_project.company_service.company.presentation.response.*;
+import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -99,6 +92,44 @@ public class CompanyApiController implements CompanyApi {
                                 CompanyGetResponse.from(
                                         companyGetResult
                                 ))
+                );
+    }
+
+    @GetMapping
+    @Override
+    public ResponseEntity<SuccessResponse<PageResponse<CompanyGetAllDataResponse>>> getAllCompany(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) CompanyType companyType,
+            @RequestParam(required = false) UUID hubId
+    ) {
+        CompanyGetAllCommand companyGetAllCommand =
+                CompanyGetAllCommand.from(
+                        page,
+                        size,
+                        sort,
+                        companyName,
+                        companyType,
+                        hubId
+                );
+
+        CompanyGetAllResult companyGetAllResult = companyQueryService.getAllCompany(companyGetAllCommand);
+
+        PageResponse<CompanyGetAllDataResponse> pageResponse =
+                PageResponse.of(
+                        companyGetAllResult.content(),
+                        companyGetAllResult.page(),
+                        companyGetAllResult.size(),
+                        companyGetAllResult.totalElements(),
+                        companyGetAllResult.totalPages(),
+                        CompanyGetAllDataResponse::from
+                );
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        SuccessResponse.success(pageResponse)
                 );
     }
 }
