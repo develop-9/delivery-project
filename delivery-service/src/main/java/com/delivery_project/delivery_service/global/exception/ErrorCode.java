@@ -25,8 +25,11 @@ public enum ErrorCode {
     INVALID_PAGE_NUMBER(HttpStatus.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.", "INVALID_PAGE_NUMBER"),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "페이지 크기는 10, 30, 50만 가능합니다.", "INVALID_PAGE_SIZE"),
     UPDATE_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 수정 권한이 없습니다.", "UPDATE_DELIVERY_MANAGER_FORBIDDEN"),
-    HUB_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "담당 허브의 배송 담당자만 수정할 수 있습니다.", "HUB_PERMISSION_DENIED"),
-    DELIVERY_MANAGER_IS_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자는 수정할 수 없습니다.", "DELIVERY_MANAGER_IS_DELIVERING"),
+    HUB_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "담당 허브의 배송 담당자만 처리할 수 있습니다.", "HUB_PERMISSION_DENIED"),
+    DELIVERY_MANAGER_IS_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자는 처리할 수 없습니다.", "DELIVERY_MANAGER_IS_DELIVERING"),
+    DELETE_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 삭제 권한이 없습니다.", "DELETE_DELIVERY_MANAGER_FORBIDDEN"),
+    INTERNAL_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 내부 API에 접근할 수 없습니다.", "INTERNAL_ACCESS_DENIED"),
+    ACTIVE_DELIVERY_EXISTS(HttpStatus.CONFLICT, "담당 중인 배송이 존재합니다.", "ACTIVE_DELIVERY_EXISTS"),
 
     // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
