@@ -39,7 +39,8 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
 		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
-		return createResponse(e.getErrorCode());
+		return ResponseEntity.status(e.getErrorCode().getHttpStatus())
+				.body(ErrorResponse.of(e.getErrorCode(), e.getMessage()));
 	}
 
 	@ExceptionHandler(IllegalStateException.class)
