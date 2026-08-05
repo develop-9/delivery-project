@@ -252,6 +252,24 @@ class UserQueryServiceTest {
 	}
 
 	@Test
+	void Internal_배치_조회는_존재하는_id만_결과에_포함한다() {
+		// given
+		User target1 = createUser(Role.COMPANY_MANAGER, null);
+		User target2 = createUser(Role.HUB_MANAGER, null);
+		UUID notFoundId = UUID.randomUUID();
+		List<UUID> ids = List.of(target1.getId(), target2.getId(), notFoundId);
+		when(userQueryRepository.findAllByIds(ids)).thenReturn(List.of(target1, target2));
+
+		// when
+		List<InternalUserResult> results = userQueryService.getInternalUsersBatch(ids);
+
+		// then
+		assertThat(results).hasSize(2);
+		assertThat(results).extracting(InternalUserResult::userId)
+				.containsExactlyInAnyOrder(target1.getId(), target2.getId());
+	}
+
+	@Test
 	void Internal_단건_조회_대상이_없으면_USER_NOT_FOUND_예외가_발생한다() {
 		// given
 		UUID targetId = UUID.randomUUID();

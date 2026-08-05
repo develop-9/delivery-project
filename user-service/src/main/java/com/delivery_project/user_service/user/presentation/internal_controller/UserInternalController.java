@@ -1,11 +1,13 @@
 package com.delivery_project.user_service.user.presentation.internal_controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.delivery_project.user_service.global.response.SuccessResponse;
@@ -26,5 +28,13 @@ public class UserInternalController {
 	public ResponseEntity<SuccessResponse<InternalUserResponse>> getUser(@PathVariable UUID userId) {
 		InternalUserResult result = userQueryService.getInternalUser(userId);
 		return ResponseEntity.ok(SuccessResponse.success(InternalUserResponse.from(result)));
+	}
+
+	@GetMapping("/batch")
+	public ResponseEntity<SuccessResponse<List<InternalUserResponse>>> getUsersBatch(@RequestParam List<UUID> ids) {
+		List<InternalUserResponse> responses = userQueryService.getInternalUsersBatch(ids).stream()
+				.map(InternalUserResponse::from)
+				.toList();
+		return ResponseEntity.ok(SuccessResponse.success(responses));
 	}
 }

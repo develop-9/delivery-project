@@ -1,5 +1,7 @@
 package com.delivery_project.user_service.user.application.query_service;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -73,5 +75,12 @@ public class UserQueryService {
 		User user = userQueryRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 		return InternalUserResult.from(user);
+	}
+
+	/** 존재하지 않는 id는 결과에서 조용히 제외한다(문서 3번, N+1 방지용 배치 조회). */
+	public List<InternalUserResult> getInternalUsersBatch(Collection<UUID> ids) {
+		return userQueryRepository.findAllByIds(ids).stream()
+				.map(InternalUserResult::from)
+				.toList();
 	}
 }
