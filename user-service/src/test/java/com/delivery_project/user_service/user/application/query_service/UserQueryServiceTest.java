@@ -24,13 +24,13 @@ import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserQueryServiceTest {
 
 	@Mock
-	private UserRepository userRepository;
+	private UserQueryRepository userQueryRepository;
 
 	@Mock
 	private CallerResolver callerResolver;
@@ -47,7 +47,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(pending), pageable, 1);
 
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findAllPending(pageable)).thenReturn(page);
+		when(userQueryRepository.findAllPending(pageable)).thenReturn(page);
 
 		// when
 		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), null, pageable);
@@ -66,7 +66,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
+		when(userQueryRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
 
 		// when
 		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), hubId, pageable);
@@ -85,13 +85,13 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
-		when(userRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
+		when(userQueryRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
 
 		// when
 		userQueryService.getPendingUsers(hubManager.getId(), requestedHubId, pageable);
 
 		// then
-		org.mockito.Mockito.verify(userRepository).findPendingByHub(myHubId, pageable);
+		org.mockito.Mockito.verify(userQueryRepository).findPendingByHub(myHubId, pageable);
 	}
 
 	@Test

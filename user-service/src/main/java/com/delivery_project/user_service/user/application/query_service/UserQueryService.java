@@ -12,7 +12,7 @@ import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class UserQueryService {
 
-	private final UserRepository userRepository;
+	private final UserQueryRepository userQueryRepository;
 	private final CallerResolver callerResolver;
 
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
@@ -29,9 +29,9 @@ public class UserQueryService {
 
 		Page<User> pendingUsers = switch (caller.getRole()) {
 			case MASTER -> hubIdParam != null
-					? userRepository.findPendingByHub(hubIdParam, pageable)
-					: userRepository.findAllPending(pageable);
-			case HUB_MANAGER -> userRepository.findPendingByHub(caller.getHubId(), pageable);
+					? userQueryRepository.findPendingByHub(hubIdParam, pageable)
+					: userQueryRepository.findAllPending(pageable);
+			case HUB_MANAGER -> userQueryRepository.findPendingByHub(caller.getHubId(), pageable);
 			case COMPANY_MANAGER, DELIVERY_MANAGER -> throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN);
 		};
 
