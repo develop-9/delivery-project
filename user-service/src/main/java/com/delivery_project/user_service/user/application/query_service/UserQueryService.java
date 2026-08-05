@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
@@ -21,10 +22,10 @@ import lombok.RequiredArgsConstructor;
 public class UserQueryService {
 
 	private final UserRepository userRepository;
+	private final CallerResolver callerResolver;
 
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
-		User caller = userRepository.findById(callerId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
+		User caller = callerResolver.resolve(callerId);
 
 		Page<User> pendingUsers = switch (caller.getRole()) {
 			case MASTER -> hubIdParam != null

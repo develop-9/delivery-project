@@ -21,7 +21,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.JwtProvider;
+import com.delivery_project.user_service.user.domain.token.TokenProvider;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ public class AuthCommandService {
 	private final UserRepository userRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordEncoder passwordEncoder;
-	private final JwtProvider jwtProvider;
+	private final TokenProvider tokenProvider;
 
 	public UserSignupResult signup(UserSignupCommand command) {
 		log.info("[Auth] 회원가입 시도 username={}", command.username());
@@ -109,7 +109,7 @@ public class AuthCommandService {
 		TokenPair tokens = issueTokens(user);
 		log.info("[Auth] 로그인 성공 userId={}", user.getId());
 
-		return new UserLoginResult(tokens.accessToken(), tokens.refreshToken(), jwtProvider.getAccessTokenExpirationSeconds());
+		return new UserLoginResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
 	@Transactional(readOnly = true)
@@ -117,7 +117,7 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		UUID userId = jwtProvider.parse(requestedRefreshToken).userId();
+		UUID userId = tokenProvider.parse(requestedRefreshToken).userId();
 
 		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));
@@ -134,7 +134,7 @@ public class AuthCommandService {
 		TokenPair tokens = issueTokens(user);
 		log.info("[Auth] 토큰 재발급 성공 userId={}", userId);
 
-		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), jwtProvider.getAccessTokenExpirationSeconds());
+		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
 	@Transactional(readOnly = true)
@@ -144,9 +144,9 @@ public class AuthCommandService {
 	}
 
 	private TokenPair issueTokens(User user) {
-		String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
-		String refreshToken = jwtProvider.generateRefreshToken(user.getId());
-		refreshTokenRepository.save(user.getId(), refreshToken, Duration.ofMillis(jwtProvider.getRefreshTokenExpirationMillis()));
+		String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
+		String refreshToken = tokenProvider.generateRefreshToken(user.getId());
+		refreshTokenRepository.save(user.getId(), refreshToken, Duration.ofMillis(tokenProvider.getRefreshTokenExpirationMillis()));
 		return new TokenPair(accessToken, refreshToken);
 	}
 

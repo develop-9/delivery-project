@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.domain.entity.Role;
+import com.delivery_project.user_service.user.domain.token.JwtPrincipal;
 
 class JwtProviderTest {
 
