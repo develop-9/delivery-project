@@ -63,10 +63,6 @@ public class JwtProvider {
 				.compact();
 	}
 
-	public void validateToken(String token) {
-		parseClaims(token);
-	}
-
 	public String resolveToken(String authorizationHeader) {
 		if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
@@ -82,13 +78,17 @@ public class JwtProvider {
 		return refreshTokenExpirationMillis;
 	}
 
-	public UUID getUserId(String token) {
-		return UUID.fromString(parseClaims(token).getSubject());
-	}
-
-	public Role getRole(String token) {
-		String role = parseClaims(token).get(ROLE_CLAIM, String.class);
-		return role != null ? Role.valueOf(role) : null;
+	/**
+	 * 토큰을 검증하고 클레임을 한 번만 파싱해서 userId/role을 함께 반환한다.
+	 * validateToken()+getUserId()+getRole()을 각각 호출하면 같은 토큰을 여러 번
+	 * 파싱/서명검증하게 되어 이 메서드로 통합했다.
+	 */
+	public JwtPrincipal parse(String token) {
+		Claims claims = parseClaims(token);
+		UUID userId = UUID.fromString(claims.getSubject());
+		String roleClaim = claims.get(ROLE_CLAIM, String.class);
+		Role role = roleClaim != null ? Role.valueOf(roleClaim) : null;
+		return new JwtPrincipal(userId, role);
 	}
 
 	private Claims parseClaims(String token) {

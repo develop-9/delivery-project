@@ -2,7 +2,6 @@ package com.delivery_project.user_service.global.config;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
-import com.delivery_project.user_service.user.domain.entity.Role;
+import com.delivery_project.user_service.user.infrastructure.jwt.JwtPrincipal;
 import com.delivery_project.user_service.user.infrastructure.jwt.JwtProvider;
 
 import jakarta.servlet.FilterChain;
@@ -43,13 +42,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
 			try {
 				String token = jwtProvider.resolveToken(authorizationHeader);
-				jwtProvider.validateToken(token);
+				JwtPrincipal principal = jwtProvider.parse(token);
 
-				UUID userId = jwtProvider.getUserId(token);
-				Role role = jwtProvider.getRole(token);
-
-				var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
-				var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
+				var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name()));
+				var authentication = new UsernamePasswordAuthenticationToken(principal.userId(), null, authorities);
 				SecurityContextHolder.getContext().setAuthentication(authentication);
 			} catch (BusinessException e) {
 				SecurityContextHolder.clearContext();
