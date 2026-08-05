@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.delivery_project.user_service.global.response.ErrorResponse;
 
@@ -94,6 +95,16 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException e) {
 		log.info("[Global] 지원하지 않는 미디어 타입 message={}", e.getMessage());
 		return createResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+	}
+
+	/**
+	 * 매핑되지 않은 경로. 이 핸들러가 없으면 아래 Exception 캐치올이 먼저 잡아서
+	 * Spring이 스스로 냈을 404를 500으로 바꿔버린다.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
+		log.info("[Global] 매핑되지 않은 경로 요청 path={}", e.getResourcePath());
+		return createResponse(ErrorCode.NOT_FOUND);
 	}
 
 	@ExceptionHandler(Exception.class)

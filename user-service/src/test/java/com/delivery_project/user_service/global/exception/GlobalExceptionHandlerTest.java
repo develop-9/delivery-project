@@ -15,6 +15,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.delivery_project.user_service.global.response.ErrorResponse;
 
@@ -150,6 +151,19 @@ class GlobalExceptionHandlerTest {
 		// then
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 		assertThat(response.getBody().error().errorCode()).isEqualTo("UNSUPPORTED_MEDIA_TYPE");
+	}
+
+	@Test
+	void 매핑되지_않은_경로_요청은_500이_아니라_NOT_FOUND로_변환된다() {
+		// given
+		NoResourceFoundException exception = org.mockito.Mockito.mock(NoResourceFoundException.class);
+
+		// when
+		ResponseEntity<ErrorResponse> response = handler.handleNoResourceFoundException(exception);
+
+		// then
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(response.getBody().error().errorCode()).isEqualTo("NOT_FOUND");
 	}
 
 	@Test
