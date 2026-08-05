@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
+import com.delivery_project.user_service.user.application.result.InternalUserSlackResult;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.presentation.response.InternalUserResponse;
+import com.delivery_project.user_service.user.presentation.response.InternalUserSlackResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,5 +48,11 @@ public class UserInternalController {
 	) {
 		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(hubId, role);
 		return ResponseEntity.ok(SuccessResponse.success(InternalUserResponse.from(result)));
+	}
+
+	@GetMapping("/{userId}/slack")
+	public ResponseEntity<SuccessResponse<InternalUserSlackResponse>> getUserSlack(@PathVariable UUID userId) {
+		InternalUserSlackResult result = userQueryService.getInternalUserSlack(userId);
+		return ResponseEntity.ok(SuccessResponse.success(InternalUserSlackResponse.from(result)));
 	}
 }

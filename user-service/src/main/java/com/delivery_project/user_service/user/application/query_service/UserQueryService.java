@@ -13,6 +13,7 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
+import com.delivery_project.user_service.user.application.result.InternalUserSlackResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
@@ -90,5 +91,11 @@ public class UserQueryService {
 		User user = userQueryRepository.findByHubIdAndRole(hubId, role)
 				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_MANAGER_NOT_FOUND));
 		return InternalUserResult.from(user);
+	}
+
+	public InternalUserSlackResult getInternalUserSlack(UUID userId) {
+		User user = userQueryRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		return InternalUserSlackResult.from(user);
 	}
 }

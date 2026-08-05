@@ -22,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
+import com.delivery_project.user_service.user.application.result.InternalUserSlackResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
@@ -294,6 +295,33 @@ class UserQueryServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_MANAGER_NOT_FOUND);
+	}
+
+	@Test
+	void Internal_Slack_ID_조회는_사용자의_Slack_ID를_반환한다() {
+		// given
+		User target = createUser(Role.DELIVERY_MANAGER, null);
+		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		InternalUserSlackResult result = userQueryService.getInternalUserSlack(target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+		assertThat(result.slackId()).isEqualTo(target.getSlackId());
+	}
+
+	@Test
+	void Internal_Slack_ID_조회_대상이_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID targetId = UUID.randomUUID();
+		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getInternalUserSlack(targetId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
 	}
 
 	@Test
