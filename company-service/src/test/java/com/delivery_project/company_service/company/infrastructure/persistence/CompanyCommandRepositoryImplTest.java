@@ -17,13 +17,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class CompanyRepositoryImplTest {
+class CompanyCommandRepositoryImplTest {
 
     @Mock
     private SpringDataCompanyRepository springDataCompanyRepository;
 
     @InjectMocks
-    private CompanyRepositoryImpl companyRepository;
+    private CompanyCommandRepositoryImpl companyRepository;
 
     @Test
     @DisplayName("업체 저장에 성공한다.")

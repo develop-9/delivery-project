@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class CompanyRepositoryImpl implements CompanyRepository {
+public class CompanyCommandRepositoryImpl implements CompanyRepository {
 
     private final SpringDataCompanyRepository springDataCompanyRepository;
 
