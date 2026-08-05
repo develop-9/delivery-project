@@ -14,6 +14,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
+import org.hibernate.exception.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -53,9 +54,7 @@ public class DeliveryManagerCommandService {
             return DeliveryManagerCreateResult.from(savedManager);
 
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
-            );
+            throw convertDataIntegrityException(e);
         }
     }
 
@@ -219,6 +218,33 @@ public class DeliveryManagerCommandService {
 
         return DeliveryManagerInternalDeleteResult.from(
                 deliveryManager
+        );
+    }
+
+    private BusinessException convertDataIntegrityException(
+            DataIntegrityViolationException exception
+    ) {
+        Throwable cause = exception;
+
+        while (cause != null) {
+            if (cause instanceof ConstraintViolationException constraintException) {
+                String constraintName =
+                        constraintException.getConstraintName();
+
+                if ("uq_hub_delivery_sequence".equals(constraintName)
+                        || "uq_company_delivery_sequence".equals(constraintName)) {
+
+                    return new BusinessException(
+                            ErrorCode.DELIVERY_SEQUENCE_CONFLICT
+                    );
+                }
+            }
+
+            cause = cause.getCause();
+        }
+
+        return new BusinessException(
+                ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
         );
     }
 }
