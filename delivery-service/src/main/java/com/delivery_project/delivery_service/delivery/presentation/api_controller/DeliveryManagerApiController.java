@@ -2,16 +2,10 @@ package com.delivery_project.delivery_service.delivery.presentation.api_controll
 
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryManagerQueryService;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerCreateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerUpdateRequest;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerCreateResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerDetailResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerListResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerUpdateResponse;
+import com.delivery_project.delivery_service.delivery.presentation.response.*;
 import com.delivery_project.delivery_service.global.response.PageResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
@@ -98,5 +92,23 @@ public class DeliveryManagerApiController {
                         request.toCommand()
                 );
         return SuccessResponse.success(DeliveryManagerUpdateResponse.from(result));
+    }
+
+    @DeleteMapping("/{managerId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerDeleteResponse> deleteDeliveryManager(
+            @PathVariable UUID managerId,
+            @RequestHeader("X-User-Id") UUID deletedBy
+            // TODO: Gateway 인증 헤더 형식 확정 후 수정
+    ){
+        DeliveryManagerDeleteResult result =
+                deliveryManagerCommandService.delete(
+                        managerId,
+                        deletedBy
+                );
+
+        return SuccessResponse.success(
+                DeliveryManagerDeleteResponse.from(result)
+        );
     }
 }

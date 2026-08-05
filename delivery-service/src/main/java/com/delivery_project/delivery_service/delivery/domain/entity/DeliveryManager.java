@@ -104,4 +104,14 @@ public class DeliveryManager extends BaseDeletableEntity {
             );
         }
     }
+
+    public void deleteManager(UUID deletedBy) {
+        if (this.status == DeliveryManagerStatus.DELIVERING) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_IS_DELIVERING
+            );
+        }
+
+        super.delete(deletedBy);
+    }   // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
 }
