@@ -1,0 +1,156 @@
+package com.delivery_project.slack_service.slack.presentation.api_controller;
+
+import com.delivery_project.slack_service.global.response.SuccessResponse;
+import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
+import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
+import com.delivery_project.slack_service.slack.application.result.SlackMessageCreateResult;
+import com.delivery_project.slack_service.slack.application.result.SlackMessageQueryResult;
+import com.delivery_project.slack_service.slack.application.result.SlackMessageUpdateResult;
+import com.delivery_project.slack_service.slack.presentation.request.SlackMessageCreateRequest;
+import com.delivery_project.slack_service.slack.presentation.request.SlackMessageUpdateRequest;
+import com.delivery_project.slack_service.slack.presentation.response.SlackMessageCreateResponse;
+import com.delivery_project.slack_service.slack.presentation.response.SlackMessageQueryResponse;
+import com.delivery_project.slack_service.slack.presentation.response.SlackMessageUpdateResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@Tag(
+        name = "Slack Message",
+        description = "Slack 메시지 생성, 조회, 수정, 삭제 API"
+)
+@RestController
+@RequestMapping("/api/v1/slack-messages")
+@RequiredArgsConstructor
+public class SlackMessageApiController {
+
+    // TODO: JWT 인증 적용 후 로그인 사용자 UUID로 대체
+    private static final UUID TEMP_USER_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+    private final SlackMessageCommandService slackMessageCommandService;
+    private final SlackMessageQueryService slackMessageQueryService;
+
+    @Operation(
+            summary = "Slack 메시지 생성",
+            description = "Slack 메시지를 PENDING 상태로 생성합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "메시지 생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @PostMapping
+    public ResponseEntity<SuccessResponse<SlackMessageCreateResponse>> create(
+            @Valid @RequestBody SlackMessageCreateRequest request
+    ) {
+        SlackMessageCreateResult result =
+                slackMessageCommandService.create(request.toCommand());
+
+        SlackMessageCreateResponse response =
+                SlackMessageCreateResponse.from(result);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(SuccessResponse.success(response));
+    }
+
+    @Operation(
+            summary = "Slack 메시지 단건 조회",
+            description = "삭제되지 않은 Slack 메시지를 ID로 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "메시지 조회 성공"),
+            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @GetMapping("/{slackMessageId}")
+    public ResponseEntity<SuccessResponse<SlackMessageQueryResponse>> findById(
+            @PathVariable UUID slackMessageId
+    ) {
+        SlackMessageQueryResult result =
+                slackMessageQueryService.findById(slackMessageId);
+
+        SlackMessageQueryResponse response =
+                SlackMessageQueryResponse.from(result);
+
+        return ResponseEntity.ok(SuccessResponse.success(response));
+    }
+
+    @Operation(
+            summary = "Slack 메시지 목록 조회",
+            description = "삭제되지 않은 Slack 메시지를 최신순으로 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "메시지 목록 조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @GetMapping
+    public ResponseEntity<SuccessResponse<List<SlackMessageQueryResponse>>> findAll() {
+        List<SlackMessageQueryResponse> responses =
+                slackMessageQueryService.findAll()
+                        .stream()
+                        .map(SlackMessageQueryResponse::from)
+                        .toList();
+
+        return ResponseEntity.ok(SuccessResponse.success(responses));
+    }
+
+    @Operation(
+            summary = "Slack 메시지 수정",
+            description = "Slack 메시지 내용을 수정합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "메시지 수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
+            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @PatchMapping("/{slackMessageId}")
+    public ResponseEntity<SuccessResponse<SlackMessageUpdateResponse>> update(
+            @PathVariable UUID slackMessageId,
+            @Valid @RequestBody SlackMessageUpdateRequest request
+    ) {
+        SlackMessageUpdateResult result =
+                slackMessageCommandService.update(
+                        slackMessageId,
+                        request.toCommand()
+                );
+
+        SlackMessageUpdateResponse response =
+                SlackMessageUpdateResponse.from(result);
+
+        return ResponseEntity.ok(SuccessResponse.success(response));
+    }
+
+    @Operation(
+            summary = "Slack 메시지 삭제",
+            description = "Slack 메시지를 논리 삭제합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "메시지 삭제 성공"),
+            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 삭제된 메시지"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @DeleteMapping("/{slackMessageId}")
+    public ResponseEntity<SuccessResponse<Void>> delete(
+            @PathVariable UUID slackMessageId
+    ) {
+        slackMessageCommandService.delete(
+                slackMessageId,
+                TEMP_USER_ID
+        );
+
+        return ResponseEntity.ok(SuccessResponse.success(null));
+    }
+}

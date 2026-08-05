@@ -1,6 +1,7 @@
-package com.delivery_project.slack_service.domain.slack.dto.request;
+package com.delivery_project.slack_service.slack.presentation.request;
 
-import com.delivery_project.slack_service.domain.slack.entity.SenderType;
+import com.delivery_project.slack_service.slack.application.command.SlackMessageCreateCommand;
+import com.delivery_project.slack_service.slack.domain.entity.SenderType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -24,4 +25,14 @@ public record SlackMessageCreateRequest(
         @NotBlank(message = "메시지는 필수입니다.")
         String message
 ) {
+
+        public SlackMessageCreateCommand toCommand() {
+                return new SlackMessageCreateCommand(
+                        senderUserId,
+                        senderType,
+                        receiverUserId,
+                        receiverSlackId,
+                        message
+                );
+        }
 }

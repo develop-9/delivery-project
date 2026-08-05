@@ -1,4 +1,4 @@
-package com.delivery_project.slack_service.domain.slack.entity;
+package com.delivery_project.slack_service.slack.domain.entity;
 
 import com.delivery_project.slack_service.global.common.BaseDeletableEntity;
 import jakarta.persistence.*;

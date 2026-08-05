@@ -12,6 +12,7 @@ import java.util.UUID;
 @EnableJpaAuditing
 public class JpaConfig {
 
+    // TODO: JWT 인증 적용 후 현재 로그인 사용자의 UUID를 반환하도록 변경
     private static final UUID TEMP_USER_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000000");
 
