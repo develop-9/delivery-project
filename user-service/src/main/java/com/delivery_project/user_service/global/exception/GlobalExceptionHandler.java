@@ -1,5 +1,6 @@
 package com.delivery_project.user_service.global.exception;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,6 +30,11 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.from(errorCode));
 	}
 
+	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode, List<FieldErrorDto> fieldErrors) {
+		return ResponseEntity.status(errorCode.getHttpStatus())
+				.body(ErrorResponse.from(errorCode, fieldErrors));
+	}
+
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
 		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
@@ -53,12 +59,16 @@ public class GlobalExceptionHandler {
 		return createResponse(ErrorCode.AUTH_FORBIDDEN);
 	}
 
-	@ExceptionHandler({
-			MethodArgumentNotValidException.class,
-			BindException.class,
-			MissingServletRequestPartException.class,
-			MissingServletRequestParameterException.class
-	})
+	@ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+	public ResponseEntity<ErrorResponse> handleBindException(BindException e) {
+		List<FieldErrorDto> fieldErrors = e.getFieldErrors().stream()
+				.map(FieldErrorDto::from)
+				.toList();
+		log.info("[Global] 입력값 검증 실패 fieldErrors={}", fieldErrors);
+		return createResponse(ErrorCode.INVALID_INPUT_VALUE, fieldErrors);
+	}
+
+	@ExceptionHandler({MissingServletRequestPartException.class, MissingServletRequestParameterException.class})
 	public ResponseEntity<ErrorResponse> handleInvalidInputValueException(Exception e) {
 		log.info("[Global] 입력값 검증 실패 message={}", e.getMessage());
 		return createResponse(ErrorCode.INVALID_INPUT_VALUE);
