@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.domain.repository;
 
-import com.delivery_project.order_service.global.config.JpaAuditingConfig;
+import com.delivery_project.order_service.global.config.JpaConfig;
+import com.delivery_project.order_service.global.config.SecurityAuditorAware;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderItem;
 import com.delivery_project.order_service.order.domain.entity.OrderStatus;
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** 주문 CRUD — 포트(OrderRepository/OrderQueryRepository) 기준으로 검증한다. */
 @DataJpaTest
-@Import({JpaAuditingConfig.class, OrderRepositoryImpl.class, OrderQueryRepositoryImpl.class})
+@Import({JpaConfig.class, SecurityAuditorAware.class, OrderRepositoryImpl.class, OrderQueryRepositoryImpl.class})
 class OrderCrudTest {
 
 	@Autowired
@@ -124,8 +125,7 @@ class OrderCrudTest {
 		Order order = orderRepository.save(newOrder());
 		UUID deletedBy = UUID.randomUUID();
 
-		// when
-		order.cancel("고객 요청");
+		// when — 삭제 API 는 아직 없고, 도메인 규칙만 검증한다
 		order.delete(deletedBy);
 
 		// then — 행은 남아 있지만 포트로는 조회되지 않는다

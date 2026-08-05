@@ -1,6 +1,5 @@
 package com.delivery_project.order_service.global.exception;
 
-import com.delivery_project.order_service.global.security.UserContextInterceptor;
 import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.presentation.api_controller.OrderApiController;
@@ -8,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderApiController.class)
-@Import(UserContextInterceptor.class)   // WebConfig 가 참조하는 인터셉터는 슬라이스에 자동 포함되지 않는다
 class GlobalExceptionHandlerTest {
 
 	@Autowired

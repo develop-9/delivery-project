@@ -2,8 +2,6 @@ package com.delivery_project.order_service.order.application.command_service;
 
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
-import com.delivery_project.order_service.global.security.UserContextHolder;
-import com.delivery_project.order_service.order.application.command.OrderCancelCommand;
 import com.delivery_project.order_service.order.application.command.OrderCreateCommand;
 import com.delivery_project.order_service.order.application.command.OrderItemCommand;
 import com.delivery_project.order_service.order.application.command.OrderUpdateCommand;
@@ -23,7 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 주문 생성,수정,취소,삭제
+ * 주문 접수·수정.
  *
  * 1단계에서는 어떤 외부 서비스도 호출하지 않는다.
  * 재고 선점 / 배송 생성 / 알림은 연동 단계에서
@@ -41,14 +39,12 @@ public class OrderCommandService {
 	public OrderResult create(OrderCreateCommand command) {
 		validateNoDuplicatedProduct(command.items());
 
-		UUID requesterUserId = UserContextHolder.getRequired().userId();
-
 		Order order = Order.builder()
 				.supplierCompanyId(command.supplierCompanyId())
 				.receiverCompanyId(command.receiverCompanyId())
 				.originHubId(command.originHubId())
 				.destHubId(command.destHubId())
-				.requesterUserId(requesterUserId)
+				.requesterUserId(command.requesterUserId())
 				.requestDetails(command.requestDetails())
 				.dueAt(command.dueAt())
 				.build();
@@ -85,39 +81,6 @@ public class OrderCommandService {
 				order.getId(), order.getItemCount(), order.getTotalPrice());
 
 		return OrderResult.from(order);
-	}
-
-	/**
-	 * 주문 취소 — 상태만 CANCELED 로 바꾼다.
-	 * 선점 재고 복원은 재고 연동 단계에서 이 뒤에 붙는다.
-	 */
-	public OrderResult cancel(OrderCancelCommand command) {
-		Order order = findActive(command.orderId());
-		order.cancel(command.cancelReason());
-
-		orderSnapshotCommandService.capture(order, EventType.ORDER_CANCELED, command.cancelReason());
-
-		log.info("[주문] 취소 : [{}] reason={}", command.orderId(), command.cancelReason());
-
-		return OrderResult.from(order);
-	}
-
-	/** 논리 삭제 — 이력 추적을 위해 행은 남긴다 */
-	public void delete(UUID orderId) {
-		Order order = findActive(orderId);
-
-		// 진행 중인 주문을 삭제로 지워버리면 배송·재고와 상태가 어긋난다. 취소를 먼저 거치게 한다.
-		if (order.getStatus().isCancelable()) {
-			throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS,
-					String.format("%s 상태의 주문은 삭제할 수 없습니다. 주문 취소를 먼저 진행해 주세요.", order.getStatus()));
-		}
-
-		order.delete(UserContextHolder.getRequired().userId());
-
-		// 주문이 사라지면 그 이력만 남겨둘 이유가 없다. 같이 감춘다(물리 삭제 아님)
-		orderSnapshotCommandService.softDeleteAllByOrder(orderId);
-
-		log.info("[주문] 삭제 : [{}]", orderId);
 	}
 
 	private Order findActive(UUID orderId) {

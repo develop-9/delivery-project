@@ -10,36 +10,57 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * 인증·인가는 api-gateway 가 JWT 를 검증해 처리한다.
- * order-service 는 Gateway 가 주입한 X-User-Id / X-User-Role 헤더를
- * UserContextInterceptor 로 읽어 쓰기만 하므로, 필터 체인은 전부 열어 둔다.
+ * TODO 현재는 개발을 위해 API 경로를 열어둔다. JWT 파싱 필터와 권한 검증은 인증 단계에서 추가한다.
  *
- * ⚠️ 이 설정만 두면 서비스 포트(9004)로 직접 들어오는 요청도 통과한다.
- *    운영에서는 Gateway 외 접근을 네트워크 레벨에서 막고,
- *    order.auth.require-gateway-headers=true 로 인증 헤더를 강제해야 한다.
+ * <p>게이트웨이가 JWT 를 검증한 뒤 원본 토큰을 relay 하며, 이 서비스는 토큰을 파싱해
+ * 사용자 ID·권한을 얻는다. 클레임명은 user-service 담당자와 확정 후 반영한다.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	@Bean
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http
+	) throws Exception {
 
-        http
-                // CSRF 비활성화 (세션을 쓰지 않는 REST API)
-                .csrf(AbstractHttpConfigurer::disable)
-                // Form Login 비활성화
-                .formLogin(AbstractHttpConfigurer::disable)
-                // HTTP Basic 비활성화 — 켜져 있으면 브라우저 인증 팝업이 뜬다
-                .httpBasic(AbstractHttpConfigurer::disable)
-                // Session 사용 안 함 (JWT 기반)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 모든 요청 인증 없이 통과
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                // 기본 CORS 설정
-                .cors(Customizer.withDefaults());
+		http
+				// CSRF 비활성화
+				.csrf(AbstractHttpConfigurer::disable)
+				// Form Login 비활성화
+				.formLogin(AbstractHttpConfigurer::disable)
+				// HTTP Basic 비활성화
+				.httpBasic(AbstractHttpConfigurer::disable)
+				// Session 사용 안 함 (JWT 기반)
+				.sessionManagement(session ->
+						session.sessionCreationPolicy(
+								SessionCreationPolicy.STATELESS
+						)
+				)
+				// Authorization
+				.authorizeHttpRequests(auth -> auth
+						// 인증 없이 접근 가능
+						.requestMatchers(
+								// ===개발을 위한 권한 허용===
+								"/api/v1/**",
+								"/internal/v1/**",
+								// ======================
 
-        return http.build();
-    }
+								// actuator
+								"/actuator/**",
+
+								// swagger
+								"/swagger-ui/**",
+								"/v3/api-docs/**"
+						).permitAll()
+						// 나머지는 인증 필요
+						.anyRequest().authenticated()
+				)
+
+				// 기본 CORS 설정
+				.cors(Customizer.withDefaults());
+
+		return http.build();
+	}
+
 }

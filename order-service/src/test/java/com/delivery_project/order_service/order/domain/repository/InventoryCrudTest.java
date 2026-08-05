@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.domain.repository;
 
-import com.delivery_project.order_service.global.config.JpaAuditingConfig;
+import com.delivery_project.order_service.global.config.JpaConfig;
+import com.delivery_project.order_service.global.config.SecurityAuditorAware;
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 import com.delivery_project.order_service.order.infrastructure.persistence.InventoryQueryRepositoryImpl;
 import com.delivery_project.order_service.order.infrastructure.persistence.InventoryRepositoryImpl;
@@ -18,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** 재고 CRUD — 등록 · 조회 · 입고/보정 · 논리 삭제 · 검색 */
 @DataJpaTest
-@Import({JpaAuditingConfig.class, InventoryRepositoryImpl.class, InventoryQueryRepositoryImpl.class})
+@Import({JpaConfig.class, SecurityAuditorAware.class, InventoryRepositoryImpl.class, InventoryQueryRepositoryImpl.class})
 class InventoryCrudTest {
 
 	@Autowired

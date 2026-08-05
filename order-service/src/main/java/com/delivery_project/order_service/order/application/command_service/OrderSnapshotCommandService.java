@@ -1,17 +1,18 @@
 package com.delivery_project.order_service.order.application.command_service;
 
-import com.delivery_project.order_service.global.security.UserContext;
-import com.delivery_project.order_service.global.security.UserContextHolder;
+import com.delivery_project.order_service.global.config.SystemUser;
 import com.delivery_project.order_service.order.domain.entity.EventType;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderSnapshot;
 import com.delivery_project.order_service.order.domain.repository.OrderSnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,9 +26,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class OrderSnapshotCommandService {
-
-	/** 시스템(내부 호출·배치)이 남긴 이력의 작성자. JpaAuditingConfig 와 같은 값 */
-	private static final UUID SYSTEM_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
 	private final OrderSnapshotRepository orderSnapshotRepository;
 
@@ -43,18 +41,23 @@ public class OrderSnapshotCommandService {
 		return snapshot;
 	}
 
-	/** 주문이 논리 삭제되면 그 주문의 이력도 함께 감춘다 */
-	public void softDeleteAllByOrder(UUID orderId) {
-		List<OrderSnapshot> snapshots = orderSnapshotRepository.findAllByOrderId(orderId);
-		UUID userId = currentUserId();
-
-		snapshots.forEach(snapshot -> snapshot.softDelete(userId));
-
-		log.info("[스냅샷] 삭제 : [{}] count={}", orderId, snapshots.size());
-	}
-
+	/**
+	 * 이력 작성자.
+	 * TODO JWT 파싱 필터가 들어오면 SystemUser 대체를 제거한다.
+	 */
 	private UUID currentUserId() {
-		UserContext context = UserContextHolder.get();
-		return context != null ? context.userId() : SYSTEM_USER_ID;
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+		if (authentication == null
+				|| !authentication.isAuthenticated()
+				|| authentication instanceof AnonymousAuthenticationToken) {
+			return SystemUser.ID;
+		}
+
+		try {
+			return UUID.fromString(authentication.getName());
+		} catch (IllegalArgumentException e) {
+			return SystemUser.ID;
+		}
 	}
 }

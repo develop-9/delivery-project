@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.domain.repository;
 
-import com.delivery_project.order_service.global.config.JpaAuditingConfig;
+import com.delivery_project.order_service.global.config.JpaConfig;
+import com.delivery_project.order_service.global.config.SecurityAuditorAware;
 import com.delivery_project.order_service.order.domain.entity.EventType;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderItem;
@@ -27,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** 주문 이력(스냅샷) CRUD — 기록 · 조회 · 필터 · 논리 삭제 */
 @DataJpaTest
-@Import({JpaAuditingConfig.class, OrderRepositoryImpl.class,
+@Import({JpaConfig.class, SecurityAuditorAware.class, OrderRepositoryImpl.class,
 		OrderSnapshotRepositoryImpl.class, OrderSnapshotQueryRepositoryImpl.class})
 class OrderSnapshotCrudTest {
 

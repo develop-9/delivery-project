@@ -68,8 +68,10 @@ public record OrderCreateRequest(
 		}
 	}
 
-	public OrderCreateCommand toCommand() {
+	/** 인증 주체(requesterUserId)까지 합쳐 Use Case 입력 하나로 만든다 */
+	public OrderCreateCommand toCommand(UUID requesterUserId) {
 		return new OrderCreateCommand(
+				requesterUserId,
 				supplierCompanyId, receiverCompanyId, originHubId, destHubId,
 				requestDetails, dueAt,
 				items.stream().map(OrderItemRequest::toCommand).toList());
