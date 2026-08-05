@@ -8,12 +8,13 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
-import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -24,7 +25,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class DeliveryManagerCommandService {
-    private final DeliveryManagerRepository deliveryManagerRepository;
+    private final DeliveryManagerCommandRepository
+            deliveryManagerCommandRepository;
     @Value("${system.id}")
     private String systemId;
 
@@ -42,16 +44,24 @@ public class DeliveryManagerCommandService {
                 nextSequence
         );
 
-        DeliveryManager savedManager =
-                deliveryManagerRepository.save(deliveryManager);
-        return DeliveryManagerCreateResult.from(savedManager);
+        try {
+            DeliveryManager savedManager =
+                    deliveryManagerCommandRepository.save(deliveryManager);
+
+            return DeliveryManagerCreateResult.from(savedManager);
+
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
+            );
+        }
     }
 
     private void validateDuplicateUser(
             DeliveryManagerCreateCommand command
     ){
         boolean alreadyExists =
-                deliveryManagerRepository.existsByUserId(command.userId());
+                deliveryManagerCommandRepository.existsByUserId(command.userId());
 
         if (alreadyExists) {
             throw new BusinessException(
@@ -77,10 +87,10 @@ public class DeliveryManagerCommandService {
 
         if (type == DeliveryManagerType.HUB_DELIVERY) {
             maxSequence =
-                    deliveryManagerRepository.findMaxSequenceByType(type);
+                    deliveryManagerCommandRepository.findMaxSequenceByType(type);
         } else {
             maxSequence =
-                    deliveryManagerRepository.findMaxSequenceByHubIdAndType(
+                    deliveryManagerCommandRepository.findMaxSequenceByHubIdAndType(
                             hubId,
                             type
                     );
@@ -96,7 +106,7 @@ public class DeliveryManagerCommandService {
         validateUpdateRequest(command);
 
         DeliveryManager deliveryManager =
-                deliveryManagerRepository.findById(managerId)
+                deliveryManagerCommandRepository.findById(managerId)
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
@@ -173,7 +183,7 @@ public class DeliveryManagerCommandService {
             UUID deletedBy
     ){
         DeliveryManager deliveryManager =
-                deliveryManagerRepository.findById(managerId)
+                deliveryManagerCommandRepository.findById(managerId)
                         .orElseThrow(()->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
@@ -191,7 +201,7 @@ public class DeliveryManagerCommandService {
             UUID userId
     ) {
         DeliveryManager deliveryManager =
-                deliveryManagerRepository.findByUserId(userId)
+                deliveryManagerCommandRepository.findByUserId(userId)
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
