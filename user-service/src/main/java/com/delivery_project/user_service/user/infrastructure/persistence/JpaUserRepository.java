@@ -48,12 +48,12 @@ public class JpaUserRepository implements UserRepository {
 	}
 
 	@Override
-	public Page<User> findByApprovalStatus(ApprovalStatus approvalStatus, Pageable pageable) {
-		return springDataUserRepository.findByApprovalStatus(approvalStatus, pageable);
+	public Page<User> findAllPending(Pageable pageable) {
+		return springDataUserRepository.findByApprovalStatus(ApprovalStatus.PENDING, pageable);
 	}
 
 	@Override
-	public Page<User> findByApprovalStatusAndHubId(ApprovalStatus approvalStatus, UUID hubId, Pageable pageable) {
-		return springDataUserRepository.findByApprovalStatusAndHubId(approvalStatus, hubId, pageable);
+	public Page<User> findPendingByHub(UUID hubId, Pageable pageable) {
+		return springDataUserRepository.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, hubId, pageable);
 	}
 }

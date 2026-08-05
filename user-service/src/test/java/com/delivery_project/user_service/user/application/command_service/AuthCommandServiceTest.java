@@ -397,26 +397,12 @@ class AuthCommandServiceTest {
 	void 정상_로그아웃시_RefreshToken을_삭제한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		when(jwtProvider.resolveToken("Bearer access-token")).thenReturn("access-token");
-		when(jwtProvider.parse("access-token")).thenReturn(new JwtPrincipal(userId, null));
 
 		// when
-		authCommandService.logout("Bearer access-token");
+		authCommandService.logout(userId);
 
 		// then
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(userId);
-	}
-
-	@Test
-	void Authorization_헤더가_없으면_AUTH_TOKEN_INVALID_예외가_발생한다() {
-		// given
-		when(jwtProvider.resolveToken(null)).thenThrow(new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.logout(null))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
 	}
 
 	private User createApprovedUser(String username, String encodedPassword, Role role) {

@@ -13,7 +13,6 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.CurrentUserResolver;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +24,9 @@ import lombok.extern.slf4j.Slf4j;
 public class UserCommandService {
 
 	private final UserRepository userRepository;
-	private final CurrentUserResolver currentUserResolver;
 
-	public UserApproveResult approve(String authorizationHeader, UUID targetUserId) {
-		User caller = currentUserResolver.resolve(authorizationHeader);
+	public UserApproveResult approve(UUID callerId, UUID targetUserId) {
+		User caller = resolveCaller(callerId);
 		User target = userRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -44,8 +42,8 @@ public class UserCommandService {
 		return UserApproveResult.from(target);
 	}
 
-	public UserRejectResult reject(String authorizationHeader, UUID targetUserId) {
-		User caller = currentUserResolver.resolve(authorizationHeader);
+	public UserRejectResult reject(UUID callerId, UUID targetUserId) {
+		User caller = resolveCaller(callerId);
 		User target = userRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -61,12 +59,17 @@ public class UserCommandService {
 		return UserRejectResult.from(target);
 	}
 
+	private User resolveCaller(UUID callerId) {
+		return userRepository.findById(callerId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
+	}
+
 	private void validatePermission(User caller, User target, ErrorCode forbiddenCode) {
-		if (caller.getRole() == Role.MASTER) {
+		if (caller.isMaster()) {
 			return;
 		}
 		if (caller.getRole() == Role.HUB_MANAGER) {
-			if (target.getHubId() == null || !target.getHubId().equals(caller.getHubId())) {
+			if (!caller.isHubManagerOf(target.getHubId())) {
 				throw new BusinessException(ErrorCode.HUB_PERMISSION_DENIED);
 			}
 			return;

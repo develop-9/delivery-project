@@ -21,20 +21,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
-import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.CurrentUserResolver;
 
 @ExtendWith(MockitoExtension.class)
 class UserQueryServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
-
-	@Mock
-	private CurrentUserResolver currentUserResolver;
 
 	@InjectMocks
 	private UserQueryService userQueryService;
@@ -47,11 +42,11 @@ class UserQueryServiceTest {
 		User pending = createUser(Role.COMPANY_MANAGER, null);
 		Page<User> page = new PageImpl<>(List.of(pending), pageable, 1);
 
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
-		when(userRepository.findByApprovalStatus(ApprovalStatus.PENDING, pageable)).thenReturn(page);
+		when(userRepository.findById(master.getId())).thenReturn(java.util.Optional.of(master));
+		when(userRepository.findAllPending(pageable)).thenReturn(page);
 
 		// when
-		Page<UserPendingResult> result = userQueryService.getPendingUsers("Bearer token", null, pageable);
+		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), null, pageable);
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(1);
@@ -66,11 +61,11 @@ class UserQueryServiceTest {
 		Pageable pageable = PageRequest.of(0, 10);
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
-		when(userRepository.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, hubId, pageable)).thenReturn(page);
+		when(userRepository.findById(master.getId())).thenReturn(java.util.Optional.of(master));
+		when(userRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
 
 		// when
-		Page<UserPendingResult> result = userQueryService.getPendingUsers("Bearer token", hubId, pageable);
+		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), hubId, pageable);
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(0);
@@ -85,15 +80,14 @@ class UserQueryServiceTest {
 		Pageable pageable = PageRequest.of(0, 10);
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(hubManager);
-		when(userRepository.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, myHubId, pageable)).thenReturn(page);
+		when(userRepository.findById(hubManager.getId())).thenReturn(java.util.Optional.of(hubManager));
+		when(userRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
 
 		// when
-		userQueryService.getPendingUsers("Bearer token", requestedHubId, pageable);
+		userQueryService.getPendingUsers(hubManager.getId(), requestedHubId, pageable);
 
 		// then
-		org.mockito.Mockito.verify(userRepository)
-				.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, myHubId, pageable);
+		org.mockito.Mockito.verify(userRepository).findPendingByHub(myHubId, pageable);
 	}
 
 	@Test
@@ -101,10 +95,10 @@ class UserQueryServiceTest {
 		// given
 		User companyManager = createUser(Role.COMPANY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(companyManager);
+		when(userRepository.findById(companyManager.getId())).thenReturn(java.util.Optional.of(companyManager));
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getPendingUsers("Bearer token", null, pageable))
+		assertThatThrownBy(() -> userQueryService.getPendingUsers(companyManager.getId(), null, pageable))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
@@ -115,10 +109,10 @@ class UserQueryServiceTest {
 		// given
 		User deliveryManager = createUser(Role.DELIVERY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(deliveryManager);
+		when(userRepository.findById(deliveryManager.getId())).thenReturn(java.util.Optional.of(deliveryManager));
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getPendingUsers("Bearer token", null, pageable))
+		assertThatThrownBy(() -> userQueryService.getPendingUsers(deliveryManager.getId(), null, pageable))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);

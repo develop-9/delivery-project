@@ -10,11 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
-import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
-import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.CurrentUserResolver;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,16 +21,16 @@ import lombok.RequiredArgsConstructor;
 public class UserQueryService {
 
 	private final UserRepository userRepository;
-	private final CurrentUserResolver currentUserResolver;
 
-	public Page<UserPendingResult> getPendingUsers(String authorizationHeader, UUID hubIdParam, Pageable pageable) {
-		User caller = currentUserResolver.resolve(authorizationHeader);
+	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
+		User caller = userRepository.findById(callerId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
 
 		Page<User> pendingUsers = switch (caller.getRole()) {
 			case MASTER -> hubIdParam != null
-					? userRepository.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, hubIdParam, pageable)
-					: userRepository.findByApprovalStatus(ApprovalStatus.PENDING, pageable);
-			case HUB_MANAGER -> userRepository.findByApprovalStatusAndHubId(ApprovalStatus.PENDING, caller.getHubId(), pageable);
+					? userRepository.findPendingByHub(hubIdParam, pageable)
+					: userRepository.findAllPending(pageable);
+			case HUB_MANAGER -> userRepository.findPendingByHub(caller.getHubId(), pageable);
 			case COMPANY_MANAGER, DELIVERY_MANAGER -> throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN);
 		};
 
