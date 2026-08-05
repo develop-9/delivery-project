@@ -35,4 +35,9 @@ public class HubRepositoryImpl implements HubRepository {
 	public long countChildren(UUID hubId) {
 		return springDataHubRepository.countByParentHubIdAndIdNot(hubId, hubId);
 	}
+
+	@Override
+	public long countAll() {
+		return springDataHubRepository.count();
+	}
 }

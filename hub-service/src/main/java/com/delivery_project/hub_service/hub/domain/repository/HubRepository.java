@@ -31,4 +31,12 @@ public interface HubRepository {
 	 * 빼지 않으면 중앙 허브는 하위가 없어도 항상 1 이 나와 영원히 삭제되지 않는다.
 	 */
 	long countChildren(UUID hubId);
+
+	/**
+	 * 살아 있는 허브 수.
+	 *
+	 * <p>이동정보 삭제 응답의 {@code affectedHubPairCount} 산출에 쓴다 —
+	 * SUB 가 걸린 구간이 사라지면 그 허브를 한쪽 끝으로 하는 모든 쌍의 경로가 끊긴다.
+	 */
+	long countAll();
 }
