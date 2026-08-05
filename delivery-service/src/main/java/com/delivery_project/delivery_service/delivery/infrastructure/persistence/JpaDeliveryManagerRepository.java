@@ -4,6 +4,8 @@ import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryMana
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -26,15 +28,31 @@ public class JpaDeliveryManagerRepository implements DeliveryManagerRepository {
     }
 
     @Override
+    public Page<DeliveryManager> findAll(Pageable pageable) {
+        return springDataRepository.findAllByDeletedAtIsNull(pageable);
+    }
+
+    @Override
     public boolean existsByUserId(UUID userId) {
         return springDataRepository.existsByUserId(userId);
     }
 
     @Override
-    public Optional<Integer> findMaxSequence(
-            UUID hubId, DeliveryManagerType type
-    ){
-        return Optional.empty();
+    public Optional<Integer> findMaxSequenceByType(
+            DeliveryManagerType type
+    ) {
+        return springDataRepository.findMaxSequenceByType(type);
+    }
+
+    @Override
+    public Optional<Integer> findMaxSequenceByHubIdAndType(
+            UUID hubId,
+            DeliveryManagerType type
+    ) {
+        return springDataRepository.findMaxSequenceByHubIdAndType(
+                hubId,
+                type
+        );
     }
 
 }
