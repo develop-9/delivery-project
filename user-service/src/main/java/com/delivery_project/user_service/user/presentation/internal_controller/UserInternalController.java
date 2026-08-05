@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
+import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.presentation.response.InternalUserResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -36,5 +37,14 @@ public class UserInternalController {
 				.map(InternalUserResponse::from)
 				.toList();
 		return ResponseEntity.ok(SuccessResponse.success(responses));
+	}
+
+	@GetMapping
+	public ResponseEntity<SuccessResponse<InternalUserResponse>> getUserByHubAndRole(
+			@RequestParam UUID hubId,
+			@RequestParam Role role
+	) {
+		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(hubId, role);
+		return ResponseEntity.ok(SuccessResponse.success(InternalUserResponse.from(result)));
 	}
 }

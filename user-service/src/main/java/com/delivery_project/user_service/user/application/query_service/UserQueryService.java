@@ -16,6 +16,7 @@ import com.delivery_project.user_service.user.application.result.InternalUserRes
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
+import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
 import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
@@ -82,5 +83,12 @@ public class UserQueryService {
 		return userQueryRepository.findAllByIds(ids).stream()
 				.map(InternalUserResult::from)
 				.toList();
+	}
+
+	/** 허브 관리자는 허브당 1명이라는 팀 결정 기준(문서 3번, Internal API). */
+	public InternalUserResult getInternalUserByHubAndRole(UUID hubId, Role role) {
+		User user = userQueryRepository.findByHubIdAndRole(hubId, role)
+				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_MANAGER_NOT_FOUND));
+		return InternalUserResult.from(user);
 	}
 }

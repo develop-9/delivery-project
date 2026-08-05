@@ -270,6 +270,33 @@ class UserQueryServiceTest {
 	}
 
 	@Test
+	void Internal_허브_역할_조회는_조건에_맞는_사용자를_반환한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		User hubManager = createUserWithHub(Role.HUB_MANAGER, hubId);
+		when(userQueryRepository.findByHubIdAndRole(hubId, Role.HUB_MANAGER)).thenReturn(Optional.of(hubManager));
+
+		// when
+		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(hubId, Role.HUB_MANAGER);
+
+		// then
+		assertThat(result.userId()).isEqualTo(hubManager.getId());
+	}
+
+	@Test
+	void Internal_허브_역할_조회에_매칭되는_사용자가_없으면_HUB_MANAGER_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		when(userQueryRepository.findByHubIdAndRole(hubId, Role.HUB_MANAGER)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getInternalUserByHubAndRole(hubId, Role.HUB_MANAGER))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.HUB_MANAGER_NOT_FOUND);
+	}
+
+	@Test
 	void Internal_단건_조회_대상이_없으면_USER_NOT_FOUND_예외가_발생한다() {
 		// given
 		UUID targetId = UUID.randomUUID();
