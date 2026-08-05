@@ -34,12 +34,12 @@ public class CompanyCommandService {
         */
 
         // 업체 생성
-        Company company = Company.builder()
-                .hubId(companyCreateCommand.hubId())
-                .type(companyCreateCommand.type())
-                .name(companyCreateCommand.name())
-                .address(companyCreateCommand.address())
-                .build();
+        Company company = Company.create(
+                companyCreateCommand.hubId(),
+                companyCreateCommand.type(),
+                companyCreateCommand.name(),
+                companyCreateCommand.address()
+        );
 
         // 업체 저장
         Company savedCompany = companyRepository.save(company);
