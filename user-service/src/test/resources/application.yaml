@@ -17,9 +17,9 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        # user-service 소유 스키마. Hibernate는 스키마를 만들지 않으므로
-        # docker/postgres/init.sql이 CREATE SCHEMA로 미리 만들어 둔다.
-        default_schema: user_schema
+        # 운영 스키마(user_schema)가 아니라 public을 쓴다. Hibernate는 CREATE SCHEMA를
+        # 내지 않으므로 스키마가 없는 환경(CI 등)에서 테스트가 환경에 좌우된다. hub-service도 동일.
+        default_schema: public
   data:
     redis:
       host: ${REDIS_HOST:localhost}
