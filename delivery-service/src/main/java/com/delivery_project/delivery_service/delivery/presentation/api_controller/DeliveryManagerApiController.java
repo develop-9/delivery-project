@@ -5,10 +5,13 @@ import com.delivery_project.delivery_service.delivery.application.query_service.
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerCreateRequest;
+import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerUpdateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerCreateResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerDetailResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerListResponse;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerUpdateResponse;
 import com.delivery_project.delivery_service.global.response.PageResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
@@ -81,5 +84,19 @@ public class DeliveryManagerApiController {
 
         return SuccessResponse.success(
                 DeliveryManagerDetailResponse.from(result));
+    }
+
+    @PatchMapping("/{managerId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerUpdateResponse> updateDeliveryManager(
+            @PathVariable UUID managerId,
+            @Valid @RequestBody DeliveryManagerUpdateRequest request
+    ){
+        DeliveryManagerUpdateResult result =
+                deliveryManagerCommandService.update(
+                        managerId,
+                        request.toCommand()
+                );
+        return SuccessResponse.success(DeliveryManagerUpdateResponse.from(result));
     }
 }

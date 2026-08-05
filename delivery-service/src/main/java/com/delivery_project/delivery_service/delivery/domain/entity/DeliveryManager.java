@@ -79,4 +79,29 @@ public class DeliveryManager extends BaseDeletableEntity {
             );
         }
     }
+
+    public void update(
+            UUID hubId,
+            DeliveryManagerType type
+    ){
+        validateHubId(type, hubId);
+        validateNotDelivering();
+
+        this.hubId = hubId;
+        this.type = type;
+    }
+
+    public void updateDeliverySequence(
+            Integer deliverySequence
+    ){
+        this.deliverySequence = deliverySequence;
+    }
+
+    private void validateNotDelivering(){
+        if(this.status == DeliveryManagerStatus.DELIVERING){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_IS_DELIVERING
+            );
+        }
+    }
 }
