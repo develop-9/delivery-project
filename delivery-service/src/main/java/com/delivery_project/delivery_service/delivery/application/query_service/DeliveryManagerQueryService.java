@@ -1,5 +1,8 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetMyCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerListCommand;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
@@ -14,8 +17,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -23,8 +24,10 @@ public class DeliveryManagerQueryService {
     private final DeliveryManagerQueryRepository
             deliveryManagerQueryRepository;
 
-    public DeliveryManagerDetailResult getDeliveryManager(UUID managerId) {
-        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findById(managerId)
+    public DeliveryManagerDetailResult getDeliveryManager(
+            DeliveryManagerGetCommand command
+    ) {
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findById(command.managerId())
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));
@@ -32,14 +35,14 @@ public class DeliveryManagerQueryService {
     }
 
     public Page<DeliveryManagerListResult> getDeliveryManagers(
-            int page, int size
+            DeliveryManagerListCommand command
     ) {
-        validatePage(page);
-        validateSize(size);
+        validatePage(command.page());
+        validateSize(command.size());
 
         Pageable pageable = PageRequest.of(
-                page,
-                size,
+                command.page(),
+                command.size(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
@@ -63,8 +66,10 @@ public class DeliveryManagerQueryService {
         }
     }
 
-    public DeliveryManagerDetailResult getMyDeliveryManager(UUID userId) {
-        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findByUserId(userId)
+    public DeliveryManagerDetailResult getMyDeliveryManager(
+            DeliveryManagerGetMyCommand command
+    ) {
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findByUserId(command.userId())
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));

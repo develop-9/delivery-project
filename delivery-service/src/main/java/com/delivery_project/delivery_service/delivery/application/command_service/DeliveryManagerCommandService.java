@@ -1,6 +1,8 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDeleteResult;
@@ -100,13 +102,13 @@ public class DeliveryManagerCommandService {
     }
 
     public DeliveryManagerUpdateResult update(
-            UUID managerId,
             DeliveryManagerUpdateCommand command
     ) {
         validateUpdateRequest(command);
 
         DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findById(managerId)
+                deliveryManagerCommandRepository
+                        .findById(command.managerId())
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
@@ -179,11 +181,10 @@ public class DeliveryManagerCommandService {
     }
 
     public DeliveryManagerDeleteResult delete(
-            UUID managerId,
-            UUID deletedBy
+            DeliveryManagerDeleteCommand command
     ){
         DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findById(managerId)
+                deliveryManagerCommandRepository.findById(command.managerId())
                         .orElseThrow(()->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
@@ -192,16 +193,16 @@ public class DeliveryManagerCommandService {
         // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
         // 존재하면 ACTIVE_DELIVERY_EXISTS 예외 발생
 
-        deliveryManager.deleteManager(deletedBy);
+        deliveryManager.deleteManager(command.deletedBy());
 
         return DeliveryManagerDeleteResult.from(deliveryManager);
     }
 
     public DeliveryManagerInternalDeleteResult deleteByUserId(
-            UUID userId
+            DeliveryManagerInternalDeleteCommand command
     ) {
         DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findByUserId(userId)
+                deliveryManagerCommandRepository.findByUserId(command.userId())
                         .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
