@@ -6,3 +6,4 @@
 -- (ERD 문서 「서비스 / DB 매핑」 기준: user_db / hub_db / company_db / order_db / delivery_db / slack_db)
 
 CREATE DATABASE hub_db;
+CREATE DATABASE delivery_db;
