@@ -103,7 +103,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("[MethodArgumentNotValidException] = {}", e.getMessage());
         ErrorCode code = ErrorCode.INVALID_INPUT_VALUE;
