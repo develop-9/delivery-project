@@ -18,12 +18,14 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
+import com.delivery_project.user_service.user.application.result.UserDeleteResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
+import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +33,9 @@ class UserCommandServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
+
+	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
 
 	@Mock
 	private CallerResolver callerResolver;
@@ -97,6 +102,52 @@ class UserCommandServiceTest {
 
 		// then
 		assertThat(result.slackId()).isEqualTo(caller.getSlackId());
+	}
+
+	@Test
+	void MASTER가_삭제하면_Soft_Delete되고_Refresh_Token도_제거된다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+		assertThat(target.isDeleted()).isTrue();
+		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
+	}
+
+	@Test
+	void MASTER가_아니면_삭제_권한이_없다() {
+		// given
+		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.delete(hubManager.getId(), targetId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELETE_USER_FORBIDDEN);
+	}
+
+	@Test
+	void 삭제_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), targetId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
 	}
 
 	@Test

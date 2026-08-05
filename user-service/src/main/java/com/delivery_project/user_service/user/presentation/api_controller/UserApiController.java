@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,7 @@ import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.command_service.UserCommandService;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
+import com.delivery_project.user_service.user.application.result.UserDeleteResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
@@ -31,6 +33,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
 import com.delivery_project.user_service.user.presentation.request.UserUpdateMeRequest;
 import com.delivery_project.user_service.user.presentation.response.UserApproveResponse;
+import com.delivery_project.user_service.user.presentation.response.UserDeleteResponse;
 import com.delivery_project.user_service.user.presentation.response.UserDetailResponse;
 import com.delivery_project.user_service.user.presentation.response.UserListResponse;
 import com.delivery_project.user_service.user.presentation.response.UserPendingResponse;
@@ -96,6 +99,15 @@ public class UserApiController {
 	) {
 		UserDetailResult result = userQueryService.getById(callerId, userId);
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
+	}
+
+	@DeleteMapping("/{userId}")
+	public ResponseEntity<SuccessResponse<UserDeleteResponse>> delete(
+			@AuthenticationPrincipal UUID callerId,
+			@PathVariable UUID userId
+	) {
+		UserDeleteResult result = userCommandService.delete(callerId, userId);
+		return ResponseEntity.ok(SuccessResponse.success(UserDeleteResponse.from(result)));
 	}
 
 	@PatchMapping("/{userId}/approve")
