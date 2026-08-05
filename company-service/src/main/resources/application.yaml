@@ -7,7 +7,7 @@ spring:
     name: company-service
 
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
     username: ${POSTGRES_USERNAME:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -18,7 +18,7 @@ spring:
 
     properties:
       hibernate:
-        default_schema: company_db
+        default_schema: company_schema
         format_sql: true
 
     show-sql: true
