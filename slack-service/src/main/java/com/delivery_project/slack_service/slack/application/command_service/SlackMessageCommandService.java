@@ -4,6 +4,7 @@ import com.delivery_project.slack_service.slack.application.command.SlackMessage
 import com.delivery_project.slack_service.slack.application.command.SlackMessageUpdateCommand;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageCreateResult;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageUpdateResult;
+import com.delivery_project.slack_service.slack.domain.entity.SenderType;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.domain.repository.SlackMessageCommandRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,13 @@ public class SlackMessageCommandService {
     public SlackMessageCreateResult create(
             SlackMessageCreateCommand command
     ) {
+        if (command.senderType() == SenderType.USER
+                && command.senderUserId() == null) {
+            throw new IllegalArgumentException(
+                    "USER 발송 시 senderUserId는 필수입니다."
+            );
+        }
+
         SlackMessage slackMessage = SlackMessage.create(
                 command.senderUserId(),
                 command.senderType(),

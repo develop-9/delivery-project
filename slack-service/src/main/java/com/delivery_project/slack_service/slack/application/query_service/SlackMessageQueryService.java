@@ -1,5 +1,6 @@
 package com.delivery_project.slack_service.slack.application.query_service;
 
+import com.delivery_project.slack_service.global.common.PageData;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageQueryResult;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.domain.repository.SlackMessageQueryRepository;
@@ -7,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -30,11 +30,19 @@ public class SlackMessageQueryService {
         return SlackMessageQueryResult.from(slackMessage);
     }
 
-    public List<SlackMessageQueryResult> findAll() {
+    public PageData<SlackMessageQueryResult> findAll(
+            int page,
+            int size,
+            String sortField,
+            String sortDirection
+    ) {
         return slackMessageQueryRepository
-                .findAll()
-                .stream()
-                .map(SlackMessageQueryResult::from)
-                .toList();
+                .findAll(
+                        page,
+                        size,
+                        sortField,
+                        sortDirection
+                )
+                .map(SlackMessageQueryResult::from);
     }
 }

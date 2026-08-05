@@ -5,13 +5,15 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Getter
 @Entity
-@Table(name = "p_slack_messages", schema = "slack_db")
+@Table(name = "p_slack_messages")
+@SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SlackMessage extends BaseDeletableEntity {
 
@@ -20,14 +22,14 @@ public class SlackMessage extends BaseDeletableEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "sender_user_id")
+    @Column(name = "sender_user_id", nullable = false)
     private UUID senderUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
     private SenderType senderType;
 
-    @Column(name = "receiver_user_id")
+    @Column(name = "receiver_user_id", nullable = false)
     private UUID receiverUserId;
 
     @Column(name = "receiver_slack_id", nullable = false, length = 100)

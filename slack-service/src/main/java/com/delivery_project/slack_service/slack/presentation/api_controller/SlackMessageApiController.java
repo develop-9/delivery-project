@@ -20,8 +20,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.delivery_project.slack_service.global.common.PageData;
+import com.delivery_project.slack_service.global.response.PageResponse;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
-import java.util.List;
 import java.util.UUID;
 
 @Tag(
@@ -95,14 +98,42 @@ public class SlackMessageApiController {
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @GetMapping
-    public ResponseEntity<SuccessResponse<List<SlackMessageQueryResponse>>> findAll() {
-        List<SlackMessageQueryResponse> responses =
-                slackMessageQueryService.findAll()
-                        .stream()
-                        .map(SlackMessageQueryResponse::from)
-                        .toList();
+    public ResponseEntity<SuccessResponse<PageResponse<SlackMessageQueryResponse>>> findAll(
+            @PageableDefault(
+                    page = 0,
+                    size = 10,
+                    sort = "createdAt"
+            ) Pageable pageable
+    ) {
+        String sortField = pageable.getSort()
+                .stream()
+                .findFirst()
+                .map(order -> order.getProperty())
+                .orElse("createdAt");
 
-        return ResponseEntity.ok(SuccessResponse.success(responses));
+        String sortDirection = pageable.getSort()
+                .stream()
+                .findFirst()
+                .map(order -> order.getDirection().name())
+                .orElse("DESC");
+
+        PageData<SlackMessageQueryResult> result =
+                slackMessageQueryService.findAll(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        sortField,
+                        sortDirection
+                );
+
+        PageResponse<SlackMessageQueryResponse> response =
+                PageResponse.from(
+                        result,
+                        SlackMessageQueryResponse::from
+                );
+
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
     }
 
     @Operation(
