@@ -52,6 +52,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
 	testCompileOnly 'org.projectlombok:lombok'
+	// @DataJpaTest 는 데이터소스를 내장 DB 로 교체한다. 이 의존성이 없으면
+	// "Failed to replace DataSource with an embedded database" 로 컨텍스트 로딩이 실패한다.
+	// 테스트 런타임에만 올라가므로 운영/CI 실행에는 영향이 없다.
+	testRuntimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
