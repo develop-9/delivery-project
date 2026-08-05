@@ -3,8 +3,7 @@ package com.delivery_project.delivery_service.delivery.application.query_service
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
-import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerRepository;
-
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerQueryRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +20,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DeliveryManagerQueryService {
-    private final DeliveryManagerRepository deliveryManagerRepository;
+    private final DeliveryManagerQueryRepository
+            deliveryManagerQueryRepository;
 
     public DeliveryManagerDetailResult getDeliveryManager(UUID managerId) {
-        DeliveryManager deliveryManager = deliveryManagerRepository.findById(managerId)
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findById(managerId)
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));
@@ -43,7 +43,7 @@ public class DeliveryManagerQueryService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
-        return deliveryManagerRepository.findAll(pageable)
+        return deliveryManagerQueryRepository.findAll(pageable)
                 .map(DeliveryManagerListResult::from);
     }
 
@@ -64,7 +64,7 @@ public class DeliveryManagerQueryService {
     }
 
     public DeliveryManagerDetailResult getMyDeliveryManager(UUID userId) {
-        DeliveryManager deliveryManager = deliveryManagerRepository.findByUserId(userId)
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findByUserId(userId)
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));
