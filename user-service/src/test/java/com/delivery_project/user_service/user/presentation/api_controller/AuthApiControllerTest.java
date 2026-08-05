@@ -277,6 +277,47 @@ class AuthApiControllerTest {
 	}
 
 	@Test
+	void 소프트_삭제된_사용자와_같은_username으로_재가입하면_500이_아니라_409를_반환한다() {
+		// given: 삭제 API가 아직 없어서 JDBC로 소프트 삭제 상태를 직접 재현
+		String signupBody = """
+				{
+				  "username": "softdel1",
+				  "password": "Abcd1234!",
+				  "name": "삭제될유저",
+				  "slackId": "U8888888881",
+				  "role": "COMPANY_MANAGER",
+				  "companyId": "%s"
+				}
+				""".formatted(UUID.randomUUID());
+		mvc.post().uri("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(signupBody).exchange();
+
+		entityManager.flush();
+		entityManager.clear();
+		jdbcTemplate.update("UPDATE p_users SET deleted_at = now() WHERE username = ?", "softdel1");
+
+		assertThat(userRepository.existsByUsername("softdel1")).isFalse();
+
+		String reSignupBody = """
+				{
+				  "username": "softdel1",
+				  "password": "Abcd1234!",
+				  "name": "재가입시도",
+				  "slackId": "U8888888882",
+				  "role": "COMPANY_MANAGER",
+				  "companyId": "%s"
+				}
+				""".formatted(UUID.randomUUID());
+
+		// when & then
+		assertThat(mvc.post().uri("/api/v1/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(reSignupBody))
+				.hasStatus(409)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("USER_DUPLICATE_USERNAME");
+	}
+
+	@Test
 	void 정상_토큰_재발급시_새_토큰을_반환하고_이전_RefreshToken은_더_이상_쓸_수_없다() {
 		// given
 		Tokens tokens = signupApprovedUserAndLogin("refresh1", "U5555555555");

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -96,6 +97,19 @@ class GlobalExceptionHandlerTest {
 		// then
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody().error().errorCode()).isEqualTo("INVALID_REQUEST");
+	}
+
+	@Test
+	void DB_제약_위반은_INVALID_STATE로_변환된다() {
+		// given
+		DataIntegrityViolationException exception = new DataIntegrityViolationException("duplicate key value violates unique constraint");
+
+		// when
+		ResponseEntity<ErrorResponse> response = handler.handleDataIntegrityViolationException(exception);
+
+		// then
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(response.getBody().error().errorCode()).isEqualTo("INVALID_STATE");
 	}
 
 	@Test
