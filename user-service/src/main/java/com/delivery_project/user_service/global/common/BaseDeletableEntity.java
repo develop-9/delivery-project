@@ -18,9 +18,8 @@ public abstract class BaseDeletableEntity extends BaseEntity {
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
 
-	// createdBy와 같은 이유로 nullable(회원가입 최초 저장 시점엔 행위자가 없어 @LastModifiedBy도 채울 수 없음)
 	@LastModifiedBy
-	@Column(name = "updated_by")
+	@Column(name = "updated_by", nullable = false)
 	private UUID updatedBy;
 
 	@Column(name = "deleted_at")

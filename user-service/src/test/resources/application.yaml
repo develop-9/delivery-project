@@ -30,6 +30,9 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
 eureka:
   client:
     service-url:
