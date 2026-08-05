@@ -1,4 +1,4 @@
-name: Delivery Service CI
+name: CI
 
 # PR 생성 또는 업데이트 시 CI 실행
 # develop, main 브랜치로 들어오는 Pull Request를 대상으로 검증 수행
@@ -31,13 +31,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: delivery
+          POSTGRES_DB: delivery_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U postgres -d delivery"
+          --health-cmd="pg_isready -U postgres -d delivery_db"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -71,7 +71,7 @@ jobs:
       # 5. Application Build 및 Test 실행
       - name: Delivery Service 빌드 및 테스트
         env:
-          POSTGRES_DB: delivery
+          POSTGRES_DB: delivery_db
           POSTGRES_USERNAME: postgres
           POSTGRES_PASSWORD: postgres
         run: ./gradlew build --no-daemon
