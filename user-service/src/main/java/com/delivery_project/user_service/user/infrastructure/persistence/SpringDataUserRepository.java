@@ -1,5 +1,7 @@
 package com.delivery_project.user_service.user.infrastructure.persistence;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -8,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
+import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 
 public interface SpringDataUserRepository extends JpaRepository<User, UUID> {
@@ -21,4 +24,8 @@ public interface SpringDataUserRepository extends JpaRepository<User, UUID> {
 	Page<User> findByApprovalStatus(ApprovalStatus approvalStatus, Pageable pageable);
 
 	Page<User> findByApprovalStatusAndHubId(ApprovalStatus approvalStatus, UUID hubId, Pageable pageable);
+
+	List<User> findByIdIn(Collection<UUID> ids);
+
+	Optional<User> findByHubIdAndRole(UUID hubId, Role role);
 }

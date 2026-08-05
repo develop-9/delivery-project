@@ -1,10 +1,14 @@
 package com.delivery_project.user_service.user.domain.repository;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 
 /**
@@ -20,4 +24,15 @@ public interface UserQueryRepository {
 
 	/** 특정 허브의 승인 대기자 조회 (문서 3번). */
 	Page<User> findPendingByHub(UUID hubId, Pageable pageable);
+
+	Optional<User> findById(UUID id);
+
+	/** Internal API 배치 조회용. 존재하지 않는 id는 결과에서 제외된다. */
+	List<User> findAllByIds(Collection<UUID> ids);
+
+	/** 허브당 담당자는 1명이라는 팀 결정 기준(문서 3번, Internal API). */
+	Optional<User> findByHubIdAndRole(UUID hubId, Role role);
+
+	/** 사용자 목록 동적 조합 검색 (approvalStatus/role/hubId/companyId, 문서 3번). */
+	Page<User> search(UserSearchCondition condition, Pageable pageable);
 }
