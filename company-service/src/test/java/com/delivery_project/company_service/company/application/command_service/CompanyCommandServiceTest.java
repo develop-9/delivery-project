@@ -1,8 +1,10 @@
 package com.delivery_project.company_service.company.application.command_service;
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
+import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
+import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
@@ -97,6 +99,7 @@ class CompanyCommandServiceTest {
                     .build();
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
+                    companyId,
                     updatedHubId,
                     CompanyType.RECEIVER,
                     "수정 업체",
@@ -109,7 +112,6 @@ class CompanyCommandServiceTest {
             // When
             CompanyUpdateResult result =
                     companyCommandService.updateCompany(
-                            companyId,
                             command
                     );
 
@@ -136,6 +138,7 @@ class CompanyCommandServiceTest {
             UUID companyId = UUID.randomUUID();
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
+                    companyId,
                     UUID.randomUUID(),
                     CompanyType.PRODUCER,
                     "수정 업체",
@@ -148,9 +151,86 @@ class CompanyCommandServiceTest {
             // When & Then
             assertThatThrownBy(() ->
                     companyCommandService.updateCompany(
-                            companyId,
                             command
                     )
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.COMPANY_NOT_FOUND
+                    );
+
+            verify(companyRepository)
+                    .findById(companyId);
+
+            verifyNoMoreInteractions(companyRepository);
+        }
+    }
+
+    @Nested
+    @DisplayName("업체 삭제 비즈니스 로직 테스트")
+    class DeleteCompanyCommand {
+        @Test
+        @DisplayName("업체 삭제에 성공한다.")
+        void deleteCompany_success() {
+
+            // Given
+            UUID companyId = UUID.randomUUID();
+
+            CompanyDeleteCommand command =
+                    new CompanyDeleteCommand(companyId);
+
+            Company company = Company.builder()
+                    .hubId(UUID.randomUUID())
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            when(companyRepository.findById(companyId))
+                    .thenReturn(Optional.of(company));
+
+            // When
+            CompanyDeleteResult result =
+                    companyCommandService.deleteCompany(command);
+
+            // Then
+            assertThat(company.getDeletedAt())
+                    .isNotNull();
+
+            assertThat(result.companyId())
+                    .isEqualTo(companyId);
+
+            assertThat(result.deletedAt())
+                    .isEqualTo(company.getDeletedAt());
+
+            verify(companyRepository)
+                    .findById(companyId);
+
+            verifyNoMoreInteractions(companyRepository);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 삭제하면 예외가 발생한다.")
+        void deleteCompany_fail_whenCompanyNotFound() {
+            // Given
+            UUID companyId = UUID.randomUUID();
+
+            CompanyDeleteCommand command =
+                    new CompanyDeleteCommand(companyId);
+
+            when(companyRepository.findById(companyId))
+                    .thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    companyCommandService.deleteCompany(command)
             )
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue(

@@ -1,9 +1,11 @@
 package com.delivery_project.company_service.company.presentation.api_controller;
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
+import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
+import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
@@ -22,13 +24,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -131,7 +133,6 @@ class CompanyApiControllerTest {
                     CompanyUpdateResult.from(companyId);
 
             when(companyCommandService.updateCompany(
-                    eq(companyId),
                     any(CompanyUpdateCommand.class)
             )).thenReturn(result);
 
@@ -149,7 +150,6 @@ class CompanyApiControllerTest {
 
             verify(companyCommandService)
                     .updateCompany(
-                            eq(companyId),
                             any(CompanyUpdateCommand.class)
                     );
         }
@@ -179,7 +179,6 @@ class CompanyApiControllerTest {
 
             verify(companyCommandService, never())
                     .updateCompany(
-                            any(UUID.class),
                             any(CompanyUpdateCommand.class)
                     );
         }
@@ -201,7 +200,6 @@ class CompanyApiControllerTest {
             );
 
             when(companyCommandService.updateCompany(
-                    eq(companyId),
                     any(CompanyUpdateCommand.class)
             )).thenThrow(
                     new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
@@ -217,9 +215,81 @@ class CompanyApiControllerTest {
 
             verify(companyCommandService)
                     .updateCompany(
-                            eq(companyId),
                             any(CompanyUpdateCommand.class)
                     );
         }
+    }
+
+    @Nested
+    @DisplayName("업체 삭제 API 테스트")
+    class DeleteCompany {
+        @Test
+        @DisplayName("업체 삭제에 성공한다.")
+        void deleteCompany_success() throws Exception {
+
+            // Given
+            UUID companyId = UUID.randomUUID();
+            Instant deletedAt = Instant.now();
+
+            CompanyDeleteResult result =
+                    CompanyDeleteResult.from(
+                            companyId,
+                            deletedAt
+                    );
+
+            when(companyCommandService.deleteCompany(
+                    any(CompanyDeleteCommand.class)
+            )).thenReturn(result);
+
+            // When & Then
+            mockMvc.perform(
+                            delete("/api/v1/companies/{companyId}", companyId)
+                    )
+                    .andExpect(status().isOk())
+                    .andExpect(
+                            jsonPath("$.data.companyId")
+                                    .value(companyId.toString())
+                    )
+                    .andExpect(
+                            jsonPath("$.data.deletedAt")
+                                    .exists()
+                    );
+
+            verify(companyCommandService)
+                    .deleteCompany(
+                            argThat(command ->
+                                    command.companyId().equals(companyId)
+                            )
+                    );
+        }
+
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 삭제하면 404 Not Found를 반환한다.")
+        void deleteCompany_fail_whenCompanyNotFound() throws Exception {
+
+            // Given
+            UUID companyId = UUID.randomUUID();
+
+            when(companyCommandService.deleteCompany(
+                    any(CompanyDeleteCommand.class)
+            )).thenThrow(
+                    new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
+            );
+
+            // When & Then
+            mockMvc.perform(
+                            delete("/api/v1/companies/{companyId}", companyId)
+                    )
+                    .andExpect(status().isNotFound());
+
+            verify(companyCommandService)
+                    .deleteCompany(
+                            argThat(command ->
+                                    command.companyId().equals(companyId)
+                            )
+                    );
+        }
+
     }
 }
