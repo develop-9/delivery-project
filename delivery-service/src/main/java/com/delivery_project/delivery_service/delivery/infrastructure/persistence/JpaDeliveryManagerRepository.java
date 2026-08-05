@@ -24,7 +24,7 @@ public class JpaDeliveryManagerRepository implements DeliveryManagerRepository {
 
     @Override
     public Optional<DeliveryManager> findById(UUID managerId) {
-        return springDataRepository.findById(managerId);
+        return springDataRepository.findByIdAndDeletedAtIsNull(managerId);
     }
 
     @Override
