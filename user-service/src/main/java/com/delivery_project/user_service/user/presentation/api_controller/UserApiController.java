@@ -89,6 +89,15 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@GetMapping("/{userId}")
+	public ResponseEntity<SuccessResponse<UserDetailResponse>> getById(
+			@AuthenticationPrincipal UUID callerId,
+			@PathVariable UUID userId
+	) {
+		UserDetailResult result = userQueryService.getById(callerId, userId);
+		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
+	}
+
 	@PatchMapping("/{userId}/approve")
 	public ResponseEntity<SuccessResponse<UserApproveResponse>> approve(
 			@AuthenticationPrincipal UUID callerId,

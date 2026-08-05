@@ -41,6 +41,18 @@ public class UserQueryService {
 		return userQueryRepository.search(condition, pageable).map(UserListResult::from);
 	}
 
+	public UserDetailResult getById(UUID callerId, UUID targetUserId) {
+		User caller = callerResolver.resolve(callerId);
+		User target = userQueryRepository.findById(targetUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		if (!caller.isMaster() && !caller.isSelf(target.getId())) {
+			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 조회 권한이 없습니다.");
+		}
+
+		return UserDetailResult.from(target);
+	}
+
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
 		User caller = callerResolver.resolve(callerId);
 

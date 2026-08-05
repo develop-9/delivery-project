@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,65 @@ class UserQueryServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
+	}
+
+	@Test
+	void MASTER는_아무_사용자나_단건_조회할_수_있다() {
+		// given
+		User master = createUser(Role.MASTER, null);
+		User target = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserDetailResult result = userQueryService.getById(master.getId(), target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+	}
+
+	@Test
+	void 본인이_아닌_사용자를_MASTER가_아닌_역할이_조회하면_READ_USER_FORBIDDEN_예외가_발생한다() {
+		// given
+		User companyManager = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		User other = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
+		when(userQueryRepository.findById(other.getId())).thenReturn(Optional.of(other));
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getById(companyManager.getId(), other.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
+	}
+
+	@Test
+	void 본인_ID로_단건_조회하면_MASTER가_아니어도_조회된다() {
+		// given
+		User companyManager = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
+		when(userQueryRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
+
+		// when
+		UserDetailResult result = userQueryService.getById(companyManager.getId(), companyManager.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(companyManager.getId());
+	}
+
+	@Test
+	void 존재하지_않는_사용자를_단건_조회하면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		User master = createUser(Role.MASTER, null);
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getById(master.getId(), targetId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
 	}
 
 	@Test
