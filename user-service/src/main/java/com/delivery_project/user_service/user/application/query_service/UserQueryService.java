@@ -11,9 +11,11 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
+import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
+import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +32,15 @@ public class UserQueryService {
 		return UserDetailResult.from(caller);
 	}
 
+	public Page<UserListResult> list(UUID callerId, UserSearchCondition condition, Pageable pageable) {
+		User caller = callerResolver.resolve(callerId);
+		if (!caller.isMaster()) {
+			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 목록 조회 권한이 없습니다.");
+		}
+
+		return userQueryRepository.search(condition, pageable).map(UserListResult::from);
+	}
+
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
 		User caller = callerResolver.resolve(callerId);
 
@@ -38,7 +49,8 @@ public class UserQueryService {
 					? userQueryRepository.findPendingByHub(hubIdParam, pageable)
 					: userQueryRepository.findAllPending(pageable);
 			case HUB_MANAGER -> userQueryRepository.findPendingByHub(caller.getHubId(), pageable);
-			case COMPANY_MANAGER, DELIVERY_MANAGER -> throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN);
+			case COMPANY_MANAGER, DELIVERY_MANAGER ->
+					throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "승인 대기자 조회 권한이 없습니다.");
 		};
 
 		return pendingUsers.map(UserPendingResult::from);

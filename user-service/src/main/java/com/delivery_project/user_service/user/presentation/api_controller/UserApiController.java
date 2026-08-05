@@ -22,12 +22,17 @@ import com.delivery_project.user_service.user.application.command_service.UserCo
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
+import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
+import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
+import com.delivery_project.user_service.user.domain.entity.Role;
+import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
 import com.delivery_project.user_service.user.presentation.request.UserUpdateMeRequest;
 import com.delivery_project.user_service.user.presentation.response.UserApproveResponse;
 import com.delivery_project.user_service.user.presentation.response.UserDetailResponse;
+import com.delivery_project.user_service.user.presentation.response.UserListResponse;
 import com.delivery_project.user_service.user.presentation.response.UserPendingResponse;
 import com.delivery_project.user_service.user.presentation.response.UserRejectResponse;
 import com.delivery_project.user_service.user.presentation.response.UserUpdateMeResponse;
@@ -56,6 +61,21 @@ public class UserApiController {
 	) {
 		UserUpdateMeResult result = userCommandService.updateMe(callerId, request.toCommand());
 		return ResponseEntity.ok(SuccessResponse.success(UserUpdateMeResponse.from(result)));
+	}
+
+	@GetMapping
+	public ResponseEntity<SuccessResponse<PageResponse<UserListResponse>>> list(
+			@AuthenticationPrincipal UUID callerId,
+			@RequestParam(required = false) ApprovalStatus approvalStatus,
+			@RequestParam(required = false) Role role,
+			@RequestParam(required = false) UUID hubId,
+			@RequestParam(required = false) UUID companyId,
+			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+	) {
+		UserSearchCondition condition = new UserSearchCondition(approvalStatus, role, hubId, companyId);
+		Page<UserListResult> results = userQueryService.list(callerId, condition, pageable);
+		PageResponse<UserListResponse> response = PageResponse.from(results, UserListResponse::from);
+		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
 	@GetMapping("/pending")

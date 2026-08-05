@@ -21,11 +21,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
+import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
+import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
 
 @ExtendWith(MockitoExtension.class)
 class UserQueryServiceTest {
@@ -53,6 +55,41 @@ class UserQueryServiceTest {
 		assertThat(result.username()).isEqualTo(caller.getUsername());
 		assertThat(result.slackId()).isEqualTo(caller.getSlackId());
 		assertThat(result.role()).isEqualTo(Role.COMPANY_MANAGER);
+	}
+
+	@Test
+	void MASTER는_조건_없이_전체_사용자_목록을_조회할_수_있다() {
+		// given
+		User master = createUser(Role.MASTER, null);
+		Pageable pageable = PageRequest.of(0, 10);
+		UserSearchCondition condition = new UserSearchCondition(null, null, null, null);
+		User target = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		Page<User> page = new PageImpl<>(List.of(target), pageable, 1);
+
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userQueryRepository.search(condition, pageable)).thenReturn(page);
+
+		// when
+		Page<UserListResult> result = userQueryService.list(master.getId(), condition, pageable);
+
+		// then
+		assertThat(result.getTotalElements()).isEqualTo(1);
+		assertThat(result.getContent().get(0).userId()).isEqualTo(target.getId());
+	}
+
+	@Test
+	void MASTER가_아니면_목록_조회_권한이_없다() {
+		// given
+		User hubManager = createUserWithHub(Role.HUB_MANAGER, UUID.randomUUID());
+		Pageable pageable = PageRequest.of(0, 10);
+		UserSearchCondition condition = new UserSearchCondition(null, null, null, null);
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.list(hubManager.getId(), condition, pageable))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
 	}
 
 	@Test
