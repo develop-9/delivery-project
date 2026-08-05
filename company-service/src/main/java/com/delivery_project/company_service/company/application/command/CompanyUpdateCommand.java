@@ -7,13 +7,15 @@ import java.util.UUID;
 
 public record CompanyUpdateCommand(
 
+        UUID companyId,
         UUID hubId,
         CompanyType type,
         String name,
         String address
 ) {
-    public static CompanyUpdateCommand from(CompanyUpdateRequest companyUpdateRequest) {
+    public static CompanyUpdateCommand from(UUID companyId, CompanyUpdateRequest companyUpdateRequest) {
         return new CompanyUpdateCommand(
+                companyId,
                 companyUpdateRequest.hubId(),
                 companyUpdateRequest.type(),
                 companyUpdateRequest.name(),

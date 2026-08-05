@@ -1,6 +1,5 @@
 package com.delivery_project.company_service.company.domain.entity;
 
-import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.global.common.BaseDeletableEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,7 +10,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_companies")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 @Getter
 @SQLRestriction("deleted_at IS NULL")
 public class Company extends BaseDeletableEntity {

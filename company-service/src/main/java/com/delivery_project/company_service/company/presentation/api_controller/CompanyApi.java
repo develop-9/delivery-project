@@ -3,6 +3,7 @@ package com.delivery_project.company_service.company.presentation.api_controller
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
+import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
@@ -127,5 +128,43 @@ public interface CompanyApi {
             )
             @org.springframework.web.bind.annotation.RequestBody
             CompanyUpdateRequest companyUpdateRequest
+    );
+
+    @Operation(
+            summary = "업체 삭제",
+            description = "Master, 담당 Hub Manager가 업체를 삭제합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "업체 삭제 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "업체 수정 권한이 없는 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "업체가 존재하지 않음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
+            @Parameter(
+                    description = "삭제할 업체 ID",
+                    required = true
+            )
+            @PathVariable UUID companyId
     );
 }

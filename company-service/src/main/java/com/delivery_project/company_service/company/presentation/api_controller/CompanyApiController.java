@@ -1,13 +1,16 @@
 package com.delivery_project.company_service.company.presentation.api_controller;
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
+import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
+import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
+import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
@@ -48,14 +51,31 @@ public class CompanyApiController implements CompanyApi {
             @PathVariable UUID companyId,
             @RequestBody @Valid CompanyUpdateRequest companyUpdateRequest
     ) {
-        CompanyUpdateCommand companyUpdateCommand = CompanyUpdateCommand.from(companyUpdateRequest);
-        CompanyUpdateResult companyUpdateResult = companyCommandService.updateCompany(companyId, companyUpdateCommand);
+        CompanyUpdateCommand companyUpdateCommand = CompanyUpdateCommand.from(companyId, companyUpdateRequest);
+        CompanyUpdateResult companyUpdateResult = companyCommandService.updateCompany(companyUpdateCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         SuccessResponse.success(
                                 CompanyUpdateResponse.from(
                                         companyUpdateResult
+                                ))
+                );
+    }
+
+    @DeleteMapping("/{companyId}")
+    @Override
+    public ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
+            @PathVariable UUID companyId
+    ) {
+        CompanyDeleteCommand companyDeleteCommand = CompanyDeleteCommand.from(companyId);
+        CompanyDeleteResult companyDeleteResult = companyCommandService.deleteCompany(companyDeleteCommand);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        SuccessResponse.success(
+                                CompanyDeleteResponse.from(
+                                        companyDeleteResult
                                 ))
                 );
     }
