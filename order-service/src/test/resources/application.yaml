@@ -1,0 +1,16 @@
+# 테스트는 로컬 개발자의 .env 값에 좌우되면 안 된다.
+# @DataJpaTest 가 인메모리 H2 로 대체하므로 datasource 는 여기서 지정하지 않는다.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        # 운영 스키마(order_db)를 그대로 쓰되, H2 에서도 만들어지도록 create_namespaces 를 켠다
+        default_schema: order_db
+        hbm2ddl:
+          create_namespaces: true
+
+logging:
+  level:
+    com.delivery_project.order_service: info
