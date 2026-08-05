@@ -92,4 +92,12 @@ public class User extends BaseDeletableEntity {
 		}
 		this.approvalStatus = ApprovalStatus.REJECTED;
 	}
+
+	public boolean isMaster() {
+		return role == Role.MASTER;
+	}
+
+	public boolean isHubManagerOf(UUID hubId) {
+		return role == Role.HUB_MANAGER && hubId != null && hubId.equals(this.hubId);
+	}
 }

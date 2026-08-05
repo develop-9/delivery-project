@@ -138,12 +138,9 @@ public class AuthCommandService {
 	}
 
 	@Transactional(readOnly = true)
-	public void logout(String authorizationHeader) {
-		String accessToken = jwtProvider.resolveToken(authorizationHeader);
-		UUID userId = jwtProvider.parse(accessToken).userId();
-
-		refreshTokenRepository.deleteByUserId(userId);
-		log.info("[Auth] 로그아웃 완료 userId={}", userId);
+	public void logout(UUID callerId) {
+		refreshTokenRepository.deleteByUserId(callerId);
+		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}
 
 	private TokenPair issueTokens(User user) {

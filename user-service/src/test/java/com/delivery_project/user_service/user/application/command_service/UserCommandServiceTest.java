@@ -22,16 +22,12 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.CurrentUserResolver;
 
 @ExtendWith(MockitoExtension.class)
 class UserCommandServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
-
-	@Mock
-	private CurrentUserResolver currentUserResolver;
 
 	@InjectMocks
 	private UserCommandService userCommandService;
@@ -41,11 +37,11 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
+		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserApproveResult result = userCommandService.approve("Bearer token", target.getId());
+		UserApproveResult result = userCommandService.approve(master.getId(), target.getId());
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
@@ -58,11 +54,11 @@ class UserCommandServiceTest {
 		UUID hubId = UUID.randomUUID();
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, hubId);
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, hubId);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(hubManager);
+		when(userRepository.findById(hubManager.getId())).thenReturn(Optional.of(hubManager));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserApproveResult result = userCommandService.approve("Bearer token", target.getId());
+		UserApproveResult result = userCommandService.approve(hubManager.getId(), target.getId());
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
@@ -73,11 +69,11 @@ class UserCommandServiceTest {
 		// given
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(hubManager);
+		when(userRepository.findById(hubManager.getId())).thenReturn(Optional.of(hubManager));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve("Bearer token", target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(hubManager.getId(), target.getId()))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_PERMISSION_DENIED);
@@ -88,11 +84,11 @@ class UserCommandServiceTest {
 		// given
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(companyManager);
+		when(userRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve("Bearer token", target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(companyManager.getId(), target.getId()))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.APPROVE_USER_FORBIDDEN);
@@ -103,11 +99,11 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		UUID targetId = UUID.randomUUID();
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
+		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
 		when(userRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve("Bearer token", targetId))
+		assertThatThrownBy(() -> userCommandService.approve(master.getId(), targetId))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -119,11 +115,11 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		target.approve(UUID.randomUUID());
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
+		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve("Bearer token", target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(master.getId(), target.getId()))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
@@ -134,11 +130,11 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(master);
+		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserRejectResult result = userCommandService.reject("Bearer token", target.getId());
+		UserRejectResult result = userCommandService.reject(master.getId(), target.getId());
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.REJECTED);
@@ -149,11 +145,11 @@ class UserCommandServiceTest {
 		// given
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(currentUserResolver.resolve("Bearer token")).thenReturn(companyManager);
+		when(userRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.reject("Bearer token", target.getId()))
+		assertThatThrownBy(() -> userCommandService.reject(companyManager.getId(), target.getId()))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.REJECT_USER_FORBIDDEN);
