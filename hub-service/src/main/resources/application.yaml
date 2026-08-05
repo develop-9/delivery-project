@@ -18,8 +18,10 @@ spring:
   #   컨테이너 : docker-compose-service.yaml 의 environment 가 local 을 지정
   #   IDE 실행 : 실행 구성에 -Dspring.profiles.active=local
 
+  # 전 서비스가 DB 하나(delivery)를 공유하고 스키마로 분리한다.
+  # DB 를 나누지 않으므로 POSTGRES_DB 기본값은 서비스마다 같고, 서비스를 가르는 것은 default_schema 다.
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hub_db}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:delivery}
     username: ${POSTGRES_USERNAME:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -30,6 +32,9 @@ spring:
     open-in-view: false
     properties:
       hibernate:
+        # hub-service 소유 스키마. Hibernate 는 스키마를 만들지 않으므로
+        # docker/postgres/init.sql 이 CREATE SCHEMA 로 미리 만들어 둔다.
+        default_schema: hub_db
         default_batch_fetch_size: 100
 
   data:
