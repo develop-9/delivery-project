@@ -21,7 +21,10 @@ public class JpaUserRepository implements UserRepository {
 
 	@Override
 	public User save(User user) {
-		return springDataUserRepository.save(user);
+		// saveAndFlush로 즉시 DB에 반영해야 username/slackId UNIQUE 제약 위반이 이 시점에 바로
+		// 터진다. save()만 쓰면 Hibernate가 flush를 트랜잭션 커밋 시점까지 미뤄서, 서비스
+		// 계층의 DataIntegrityViolationException catch가 무력화되고 커밋 시점에야 실패한다.
+		return springDataUserRepository.saveAndFlush(user);
 	}
 
 	@Override

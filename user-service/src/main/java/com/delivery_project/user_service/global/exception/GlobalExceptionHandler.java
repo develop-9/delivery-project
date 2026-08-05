@@ -2,6 +2,7 @@ package com.delivery_project.user_service.global.exception;
 
 import java.util.NoSuchElementException;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -71,6 +72,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleInvalidRequestException(Exception e) {
 		log.info("[Global] 잘못된 요청 message={}", e.getMessage());
 		return createResponse(ErrorCode.INVALID_REQUEST);
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+		log.warn("[Global] 데이터 무결성 제약 위반 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_STATE);
 	}
 
 	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)

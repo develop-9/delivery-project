@@ -106,6 +106,68 @@ class AuthCommandServiceTest {
 	}
 
 	@Test
+	void 사전_중복체크는_통과했지만_저장시점에_username_제약을_위반하면_USER_DUPLICATE_USERNAME_예외가_발생한다() {
+		// given: 소프트 삭제된 동일 username이 있어 existsByUsername은 필터링되어 false를 반환하지만,
+		// DB의 UNIQUE 제약(삭제된 행 포함)에는 여전히 걸리는 상황을 재현
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		when(userRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userRepository.save(any(User.class))).thenThrow(
+				new org.springframework.dao.DataIntegrityViolationException(
+						"could not execute statement; Detail: Key (username)=(kim123) already exists."));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_USERNAME);
+	}
+
+	@Test
+	void 사전_중복체크는_통과했지만_저장시점에_slackId_제약을_위반하면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		when(userRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userRepository.save(any(User.class))).thenThrow(
+				new org.springframework.dao.DataIntegrityViolationException(
+						"could not execute statement; Detail: Key (slack_id)=(U0123456789) already exists."));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
+	}
+
+	@Test
+	void 알_수_없는_제약_위반은_그대로_전파되어_GlobalExceptionHandler의_일반_처리로_넘어간다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		when(userRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userRepository.save(any(User.class))).thenThrow(
+				new org.springframework.dao.DataIntegrityViolationException("unrelated constraint violation"));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
+				.isNotInstanceOf(BusinessException.class);
+	}
+
+	@Test
 	void HUB_MANAGER인데_hubId가_없으면_INVALID_INPUT_VALUE_예외가_발생한다() {
 		// given
 		UserSignupCommand command = new UserSignupCommand(

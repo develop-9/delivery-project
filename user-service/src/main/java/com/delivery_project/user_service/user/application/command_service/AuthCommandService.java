@@ -3,6 +3,7 @@ package com.delivery_project.user_service.user.application.command_service;
 import java.time.Duration;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,10 +61,35 @@ public class AuthCommandService {
 				.companyId(command.companyId())
 				.build();
 
-		User saved = userRepository.save(user);
+		User saved = saveUser(user);
 		log.info("[Auth] 회원가입 완료 userId={}", saved.getId());
 
 		return UserSignupResult.from(saved);
+	}
+
+	/**
+	 * existsByUsername/existsBySlackId는 @SQLRestriction으로 소프트 삭제된 행을 걸러내기 때문에,
+	 * 삭제된 사용자와 같은 username/slackId로 재가입하거나 동시에 같은 값으로 가입 요청이 들어오면
+	 * 사전 체크를 통과하고도 DB의 UNIQUE 제약에서 걸릴 수 있다. 이 경우를 여기서 구체적인
+	 * ErrorCode로 변환한다(그 외 제약 위반은 GlobalExceptionHandler의 일반 처리로 위임).
+	 *
+	 * 삭제된 사용자의 username/slackId를 영구히 재사용 못 하는 게 현재 의도된 동작이다.
+	 * TODO: 추후 스케줄러로 일정 기간(보관 기간 미정) 지난 소프트 삭제 행을 완전히 제거해서
+	 *       재가입을 허용하는 방향 검토
+	 */
+	private User saveUser(User user) {
+		try {
+			return userRepository.save(user);
+		} catch (DataIntegrityViolationException e) {
+			String message = e.getMessage();
+			if (message != null && message.contains("(username)")) {
+				throw new BusinessException(ErrorCode.USER_DUPLICATE_USERNAME);
+			}
+			if (message != null && message.contains("(slack_id)")) {
+				throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
+			}
+			throw e;
+		}
 	}
 
 	@Transactional(readOnly = true)
