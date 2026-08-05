@@ -1,4 +1,4 @@
-package com.delivery_project.user_service.user.application;
+package com.delivery_project.user_service.user.application.support;
 
 import java.util.UUID;
 

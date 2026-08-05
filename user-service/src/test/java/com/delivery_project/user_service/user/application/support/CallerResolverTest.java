@@ -1,4 +1,4 @@
-package com.delivery_project.user_service.user.application;
+package com.delivery_project.user_service.user.application.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -13,6 +13,7 @@ import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
 import com.delivery_project.user_service.user.application.result.UserSignupResult;
@@ -21,7 +22,6 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.domain.token.TokenProvider;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
