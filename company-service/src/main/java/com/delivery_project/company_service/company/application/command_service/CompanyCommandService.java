@@ -7,7 +7,7 @@ import com.delivery_project.company_service.company.application.result.CompanyCr
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
-import com.delivery_project.company_service.company.domain.repository.CompanyRepository;
+import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CompanyCommandService {
 
-    private final CompanyRepository companyRepository;
+    private final CompanyCommandRepository companyCommandRepository;
 
     // 업체 저장 비즈니스 로직
     @Transactional
@@ -42,7 +42,7 @@ public class CompanyCommandService {
         );
 
         // 업체 저장
-        Company savedCompany = companyRepository.save(company);
+        Company savedCompany = companyCommandRepository.save(company);
 
         log.info(
                 "업체 생성 완료. companyId={}",
@@ -57,7 +57,7 @@ public class CompanyCommandService {
     public CompanyUpdateResult updateCompany(CompanyUpdateCommand companyUpdateCommand) {
 
         // Validation Check - 업체 존재 여부 판단
-        Company company = companyRepository.findById(companyUpdateCommand.companyId())
+        Company company = companyCommandRepository.findById(companyUpdateCommand.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         /*
@@ -87,7 +87,7 @@ public class CompanyCommandService {
     public CompanyDeleteResult deleteCompany(CompanyDeleteCommand companyDeleteCommand) {
 
         // Validation Check - 업체 존재 여부 판단
-        Company company = companyRepository.findById(companyDeleteCommand.companyId())
+        Company company = companyCommandRepository.findById(companyDeleteCommand.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         /*

@@ -8,7 +8,7 @@ import com.delivery_project.company_service.company.application.result.CompanyDe
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
-import com.delivery_project.company_service.company.domain.repository.CompanyRepository;
+import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 class CompanyCommandServiceTest {
 
     @Mock
-    private CompanyRepository companyRepository;
+    private CompanyCommandRepository companyCommandRepository;
 
     @InjectMocks
     private CompanyCommandService companyCommandService;
@@ -64,7 +64,7 @@ class CompanyCommandServiceTest {
 
             ReflectionTestUtils.setField(savedCompany, "id", companyId);
 
-            when(companyRepository.save(any(Company.class)))
+            when(companyCommandRepository.save(any(Company.class)))
                     .thenReturn(savedCompany);
 
             // When
@@ -75,7 +75,7 @@ class CompanyCommandServiceTest {
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            verify(companyRepository).save(any(Company.class));
+            verify(companyCommandRepository).save(any(Company.class));
         }
     }
 
@@ -106,7 +106,7 @@ class CompanyCommandServiceTest {
                     "수정 주소"
             );
 
-            when(companyRepository.findById(companyId))
+            when(companyCommandRepository.findById(companyId))
                     .thenReturn(Optional.of(company));
 
             // When
@@ -125,10 +125,10 @@ class CompanyCommandServiceTest {
             assertThat(company.getAddress())
                     .isEqualTo("수정 주소");
 
-            verify(companyRepository)
+            verify(companyCommandRepository)
                     .findById(companyId);
 
-            verifyNoMoreInteractions(companyRepository);
+            verifyNoMoreInteractions(companyCommandRepository);
         }
 
         @Test
@@ -145,7 +145,7 @@ class CompanyCommandServiceTest {
                     "수정 주소"
             );
 
-            when(companyRepository.findById(companyId))
+            when(companyCommandRepository.findById(companyId))
                     .thenReturn(Optional.empty());
 
             // When & Then
@@ -160,10 +160,10 @@ class CompanyCommandServiceTest {
                             ErrorCode.COMPANY_NOT_FOUND
                     );
 
-            verify(companyRepository)
+            verify(companyCommandRepository)
                     .findById(companyId);
 
-            verifyNoMoreInteractions(companyRepository);
+            verifyNoMoreInteractions(companyCommandRepository);
         }
     }
 
@@ -193,7 +193,7 @@ class CompanyCommandServiceTest {
                     companyId
             );
 
-            when(companyRepository.findById(companyId))
+            when(companyCommandRepository.findById(companyId))
                     .thenReturn(Optional.of(company));
 
             // When
@@ -210,10 +210,10 @@ class CompanyCommandServiceTest {
             assertThat(result.deletedAt())
                     .isEqualTo(company.getDeletedAt());
 
-            verify(companyRepository)
+            verify(companyCommandRepository)
                     .findById(companyId);
 
-            verifyNoMoreInteractions(companyRepository);
+            verifyNoMoreInteractions(companyCommandRepository);
         }
 
         @Test
@@ -225,7 +225,7 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(companyId);
 
-            when(companyRepository.findById(companyId))
+            when(companyCommandRepository.findById(companyId))
                     .thenReturn(Optional.empty());
 
             // When & Then
@@ -238,10 +238,10 @@ class CompanyCommandServiceTest {
                             ErrorCode.COMPANY_NOT_FOUND
                     );
 
-            verify(companyRepository)
+            verify(companyCommandRepository)
                     .findById(companyId);
 
-            verifyNoMoreInteractions(companyRepository);
+            verifyNoMoreInteractions(companyCommandRepository);
         }
     }
 }

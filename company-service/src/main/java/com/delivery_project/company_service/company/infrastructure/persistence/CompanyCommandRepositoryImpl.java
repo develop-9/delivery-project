@@ -1,7 +1,7 @@
 package com.delivery_project.company_service.company.infrastructure.persistence;
 
 import com.delivery_project.company_service.company.domain.entity.Company;
-import com.delivery_project.company_service.company.domain.repository.CompanyRepository;
+import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class CompanyCommandRepositoryImpl implements CompanyRepository {
+public class CompanyCommandRepositoryImpl implements CompanyCommandRepository {
 
     private final SpringDataCompanyRepository springDataCompanyRepository;
 
