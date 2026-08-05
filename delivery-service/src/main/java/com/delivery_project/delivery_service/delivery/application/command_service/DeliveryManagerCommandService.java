@@ -4,6 +4,8 @@ import com.delivery_project.delivery_service.delivery.application.command.Delive
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerRepository;
+import com.delivery_project.delivery_service.global.exception.BusinessException;
+import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,9 +41,9 @@ public class DeliveryManagerCommandService {
         boolean alreadyExists =
                 deliveryManagerRepository.existsByUserId(command.userId());
 
-        if(alreadyExists){
-            throw new IllegalArgumentException(
-                    "이미 등록된 배송 담당자입니다."
+        if (alreadyExists) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
             );
         }
     }

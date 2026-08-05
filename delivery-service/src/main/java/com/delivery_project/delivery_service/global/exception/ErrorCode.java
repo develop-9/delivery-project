@@ -18,7 +18,17 @@ public enum ErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "입력조건을 불충족하였습니다.", "INVALID_REQUEST"),
     //Delivery Manager ErrorCode
     DELIVERY_MANAGER_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 담당자를 찾을 수 없습니다.", "DELIVERY_MANAGER_NOT_FOUND"),
+    DELIVERY_MANAGER_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 배송 담당자입니다.", "DELIVERY_MANAGER_ALREADY_EXISTS"),
+    INVALID_DELIVERY_MANAGER_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 배송 담당자 유형입니다.", "INVALID_DELIVERY_MANAGER_TYPE"),
+    INVALID_HUB_DELIVERY_MANAGER(HttpStatus.BAD_REQUEST, "허브 배송 담당자는 소속 허브를 가질 수 없습니다.", "INVALID_HUB_DELIVERY_MANAGER"),
+    INVALID_COMPANY_DELIVERY_MANAGER(HttpStatus.BAD_REQUEST, "업체 배송 담당자는 소속 허브가 필요합니다.", "INVALID_COMPANY_DELIVERY_MANAGER"),
+    INVALID_PAGE_NUMBER(HttpStatus.BAD_REQUEST, "페이지 번호는 1 이상이어야 합니다.", "INVALID_PAGE_NUMBER"),
+    INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "페이지 크기는 10, 30, 50만 가능합니다.", "INVALID_PAGE_SIZE"),
 
+
+    // feign client
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
     ;
 
     private final HttpStatus status;

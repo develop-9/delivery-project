@@ -3,6 +3,8 @@ package com.delivery_project.delivery_service.delivery.domain.entity;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.global.common.BaseDeletableEntity;
+import com.delivery_project.delivery_service.global.exception.BusinessException;
+import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -66,14 +68,14 @@ public class DeliveryManager extends BaseDeletableEntity {
 
     private static void validateHubId(DeliveryManagerType type, UUID hubId){
         if(type == DeliveryManagerType.HUB_DELIVERY && hubId != null){
-            throw new IllegalArgumentException(
-                    "허브 배송 담당자는 소속 허브를 가질 수 없습니다."
+            throw new BusinessException(
+                    ErrorCode.INVALID_HUB_DELIVERY_MANAGER
             );
         }
 
         if(type == DeliveryManagerType.COMPANY_DELIVERY && hubId == null){
-            throw new IllegalArgumentException(
-                    "업체 배송 담당자는 소속 허브가 필요합니다"
+            throw new BusinessException(
+                    ErrorCode.INVALID_COMPANY_DELIVERY_MANAGER
             );
         }
     }
