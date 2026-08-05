@@ -19,8 +19,8 @@ import com.delivery_project.user_service.user.domain.repository.UserRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaConfig.class, JpaUserRepository.class})
-class JpaUserRepositoryTest {
+@Import({JpaConfig.class, UserRepositoryImpl.class})
+class UserRepositoryImplTest {
 
 	@Autowired
 	private UserRepository userRepository;

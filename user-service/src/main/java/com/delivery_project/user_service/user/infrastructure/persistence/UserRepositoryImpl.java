@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class JpaUserRepository implements UserRepository {
+public class UserRepositoryImpl implements UserRepository {
 
 	private final SpringDataUserRepository springDataUserRepository;
 
