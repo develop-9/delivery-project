@@ -1,4 +1,4 @@
-package com.delivery_project.user_service.user.domain.token;
+package com.delivery_project.user_service.global.security;
 
 import java.util.UUID;
 

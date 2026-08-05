@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.domain.entity.Role;
-import com.delivery_project.user_service.user.domain.token.JwtPrincipal;
-import com.delivery_project.user_service.user.domain.token.TokenProvider;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
