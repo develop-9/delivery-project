@@ -70,4 +70,16 @@ public class DeliveryManagerApiController {
                 );
         return SuccessResponse.success(response);
     }
+
+    @GetMapping("/me")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerDetailResponse> getMyDeliveryManager(
+            @RequestHeader("X-User-Id") UUID userId // Todo: api gateway 형식에 맞게 추후 수정 필요
+    ){
+        DeliveryManagerDetailResult result =
+                deliveryManagerQueryService.getMyDeliveryManager(userId);
+
+        return SuccessResponse.success(
+                DeliveryManagerDetailResponse.from(result));
+    }
 }

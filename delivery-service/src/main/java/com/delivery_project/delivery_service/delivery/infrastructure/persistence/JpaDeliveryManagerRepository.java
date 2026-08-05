@@ -33,6 +33,11 @@ public class JpaDeliveryManagerRepository implements DeliveryManagerRepository {
     }
 
     @Override
+    public Optional<DeliveryManager> findByUserId(UUID userId) {
+        return springDataRepository.findByUserIdAndDeletedAtIsNull(userId);
+    }
+
+    @Override
     public boolean existsByUserId(UUID userId) {
         return springDataRepository.existsByUserId(userId);
     }

@@ -62,4 +62,13 @@ public class DeliveryManagerQueryService {
             );
         }
     }
+
+    public DeliveryManagerDetailResult getMyDeliveryManager(UUID userId) {
+        DeliveryManager deliveryManager = deliveryManagerRepository.findByUserId(userId)
+                .orElseThrow(()-> new BusinessException(
+                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                ));
+        return DeliveryManagerDetailResult.from(deliveryManager);
+    }
+
 }
