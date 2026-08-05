@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,11 +24,15 @@ import com.delivery_project.user_service.user.application.result.UserApproveResu
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
+import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
+import com.delivery_project.user_service.user.presentation.request.UserUpdateMeRequest;
 import com.delivery_project.user_service.user.presentation.response.UserApproveResponse;
 import com.delivery_project.user_service.user.presentation.response.UserDetailResponse;
 import com.delivery_project.user_service.user.presentation.response.UserPendingResponse;
 import com.delivery_project.user_service.user.presentation.response.UserRejectResponse;
+import com.delivery_project.user_service.user.presentation.response.UserUpdateMeResponse;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -42,6 +47,15 @@ public class UserApiController {
 	public ResponseEntity<SuccessResponse<UserDetailResponse>> getMe(@AuthenticationPrincipal UUID callerId) {
 		UserDetailResult result = userQueryService.getMe(callerId);
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
+	}
+
+	@PatchMapping("/me")
+	public ResponseEntity<SuccessResponse<UserUpdateMeResponse>> updateMe(
+			@AuthenticationPrincipal UUID callerId,
+			@Valid @RequestBody UserUpdateMeRequest request
+	) {
+		UserUpdateMeResult result = userCommandService.updateMe(callerId, request.toCommand());
+		return ResponseEntity.ok(SuccessResponse.success(UserUpdateMeResponse.from(result)));
 	}
 
 	@GetMapping("/pending")

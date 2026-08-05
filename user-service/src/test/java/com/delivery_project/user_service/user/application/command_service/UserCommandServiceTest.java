@@ -16,8 +16,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
+import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
@@ -35,6 +37,67 @@ class UserCommandServiceTest {
 
 	@InjectMocks
 	private UserCommandService userCommandService;
+
+	@Test
+	void 이름과_Slack_ID를_모두_수정하면_둘_다_반영된다() {
+		// given
+		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+		when(userRepository.existsBySlackId("U9999999999")).thenReturn(false);
+
+		// when
+		UserUpdateMeResult result = userCommandService.updateMe(
+				caller.getId(), new UserUpdateMeCommand("새이름", "U9999999999"));
+
+		// then
+		assertThat(result.name()).isEqualTo("새이름");
+		assertThat(result.slackId()).isEqualTo("U9999999999");
+	}
+
+	@Test
+	void 필드를_null로_보내면_기존_값이_유지된다() {
+		// given
+		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
+		String originalSlackId = caller.getSlackId();
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+
+		// when
+		UserUpdateMeResult result = userCommandService.updateMe(
+				caller.getId(), new UserUpdateMeCommand(null, null));
+
+		// then
+		assertThat(result.name()).isEqualTo("테스트유저");
+		assertThat(result.slackId()).isEqualTo(originalSlackId);
+	}
+
+	@Test
+	void 이미_사용중인_Slack_ID로_변경하려하면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
+		// given
+		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+		when(userRepository.existsBySlackId("U1111111111")).thenReturn(true);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.updateMe(
+				caller.getId(), new UserUpdateMeCommand(null, "U1111111111")))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
+	}
+
+	@Test
+	void 본인의_기존_Slack_ID와_동일한_값으로_보내면_중복_검사를_하지_않는다() {
+		// given
+		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+
+		// when
+		UserUpdateMeResult result = userCommandService.updateMe(
+				caller.getId(), new UserUpdateMeCommand(null, caller.getSlackId()));
+
+		// then
+		assertThat(result.slackId()).isEqualTo(caller.getSlackId());
+	}
 
 	@Test
 	void MASTER는_아무_사용자나_승인할_수_있다() {
