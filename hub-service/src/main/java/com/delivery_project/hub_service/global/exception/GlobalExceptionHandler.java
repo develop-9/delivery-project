@@ -2,6 +2,7 @@ package com.delivery_project.hub_service.global.exception;
 
 import java.util.NoSuchElementException;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -51,6 +52,26 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleNoSuchElementException(NoSuchElementException e) {
 		log.error("[NoSuchElementException] = {}", e.getMessage());
 		ErrorCode code = ErrorCode.NOT_FOUND;
+
+		return createResponse(code);
+	}
+
+	/**
+	 * DB 제약 위반. 없으면 아래 {@code Exception} 캐치올이 잡아 <b>500</b> 이 나간다.
+	 *
+	 * <p>정상 경로에서는 Service 가 미리 검사해 문서에 정의된 코드
+	 * ({@code DUPLICATE_HUB_NAME} 등)로 응답한다. 여기까지 오는 건 <b>검사와 저장 사이에
+	 * 다른 요청이 끼어든 경합</b>뿐이라 드물다.
+	 *
+	 * <p>그래서 어떤 제약이 깨졌는지까지 구분하지 않고 409 로만 답한다.
+	 * 구분하려면 제약 이름을 예외 메시지에서 문자열로 파싱해야 하는데,
+	 * DB·드라이버 버전에 따라 메시지가 바뀌면 조용히 깨지는 코드가 된다.
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+			DataIntegrityViolationException e) {
+		log.error("[DataIntegrityViolationException] = {}", e.getMostSpecificCause().getMessage());
+		ErrorCode code = ErrorCode.INVALID_STATE;
 
 		return createResponse(code);
 	}
