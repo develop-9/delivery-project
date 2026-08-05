@@ -4,12 +4,16 @@ import com.delivery_project.delivery_service.delivery.application.command_servic
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryManagerQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerCreateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerCreateResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerDetailResponse;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerListResponse;
+import com.delivery_project.delivery_service.global.response.PageResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,5 +49,25 @@ public class DeliveryManagerApiController {
                 deliveryManagerQueryService.getDeliveryManager(managerId);
 
         return SuccessResponse.success(DeliveryManagerDetailResponse.from(result));
+    }
+
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<PageResponse<DeliveryManagerListResponse>>
+    getDeliveryManagers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ){
+        Page<DeliveryManagerListResult> result =
+                deliveryManagerQueryService.getDeliveryManagers(
+                        page, size
+                );
+
+        PageResponse<DeliveryManagerListResponse> response =
+                PageResponse.from(
+                        result,
+                        DeliveryManagerListResponse::from
+                );
+        return SuccessResponse.success(response);
     }
 }
