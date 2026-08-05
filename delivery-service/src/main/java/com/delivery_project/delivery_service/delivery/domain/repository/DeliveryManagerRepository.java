@@ -15,4 +15,6 @@ public interface DeliveryManagerRepository {
             UUID hubId,
             DeliveryManagerType type
     );
+
+    Optional<DeliveryManager> findById(UUID managerId);
 }

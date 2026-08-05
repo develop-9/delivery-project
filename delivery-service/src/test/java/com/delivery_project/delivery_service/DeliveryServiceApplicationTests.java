@@ -1,4 +1,4 @@
-package com.delivery_project.delivery;
+package com.delivery_project.delivery_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

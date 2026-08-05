@@ -2,6 +2,7 @@ package com.delivery_project.delivery_service.delivery.domain.entity;
 
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
+import com.delivery_project.delivery_service.global.common.BaseDeletableEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_delivery_managers")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DeliveryManager {
+public class DeliveryManager extends BaseDeletableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
