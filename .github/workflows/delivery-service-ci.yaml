@@ -68,7 +68,17 @@ jobs:
       - name: Gradle 실행 권한 부여
         run: chmod +x gradlew
 
-      # 5. Application Build 및 Test 실행
+      # 5. Delivery Service 스키마 생성
+      - name: Delivery Schema 생성
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost \
+            -U postgres \
+            -d delivery_db \
+            -c "CREATE SCHEMA IF NOT EXISTS delivery_schema;"
+
+      # 6. Application Build 및 Test 실행
       - name: Delivery Service 빌드 및 테스트
         env:
           POSTGRES_DB: delivery_db
@@ -76,7 +86,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
         run: ./gradlew build --no-daemon
 
-      # 6. 테스트 실패 시 결과 업로드
+      # 7. 테스트 실패 시 결과 업로드
       - name: 테스트 리포트 업로드
         if: failure()
         uses: actions/upload-artifact@v4
