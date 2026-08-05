@@ -41,9 +41,9 @@ public class Company extends BaseDeletableEntity {
         this.address = address;
     }
 
-    public static Company create(UUID id, CompanyType type, String name, String address) {
+    public static Company create(UUID hubId, CompanyType type, String name, String address) {
         return Company.builder()
-                .hubId(id)
+                .hubId(hubId)
                 .type(type)
                 .name(name)
                 .address(address)
