@@ -21,6 +21,11 @@ public class JpaDeliveryManagerRepository implements DeliveryManagerRepository {
     }
 
     @Override
+    public Optional<DeliveryManager> findById(UUID managerId) {
+        return springDataRepository.findById(managerId);
+    }
+
+    @Override
     public boolean existsByUserId(UUID userId) {
         return springDataRepository.existsByUserId(userId);
     }

@@ -1,20 +1,26 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
+import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryManagerQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryManagerCreateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerCreateResponse;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerDetailResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/delivery-managers")
 public class DeliveryManagerApiController {
     private final DeliveryManagerCommandService deliveryManagerCommandService;
+    private final DeliveryManagerQueryService deliveryManagerQueryService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -28,5 +34,16 @@ public class DeliveryManagerApiController {
                 DeliveryManagerCreateResponse.from(result);
 
         return SuccessResponse.success(response);
+    }
+
+    @GetMapping("/{managerId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerDetailResponse> getDeliveryManager(
+            @PathVariable UUID managerId
+    ){
+        DeliveryManagerDetailResult result =
+                deliveryManagerQueryService.getDeliveryManager(managerId);
+
+        return SuccessResponse.success(DeliveryManagerDetailResponse.from(result));
     }
 }
