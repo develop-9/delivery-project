@@ -9,9 +9,11 @@ public record DeliveryManagerUpdateRequest(
         UUID hubId,
         DeliveryManagerType type
 ) {
-    public DeliveryManagerUpdateCommand toCommand(){
+    public DeliveryManagerUpdateCommand toCommand(
+            UUID managerId
+    ){
         return new DeliveryManagerUpdateCommand(
-                hubId, type
+                managerId, hubId, type
         );
     }
 }

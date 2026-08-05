@@ -1,5 +1,6 @@
 package com.delivery_project.delivery_service.delivery.presentation.internal_controller;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerInternalDeleteResponse;
@@ -24,11 +25,13 @@ public class DeliveryManagerInternalController {
             @PathVariable UUID userId
             // TODO: User Service 내부 인증으로 변경
     ) {
-
-        DeliveryManagerInternalDeleteResult result =
-                deliveryManagerCommandService.deleteByUserId(
+        DeliveryManagerInternalDeleteCommand command =
+                DeliveryManagerInternalDeleteCommand.from(
                         userId
                 );
+
+        DeliveryManagerInternalDeleteResult result =
+                deliveryManagerCommandService.deleteByUserId(command);
 
         return SuccessResponse.success(
                 DeliveryManagerInternalDeleteResponse.from(result)

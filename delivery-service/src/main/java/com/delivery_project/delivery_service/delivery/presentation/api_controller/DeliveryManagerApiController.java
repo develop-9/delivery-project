@@ -1,5 +1,9 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetMyCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerListCommand;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryManagerQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.*;
@@ -42,8 +46,11 @@ public class DeliveryManagerApiController {
     public SuccessResponse<DeliveryManagerDetailResponse> getDeliveryManager(
             @PathVariable UUID managerId
     ){
+        DeliveryManagerGetCommand command =
+                DeliveryManagerGetCommand.from(managerId);
+
         DeliveryManagerDetailResult result =
-                deliveryManagerQueryService.getDeliveryManager(managerId);
+                deliveryManagerQueryService.getDeliveryManager(command);
 
         return SuccessResponse.success(DeliveryManagerDetailResponse.from(result));
     }
@@ -55,10 +62,14 @@ public class DeliveryManagerApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ){
-        Page<DeliveryManagerListResult> result =
-                deliveryManagerQueryService.getDeliveryManagers(
-                        page, size
+        DeliveryManagerListCommand command =
+                DeliveryManagerListCommand.of(
+                        page,
+                        size
                 );
+
+        Page<DeliveryManagerListResult> result =
+                deliveryManagerQueryService.getDeliveryManagers(command);
 
         PageResponse<DeliveryManagerListResponse> response =
                 PageResponse.from(
@@ -71,10 +82,14 @@ public class DeliveryManagerApiController {
     @GetMapping("/me")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDetailResponse> getMyDeliveryManager(
-            @RequestHeader("X-User-Id") UUID userId // Todo: api gateway 형식에 맞게 추후 수정 필요
+            @RequestHeader("X-User-Id") UUID userId
+            // TODO: Spring Security 적용 후 @AuthenticationPrincipal 사용
     ){
+        DeliveryManagerGetMyCommand command =
+                DeliveryManagerGetMyCommand.from(userId);
+
         DeliveryManagerDetailResult result =
-                deliveryManagerQueryService.getMyDeliveryManager(userId);
+                deliveryManagerQueryService.getMyDeliveryManager(command);
 
         return SuccessResponse.success(
                 DeliveryManagerDetailResponse.from(result));
@@ -88,8 +103,7 @@ public class DeliveryManagerApiController {
     ){
         DeliveryManagerUpdateResult result =
                 deliveryManagerCommandService.update(
-                        managerId,
-                        request.toCommand()
+                        request.toCommand(managerId)
                 );
         return SuccessResponse.success(DeliveryManagerUpdateResponse.from(result));
     }
@@ -99,13 +113,16 @@ public class DeliveryManagerApiController {
     public SuccessResponse<DeliveryManagerDeleteResponse> deleteDeliveryManager(
             @PathVariable UUID managerId,
             @RequestHeader("X-User-Id") UUID deletedBy
-            // TODO: Gateway 인증 헤더 형식 확정 후 수정
+            // TODO: Spring Security 적용 후 @AuthenticationPrincipal 사용
     ){
-        DeliveryManagerDeleteResult result =
-                deliveryManagerCommandService.delete(
+        DeliveryManagerDeleteCommand command =
+                DeliveryManagerDeleteCommand.of(
                         managerId,
                         deletedBy
                 );
+
+        DeliveryManagerDeleteResult result =
+                deliveryManagerCommandService.delete(command);
 
         return SuccessResponse.success(
                 DeliveryManagerDeleteResponse.from(result)
