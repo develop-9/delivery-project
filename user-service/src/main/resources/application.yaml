@@ -30,6 +30,11 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+# 인증된 행위자가 없는 상태에서 생성되는 행(회원가입 등)의 created_by/updated_by에 쓰는
+# 팀 공통 시스템 주체 ID. 전 서비스가 같은 값을 쓰도록 .env에서 관리한다.
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
 eureka:
   client:
     service-url:
