@@ -1,0 +1,30 @@
+package com.delivery_project.user_service.user.presentation.internal_controller;
+
+import java.util.UUID;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.delivery_project.user_service.global.response.SuccessResponse;
+import com.delivery_project.user_service.user.application.query_service.UserQueryService;
+import com.delivery_project.user_service.user.application.result.InternalUserResult;
+import com.delivery_project.user_service.user.presentation.response.InternalUserResponse;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/internal/v1/users")
+@RequiredArgsConstructor
+public class UserInternalController {
+
+	private final UserQueryService userQueryService;
+
+	@GetMapping("/{userId}")
+	public ResponseEntity<SuccessResponse<InternalUserResponse>> getUser(@PathVariable UUID userId) {
+		InternalUserResult result = userQueryService.getInternalUser(userId);
+		return ResponseEntity.ok(SuccessResponse.success(InternalUserResponse.from(result)));
+	}
+}

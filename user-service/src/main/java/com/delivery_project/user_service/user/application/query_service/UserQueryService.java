@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
+import com.delivery_project.user_service.user.application.result.InternalUserResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
@@ -66,5 +67,11 @@ public class UserQueryService {
 		};
 
 		return pendingUsers.map(UserPendingResult::from);
+	}
+
+	public InternalUserResult getInternalUser(UUID userId) {
+		User user = userQueryRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		return InternalUserResult.from(user);
 	}
 }

@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.result.InternalUserResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
@@ -234,6 +235,33 @@ class UserQueryServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
+	}
+
+	@Test
+	void Internal_단건_조회는_인증_없이_사용자_정보를_반환한다() {
+		// given
+		User target = createUser(Role.HUB_MANAGER, null);
+		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		InternalUserResult result = userQueryService.getInternalUser(target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+		assertThat(result.username()).isEqualTo(target.getUsername());
+	}
+
+	@Test
+	void Internal_단건_조회_대상이_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID targetId = UUID.randomUUID();
+		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getInternalUser(targetId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
 	}
 
 	private User createUser(Role role, UUID companyId) {
