@@ -2,10 +2,13 @@ package com.delivery_project.company_service.company.presentation.api_controller
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
+import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
+import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
+import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
@@ -43,6 +46,9 @@ class CompanyApiControllerTest {
 
     @MockitoBean
     private CompanyCommandService companyCommandService;
+
+    @MockitoBean
+    private CompanyQueryService companyQueryService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -291,5 +297,91 @@ class CompanyApiControllerTest {
                     );
         }
 
+    }
+
+    @Nested
+    @DisplayName("업체 단건 조회 API 테스트")
+    class GetCompany {
+        @Test
+        @DisplayName("업체 조회에 성공한다.")
+        void getCompany_success() throws Exception {
+
+            // Given
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            CompanyGetResult result = new CompanyGetResult(
+                    companyId,
+                    "테스트 업체",
+                    CompanyType.PRODUCER,
+                    hubId,
+                    "서울특별시 강남구"
+            );
+
+            when(companyQueryService.getCompany(
+                    any(CompanyGetCommand.class)
+            )).thenReturn(result);
+
+            // When & Then
+            mockMvc.perform(
+                            get("/api/v1/companies/{companyId}", companyId)
+                    )
+                    .andExpect(status().isOk())
+                    .andExpect(
+                            jsonPath("$.data.companyId")
+                                    .value(companyId.toString())
+                    )
+                    .andExpect(
+                            jsonPath("$.data.hubId")
+                                    .value(hubId.toString())
+                    )
+                    .andExpect(
+                            jsonPath("$.data.type")
+                                    .value("PRODUCER")
+                    )
+                    .andExpect(
+                            jsonPath("$.data.name")
+                                    .value("테스트 업체")
+                    )
+                    .andExpect(
+                            jsonPath("$.data.address")
+                                    .value("서울특별시 강남구")
+                    );
+
+            verify(companyQueryService)
+                    .getCompany(
+                            argThat(command ->
+                                    command.companyId().equals(companyId)
+                            )
+                    );
+        }
+
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 조회하면 404 Not Found를 반환한다.")
+        void getCompany_fail_whenCompanyNotFound() throws Exception {
+
+            // Given
+            UUID companyId = UUID.randomUUID();
+
+            when(companyQueryService.getCompany(
+                    any(CompanyGetCommand.class)
+            )).thenThrow(
+                    new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
+            );
+
+            // When & Then
+            mockMvc.perform(
+                            get("/api/v1/companies/{companyId}", companyId)
+                    )
+                    .andExpect(status().isNotFound());
+
+            verify(companyQueryService)
+                    .getCompany(
+                            argThat(command ->
+                                    command.companyId().equals(companyId)
+                            )
+                    );
+        }
     }
 }
