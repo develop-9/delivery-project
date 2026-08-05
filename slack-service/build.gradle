@@ -36,6 +36,18 @@ dependencies {
     // Request Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Actuator
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Zipkin / Distributed Tracing
+    implementation 'org.springframework.boot:spring-boot-starter-zipkin'
+
+    // Swagger / OpenAPI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+
     // 서비스 등록 및 서비스 간 호출
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
@@ -48,6 +60,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
