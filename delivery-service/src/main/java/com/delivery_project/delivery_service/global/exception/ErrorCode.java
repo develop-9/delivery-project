@@ -24,7 +24,9 @@ public enum ErrorCode {
     INVALID_COMPANY_DELIVERY_MANAGER(HttpStatus.BAD_REQUEST, "업체 배송 담당자는 소속 허브가 필요합니다.", "INVALID_COMPANY_DELIVERY_MANAGER"),
     INVALID_PAGE_NUMBER(HttpStatus.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.", "INVALID_PAGE_NUMBER"),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "페이지 크기는 10, 30, 50만 가능합니다.", "INVALID_PAGE_SIZE"),
-
+    UPDATE_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 수정 권한이 없습니다.", "UPDATE_DELIVERY_MANAGER_FORBIDDEN"),
+    HUB_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "담당 허브의 배송 담당자만 수정할 수 있습니다.", "HUB_PERMISSION_DENIED"),
+    DELIVERY_MANAGER_IS_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자는 수정할 수 없습니다.", "DELIVERY_MANAGER_IS_DELIVERING"),
 
     // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
