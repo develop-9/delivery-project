@@ -9,8 +9,6 @@
 --
 -- 서비스별 스키마는 각 담당자가 아래에 자기 것을 추가한다.
 
--- TODO(찬영): 스키마 컨벤션이 delivery_db+_schema로 확정됨에 따라
--- CREATE DATABASE hub_db 대신 CREATE SCHEMA IF NOT EXISTS hub_schema로 변경 필요(PR #28).
 CREATE DATABASE hub_db;
 
 CREATE SCHEMA IF NOT EXISTS user_schema;
