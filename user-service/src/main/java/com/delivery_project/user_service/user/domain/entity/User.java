@@ -76,4 +76,28 @@ public class User extends BaseDeletableEntity {
 		this.hubId = hubId;
 		this.companyId = companyId;
 	}
+
+	public void approve(UUID approvedBy) {
+		if (this.approvalStatus != ApprovalStatus.PENDING) {
+			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+		}
+		this.approvalStatus = ApprovalStatus.APPROVED;
+		this.approvedAt = Instant.now();
+		this.approvedBy = approvedBy;
+	}
+
+	public void reject() {
+		if (this.approvalStatus != ApprovalStatus.PENDING) {
+			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+		}
+		this.approvalStatus = ApprovalStatus.REJECTED;
+	}
+
+	public boolean isMaster() {
+		return role == Role.MASTER;
+	}
+
+	public boolean isHubManagerOf(UUID hubId) {
+		return role == Role.HUB_MANAGER && hubId != null && hubId.equals(this.hubId);
+	}
 }
