@@ -18,40 +18,31 @@ class JwtProviderTest {
 	private final JwtProvider jwtProvider = new JwtProvider(SECRET, 3_600_000L, 1_209_600_000L);
 
 	@Test
-	void AccessToken에서_userId를_꺼낼_수_있다() {
-		// given
-		UUID userId = UUID.randomUUID();
-
-		// when
-		String token = jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER);
-
-		// then
-		assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
-	}
-
-	@Test
-	void AccessToken에서_role을_꺼낼_수_있다() {
+	void AccessToken을_파싱하면_userId와_role을_함께_꺼낼_수_있다() {
 		// given
 		UUID userId = UUID.randomUUID();
 
 		// when
 		String token = jwtProvider.generateAccessToken(userId, Role.HUB_MANAGER);
+		JwtPrincipal principal = jwtProvider.parse(token);
 
 		// then
-		assertThat(jwtProvider.getRole(token)).isEqualTo(Role.HUB_MANAGER);
+		assertThat(principal.userId()).isEqualTo(userId);
+		assertThat(principal.role()).isEqualTo(Role.HUB_MANAGER);
 	}
 
 	@Test
-	void RefreshToken에는_role_claim이_없다() {
+	void RefreshToken을_파싱하면_role은_null이다() {
 		// given
 		UUID userId = UUID.randomUUID();
 
 		// when
 		String token = jwtProvider.generateRefreshToken(userId);
+		JwtPrincipal principal = jwtProvider.parse(token);
 
 		// then
-		assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
-		assertThat(jwtProvider.getRole(token)).isNull();
+		assertThat(principal.userId()).isEqualTo(userId);
+		assertThat(principal.role()).isNull();
 	}
 
 	@Test
@@ -82,12 +73,12 @@ class JwtProviderTest {
 	}
 
 	@Test
-	void 유효한_토큰은_validateToken이_예외를_던지지_않는다() {
+	void 유효한_토큰은_parse가_예외를_던지지_않는다() {
 		// given
 		String token = jwtProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		jwtProvider.validateToken(token);
+		jwtProvider.parse(token);
 	}
 
 	@Test
@@ -97,7 +88,7 @@ class JwtProviderTest {
 		String token = expiredTokenProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.validateToken(token))
+		assertThatThrownBy(() -> jwtProvider.parse(token))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
@@ -109,7 +100,7 @@ class JwtProviderTest {
 		String malformedToken = "not-a-valid-jwt-token";
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.validateToken(malformedToken))
+		assertThatThrownBy(() -> jwtProvider.parse(malformedToken))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
@@ -122,7 +113,7 @@ class JwtProviderTest {
 		String token = otherProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.validateToken(token))
+		assertThatThrownBy(() -> jwtProvider.parse(token))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);

@@ -91,8 +91,7 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		jwtProvider.validateToken(requestedRefreshToken);
-		UUID userId = jwtProvider.getUserId(requestedRefreshToken);
+		UUID userId = jwtProvider.parse(requestedRefreshToken).userId();
 
 		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));
@@ -115,8 +114,7 @@ public class AuthCommandService {
 	@Transactional(readOnly = true)
 	public void logout(String authorizationHeader) {
 		String accessToken = jwtProvider.resolveToken(authorizationHeader);
-		jwtProvider.validateToken(accessToken);
-		UUID userId = jwtProvider.getUserId(accessToken);
+		UUID userId = jwtProvider.parse(accessToken).userId();
 
 		refreshTokenRepository.deleteByUserId(userId);
 		log.info("[Auth] 로그아웃 완료 userId={}", userId);

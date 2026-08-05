@@ -24,8 +24,7 @@ public class CurrentUserResolver {
 
 	public User resolve(String authorizationHeader) {
 		String token = jwtProvider.resolveToken(authorizationHeader);
-		jwtProvider.validateToken(token);
-		UUID userId = jwtProvider.getUserId(token);
+		UUID userId = jwtProvider.parse(token).userId();
 
 		return userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
