@@ -43,6 +43,14 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+# 토큰 발급은 user-service 가 한다. hub-service 는 서명 검증·파싱만 하므로 secret 만 있으면 된다.
+# user-service 와 반드시 같은 값이어야 하고, 다르면 모든 요청이 401 이 된다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
+# 이동정보의 거리·시간 자동 산출(D8)은 아직 연동하지 않았다. 값은 요청으로 직접 받는다.
+# 연동을 넣을 때 map.naver 설정과 환경변수(.env.example)를 함께 되살린다.
+
 eureka:
   client:
     service-url:

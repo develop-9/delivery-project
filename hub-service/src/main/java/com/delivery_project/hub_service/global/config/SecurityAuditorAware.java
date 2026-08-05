@@ -18,8 +18,11 @@ import lombok.extern.slf4j.Slf4j;
  * {@code AuditorAware} 빈이 없으면 {@code @CreatedBy} 가 값을 채우지 않는다.
  * 두 컬럼은 {@code nullable = false} 이므로 이 빈이 없으면 INSERT 가 항상 실패한다.
  *
- * <p>TODO JWT 파싱 필터가 들어오기 전까지 인증 주체가 없어 {@link Optional#empty()} 를 돌려준다.
- * 그동안 저장 경로는 NOT NULL 제약에 걸린다. 클레임명은 user-service 담당자와 확정 후 반영한다.
+ * <p>{@link JwtAuthenticationFilter} 가 principal 로 사용자 ID({@code UUID})를 넣으므로
+ * {@code authentication.getName()} 이 곧 {@code sub} 클레임 값이다.
+ *
+ * <p>인증 주체가 없으면 {@link Optional#empty()} 를 돌려주고 저장 경로는 NOT NULL 제약에 걸린다.
+ * 쓰기 API 는 전부 인증 + {@code MASTER} 를 요구하므로 정상 경로에서는 비어 있을 수 없다.
  */
 @Slf4j
 @Component

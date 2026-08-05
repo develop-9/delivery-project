@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -119,6 +120,23 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleAccessDenied(Exception e) {
 		log.error("[AccessDenied] = {}", e.getMessage());
 		ErrorCode code = ErrorCode.AUTH_FORBIDDEN;
+
+		return createResponse(code);
+	}
+
+	/**
+	 * 인증 주체가 없는 채로 {@code @PreAuthorize} 가 걸린 메서드에 들어온 경우
+	 * ({@code AuthenticationCredentialsNotFoundException}).
+	 *
+	 * <p>HTTP 로 들어오는 요청은 필터체인이 먼저 401 을 내므로 여기까지 오지 않는다.
+	 * 스케줄러처럼 <b>필터를 거치지 않고 서비스를 직접 부르는 경로</b>에서만 발생하는데,
+	 * 이 핸들러가 없으면 아래 {@code Exception} 캐치올이 잡아 <b>500</b> 이 된다.
+	 * 원인은 인증 부재이므로 401 로 맞춘다.
+	 */
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
+		log.warn("[Authentication] = {}", e.getMessage());
+		ErrorCode code = ErrorCode.AUTH_UNAUTHORIZED;
 
 		return createResponse(code);
 	}
