@@ -4,6 +4,7 @@ import com.delivery_project.delivery_service.delivery.application.command.Delive
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDeleteResult;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
@@ -12,6 +13,7 @@ import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -23,6 +25,8 @@ import java.util.UUID;
 @Transactional
 public class DeliveryManagerCommandService {
     private final DeliveryManagerRepository deliveryManagerRepository;
+    @Value("${system.id}")
+    private String systemId;
 
     public DeliveryManagerCreateResult create(
             DeliveryManagerCreateCommand command
@@ -181,5 +185,29 @@ public class DeliveryManagerCommandService {
         deliveryManager.deleteManager(deletedBy);
 
         return DeliveryManagerDeleteResult.from(deliveryManager);
+    }
+
+    public DeliveryManagerInternalDeleteResult deleteByUserId(
+            UUID userId
+    ) {
+        DeliveryManager deliveryManager =
+                deliveryManagerRepository.findByUserId(userId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+        UUID deletedBy = UUID.fromString(systemId);
+        /*
+         * TODO:
+         * Delivery / DeliveryRoute 구현 후
+         * 진행 중인 배송 배정 여부 검증
+         */
+
+        deliveryManager.deleteManager(deletedBy);
+
+        return DeliveryManagerInternalDeleteResult.from(
+                deliveryManager
+        );
     }
 }
