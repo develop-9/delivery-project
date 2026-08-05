@@ -9,7 +9,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.delivery_project.hub_service.global.common.JwtPrincipal;
+import com.delivery_project.hub_service.global.security.JwtPrincipal;
+import com.delivery_project.hub_service.global.security.JwtProvider;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 
 import jakarta.servlet.FilterChain;

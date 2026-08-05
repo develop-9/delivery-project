@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.global.common;
+package com.delivery_project.hub_service.global.security;
 
 import java.util.UUID;
 

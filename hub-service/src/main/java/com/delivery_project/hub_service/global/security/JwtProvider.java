@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.global.config;
+package com.delivery_project.hub_service.global.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -8,8 +8,8 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.delivery_project.hub_service.global.common.JwtPrincipal;
-import com.delivery_project.hub_service.global.common.Role;
+import com.delivery_project.hub_service.global.security.JwtPrincipal;
+import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 

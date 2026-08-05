@@ -1,5 +1,6 @@
 package com.delivery_project.hub_service.hub.presentation.api_controller;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -98,7 +99,23 @@ class HubApiControllerTest {
 		mockMvc.perform(post("/api/v1/hubs").contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.success").value(false))
-				.andExpect(jsonPath("$.error.errorCode").value("INVALID_INPUT_VALUE"));
+				.andExpect(jsonPath("$.error.errorCode").value("INVALID_INPUT_VALUE"))
+				// 어느 필드가 왜 거절됐는지까지 내려준다 (팀 공통 ErrorDto.fieldErrors)
+				.andExpect(jsonPath("$.error.fieldErrors").isArray())
+				.andExpect(jsonPath("$.error.fieldErrors[*].field",
+						containsInAnyOrder("latitude", "longitude")));
+	}
+
+	@Test
+	@DisplayName("Validation 실패가 아닌 에러에는 fieldErrors 가 아예 담기지 않는다")
+	void nonValidationErrorOmitsFieldErrors() throws Exception {
+		// given: NON_NULL 이라 null 로도 내려보내지 않는 것이 규약이다
+		when(hubQueryService.getHub(HUB_ID)).thenThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND));
+
+		// when & then
+		mockMvc.perform(get("/api/v1/hubs/{hubId}", HUB_ID))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error.fieldErrors").doesNotExist());
 	}
 
 	@Test

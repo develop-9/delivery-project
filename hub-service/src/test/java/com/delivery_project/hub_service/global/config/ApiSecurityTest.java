@@ -29,7 +29,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.delivery_project.hub_service.global.common.Role;
+import com.delivery_project.hub_service.global.security.JwtProvider;
+import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command_service.HubCommandService;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;

@@ -20,7 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.delivery_project.hub_service.global.common.Role;
+import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;

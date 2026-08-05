@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.global.common;
+package com.delivery_project.hub_service.global.security;
 
 /**
  * 사용자 권한. user-service 가 Access Token 의 {@code role} 클레임에 이 이름 그대로 담는다.

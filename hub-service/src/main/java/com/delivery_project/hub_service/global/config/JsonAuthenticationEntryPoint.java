@@ -34,7 +34,7 @@ public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
 		ErrorCode errorCode = ErrorCode.AUTH_UNAUTHORIZED;
 
-		response.setStatus(errorCode.getStatus().value());
+		response.setStatus(errorCode.getHttpStatus().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding("UTF-8");
 		response.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.from(errorCode)));

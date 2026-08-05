@@ -1,5 +1,6 @@
 package com.delivery_project.hub_service.global.exception;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,170 +27,113 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	private ResponseEntity<ErrorResponse> createResponse(
-			ErrorCode code
-	) {
-		return ResponseEntity.status(code.getStatus())
-				.body(ErrorResponse.from(code));
+	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode) {
+		return ResponseEntity.status(errorCode.getHttpStatus())
+				.body(ErrorResponse.from(errorCode));
+	}
+
+	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode, List<FieldErrorDto> fieldErrors) {
+		return ResponseEntity.status(errorCode.getHttpStatus())
+				.body(ErrorResponse.from(errorCode, fieldErrors));
 	}
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
-		log.error("[BusinessException] = {}", e.getMessage());
-		ErrorCode code = e.getErrorCode();
-
-		return createResponse(code);
+		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
+		return createResponse(e.getErrorCode());
 	}
 
 	@ExceptionHandler(IllegalStateException.class)
 	public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException e) {
-		log.error("[IllegalStateException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_STATE;
-
-		return createResponse(code);
+		log.info("[Global] 잘못된 상태 요청 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_STATE);
 	}
 
 	@ExceptionHandler(NoSuchElementException.class)
 	public ResponseEntity<ErrorResponse> handleNoSuchElementException(NoSuchElementException e) {
-		log.error("[NoSuchElementException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.NOT_FOUND;
-
-		return createResponse(code);
-	}
-
-	/**
-	 * DB 제약 위반. 없으면 아래 {@code Exception} 캐치올이 잡아 <b>500</b> 이 나간다.
-	 *
-	 * <p>정상 경로에서는 Service 가 미리 검사해 문서에 정의된 코드
-	 * ({@code DUPLICATE_HUB_NAME} 등)로 응답한다. 여기까지 오는 건 <b>검사와 저장 사이에
-	 * 다른 요청이 끼어든 경합</b>뿐이라 드물다.
-	 *
-	 * <p>그래서 어떤 제약이 깨졌는지까지 구분하지 않고 409 로만 답한다.
-	 * 구분하려면 제약 이름을 예외 메시지에서 문자열로 파싱해야 하는데,
-	 * DB·드라이버 버전에 따라 메시지가 바뀌면 조용히 깨지는 코드가 된다.
-	 */
-	@ExceptionHandler(DataIntegrityViolationException.class)
-	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
-			DataIntegrityViolationException e) {
-		log.error("[DataIntegrityViolationException] = {}", e.getMostSpecificCause().getMessage());
-		ErrorCode code = ErrorCode.INVALID_STATE;
-
-		return createResponse(code);
-	}
-
-	/**
-	 * 매핑되지 않은 경로. 아래 {@code Exception} 캐치올이 없었다면 Spring 이 스스로 404 를 냈겠지만,
-	 * 캐치올이 먼저 잡아 500 으로 바꿔버리므로 여기서 되돌린다.
-	 */
-	@ExceptionHandler(NoResourceFoundException.class)
-	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
-		log.warn("[NoResourceFoundException] = {}", e.getResourcePath());
-		ErrorCode code = ErrorCode.NOT_FOUND;
-
-		return createResponse(code);
-	}
-
-	@ExceptionHandler(Exception.class)
-	public ResponseEntity<ErrorResponse> handleException(Exception e) {
-		log.error("[Exception] = {}", e.getMessage());
-		log.error("[Exception] = {}", e.getClass().getSimpleName());
-		ErrorCode code = ErrorCode.INTERNAL_SERVER_ERROR;
-
-		return createResponse(code);
-	}
-
-	@ExceptionHandler(MissingServletRequestPartException.class)
-	public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
-			MissingServletRequestPartException e) {
-		log.error("필수 파트 누락: {}", e.getRequestPartName());
-		ErrorCode code = ErrorCode.INVALID_INPUT_VALUE;
-
-		return createResponse(code);
-	}
-
-	@ExceptionHandler(MissingServletRequestParameterException.class)
-	public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
-			MissingServletRequestParameterException e) {
-		log.warn("필수 쿼리 파라미터 누락: {}", e.getParameterName());
-		ErrorCode code = ErrorCode.INVALID_INPUT_VALUE;
-
-		return createResponse(code);
+		log.info("[Global] 리소스 조회 실패 message={}", e.getMessage());
+		return createResponse(ErrorCode.NOT_FOUND);
 	}
 
 	@ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
-	public ResponseEntity<ErrorResponse> handleAccessDenied(Exception e) {
-		log.error("[AccessDenied] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.AUTH_FORBIDDEN;
-
-		return createResponse(code);
+	public ResponseEntity<ErrorResponse> handleAccessDeniedException(Exception e) {
+		log.info("[Global] 접근 권한 없음 message={}", e.getMessage());
+		return createResponse(ErrorCode.AUTH_FORBIDDEN);
 	}
 
 	/**
 	 * 인증 주체가 없는 채로 {@code @PreAuthorize} 가 걸린 메서드에 들어온 경우
 	 * ({@code AuthenticationCredentialsNotFoundException}).
 	 *
-	 * <p>HTTP 로 들어오는 요청은 필터체인이 먼저 401 을 내므로 여기까지 오지 않는다.
-	 * 스케줄러처럼 <b>필터를 거치지 않고 서비스를 직접 부르는 경로</b>에서만 발생하는데,
-	 * 이 핸들러가 없으면 아래 {@code Exception} 캐치올이 잡아 <b>500</b> 이 된다.
-	 * 원인은 인증 부재이므로 401 로 맞춘다.
+	 * <p>HTTP 요청은 필터체인이 먼저 401 을 내므로 여기까지 오지 않는다. 스케줄러처럼
+	 * <b>필터를 거치지 않고 서비스를 직접 부르는 경로</b>에서만 발생하는데, 이 핸들러가 없으면
+	 * 아래 {@code Exception} 캐치올이 잡아 500 이 된다. 원인은 인증 부재이므로 401 로 맞춘다.
 	 */
 	@ExceptionHandler(AuthenticationException.class)
 	public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
-		log.warn("[Authentication] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.AUTH_UNAUTHORIZED;
-
-		return createResponse(code);
+		log.info("[Global] 인증 정보 없음 message={}", e.getMessage());
+		return createResponse(ErrorCode.AUTH_UNAUTHORIZED);
 	}
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-		log.error("[IllegalArgumentException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_REQUEST;
-
-		return createResponse(code);
+	@ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+	public ResponseEntity<ErrorResponse> handleBindException(BindException e) {
+		List<FieldErrorDto> fieldErrors = e.getFieldErrors().stream()
+				.map(FieldErrorDto::from)
+				.toList();
+		log.info("[Global] 입력값 검증 실패 fieldErrors={}", fieldErrors);
+		return createResponse(ErrorCode.INVALID_INPUT_VALUE, fieldErrors);
 	}
 
-	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
-	public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMisMatchException(
-			MethodArgumentTypeMismatchException e) {
-		log.error("[MethodArgumentTypeMismatchException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_REQUEST;
-
-		return createResponse(code);
+	@ExceptionHandler({MissingServletRequestPartException.class, MissingServletRequestParameterException.class})
+	public ResponseEntity<ErrorResponse> handleInvalidInputValueException(Exception e) {
+		log.info("[Global] 입력값 검증 실패 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_INPUT_VALUE);
 	}
 
-	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
-			MethodArgumentNotValidException e) {
-		log.error("[MethodArgumentNotValidException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_INPUT_VALUE;
-
-		return createResponse(code);
+	@ExceptionHandler({
+			MethodArgumentTypeMismatchException.class,
+			HttpMessageNotReadableException.class,
+			IllegalArgumentException.class
+	})
+	public ResponseEntity<ErrorResponse> handleInvalidRequestException(Exception e) {
+		log.info("[Global] 잘못된 요청 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_REQUEST);
 	}
 
-	@ExceptionHandler(HttpMessageNotReadableException.class)
-	public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
-			HttpMessageNotReadableException e) {
-		log.error("[HttpMessageNotReadableException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_REQUEST;
-
-		return createResponse(code);
+	/**
+	 * DB 제약 위반. 정상 경로에서는 Service 가 미리 검사해 문서에 정의된 코드
+	 * ({@code DUPLICATE_HUB_NAME} 등)로 응답하므로, 여기까지 오는 건 검사와 저장 사이에
+	 * 다른 요청이 끼어든 경합뿐이라 드물다.
+	 *
+	 * <p>어떤 제약이 깨졌는지까지 구분하지 않는다. 구분하려면 제약 이름을 예외 메시지에서
+	 * 문자열로 파싱해야 하는데, DB·드라이버 버전에 따라 메시지가 바뀌면 조용히 깨진다.
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+		log.warn("[Global] 데이터 무결성 제약 위반 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_STATE);
 	}
 
 	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
 	public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
 			HttpMediaTypeNotSupportedException e) {
-		log.error("[HttpMediaTypeNotSupportedException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
-
-		return createResponse(code);
+		log.info("[Global] 지원하지 않는 미디어 타입 message={}", e.getMessage());
+		return createResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
 	}
 
-	@ExceptionHandler(BindException.class)
-	public ResponseEntity<ErrorResponse> handleBindException(BindException e) {
-		log.error("[BindException] = {}", e.getMessage());
-		ErrorCode code = ErrorCode.INVALID_INPUT_VALUE;
+	/**
+	 * 매핑되지 않은 경로. 이 핸들러가 없으면 아래 Exception 캐치올이 먼저 잡아서
+	 * Spring 이 스스로 냈을 404 를 500 으로 바꿔버린다.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
+		log.info("[Global] 매핑되지 않은 경로 요청 path={}", e.getResourcePath());
+		return createResponse(ErrorCode.NOT_FOUND);
+	}
 
-		return createResponse(code);
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorResponse> handleException(Exception e) {
+		log.error("[Global] 예상하지 못한 예외 발생", e);
+		return createResponse(ErrorCode.INTERNAL_SERVER_ERROR);
 	}
 }
