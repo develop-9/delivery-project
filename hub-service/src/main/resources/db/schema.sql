@@ -22,6 +22,25 @@
 --              local 에서는 커넥션 풀의 커넥션으로 실행되므로, 세션 설정을 바꾸면
 --              그 커넥션이 풀에 반납된 뒤 다른 쿼리까지 영향을 받는다.
 
+-- ============================================================
+-- 접속 대상 확인
+-- ============================================================
+-- 다른 DB 에 붙은 채 실행하면 엉뚱한 DB 에 hub_schema 와 테이블이 생긴다. 먼저 막는다.
+--
+-- psql 메타커맨드 \connect 를 쓰지 않는 이유와, 본문을 달러 인용($$)이 아니라
+-- 홑따옴표로 감싼 이유는 같다 — local 에서는 Spring(ScriptUtils)이 이 파일을 JDBC 로 실행한다.
+-- \connect 는 SQL 이 아니라 구문 오류가 나고, ScriptUtils 는 달러 인용을 몰라서
+-- $$ 본문 안의 세미콜론에서 문장을 잘라버린다. 홑따옴표는 인식하므로 안전하다.
+-- 문자열 안의 홑따옴표는 '' 로 쓴다.
+
+DO '
+BEGIN
+    IF current_database() <> ''delivery_db'' THEN
+        RAISE EXCEPTION ''schema.sql 은 delivery_db 에서 실행해야 한다. 현재 접속: %'', current_database();
+    END IF;
+END' LANGUAGE plpgsql;
+
+
 CREATE SCHEMA IF NOT EXISTS hub_schema;
 
 
