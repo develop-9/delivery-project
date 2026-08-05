@@ -10,8 +10,14 @@ import java.util.UUID;
 
 public interface DeliveryManagerRepository {
 
-    DeliveryManager save(DeliveryManager deliveryManager);
+    DeliveryManager save(DeliveryManager deliveryManager); // 배송자 등록
     boolean existsByUserId(UUID userId);
+
+    Optional<DeliveryManager> findById(UUID managerId); // 단건조회
+
+    Page<DeliveryManager> findAll(Pageable pageable); // 목록 조회
+
+    Optional<DeliveryManager> findByUserId(UUID userId);
 
     Optional<Integer> findMaxSequenceByType(
             DeliveryManagerType type
@@ -21,8 +27,4 @@ public interface DeliveryManagerRepository {
             UUID hubId,
             DeliveryManagerType type
     );
-
-    Optional<DeliveryManager> findById(UUID managerId);
-
-    Page<DeliveryManager> findAll(Pageable pageable);
 }

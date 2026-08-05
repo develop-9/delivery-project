@@ -41,4 +41,5 @@ public interface SpringDataDeliveryManagerRepository
     Page<DeliveryManager> findAllByDeletedAtIsNull(
             Pageable pageable
     );
+    Optional<DeliveryManager> findByUserIdAndDeletedAtIsNull(UUID userId);
 }
