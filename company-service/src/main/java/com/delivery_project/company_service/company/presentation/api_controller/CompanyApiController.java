@@ -2,15 +2,19 @@ package com.delivery_project.company_service.company.presentation.api_controller
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
+import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
+import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
+import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
+import com.delivery_project.company_service.company.presentation.response.CompanyGetResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
@@ -27,6 +31,7 @@ import java.util.UUID;
 public class CompanyApiController implements CompanyApi {
 
     private final CompanyCommandService companyCommandService;
+    private final CompanyQueryService companyQueryService;
 
     @PostMapping
     @Override
@@ -76,6 +81,23 @@ public class CompanyApiController implements CompanyApi {
                         SuccessResponse.success(
                                 CompanyDeleteResponse.from(
                                         companyDeleteResult
+                                ))
+                );
+    }
+
+    @GetMapping("/{companyId}")
+    @Override
+    public ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
+            @PathVariable UUID companyId
+    ) {
+        CompanyGetCommand companyGetCommand = CompanyGetCommand.from(companyId);
+        CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetCommand);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        SuccessResponse.success(
+                                CompanyGetResponse.from(
+                                        companyGetResult
                                 ))
                 );
     }

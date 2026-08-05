@@ -4,6 +4,7 @@ import com.delivery_project.company_service.company.presentation.request.Company
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.CompanyCreateResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyDeleteResponse;
+import com.delivery_project.company_service.company.presentation.response.CompanyGetResponse;
 import com.delivery_project.company_service.company.presentation.response.CompanyUpdateResponse;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
@@ -163,6 +164,36 @@ public interface CompanyApi {
     ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
             @Parameter(
                     description = "삭제할 업체 ID",
+                    required = true
+            )
+            @PathVariable UUID companyId
+    );
+
+    @Operation(
+            summary = "업체 수정",
+            description = "모든 유저가 업체 하나의 정보를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "업체 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "업체가 존재하지 않음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
+            @Parameter(
+                    description = "조회할 업체 ID",
                     required = true
             )
             @PathVariable UUID companyId
