@@ -31,7 +31,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Repository
 @RequiredArgsConstructor
-public class JpaHubQueryRepository implements HubQueryRepository {
+public class HubQueryRepositoryImpl implements HubQueryRepository {
 
 	private final SpringDataHubRepository springDataHubRepository;
 	private final JPAQueryFactory queryFactory;

@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class JpaHubRouteQueryRepository implements HubRouteQueryRepository {
+public class HubRouteQueryRepositoryImpl implements HubRouteQueryRepository {
 
 	private final SpringDataHubRouteRepository springDataHubRouteRepository;
 	private final JPAQueryFactory queryFactory;

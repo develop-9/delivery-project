@@ -10,7 +10,7 @@ import com.delivery_project.hub_service.hub.domain.entity.Hub;
 
 /**
  * Spring Data JPA 인터페이스. 도메인은 이걸 직접 쓰지 않고
- * {@link JpaHubRepository} · {@link JpaHubQueryRepository} 를 거친다.
+ * {@link HubRepositoryImpl} · {@link HubQueryRepositoryImpl} 를 거친다.
  *
  * <p>파생 쿼리에 {@code deletedAtIsNull} 을 붙이지 않는다.
  * {@code Hub} 의 {@code @SQLRestriction} 이 모든 조회에 자동으로 붙여준다.

@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class JpaHubRouteRepository implements HubRouteRepository {
+public class HubRouteRepositoryImpl implements HubRouteRepository {
 
 	private final SpringDataHubRouteRepository springDataHubRouteRepository;
 
