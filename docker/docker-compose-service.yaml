@@ -81,7 +81,8 @@ services:
       SPRING_PROFILES_ACTIVE: local
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: hub_db
+      # DB 는 전 서비스 공용. 서비스 구분은 application.yaml 의 default_schema 가 한다.
+      POSTGRES_DB: delivery
       REDIS_HOST: redis
       REDIS_PORT: 6379
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/

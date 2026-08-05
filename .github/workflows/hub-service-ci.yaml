@@ -28,12 +28,14 @@ jobs:
 
     # Hub Service는 JPA/Redis를 쓰기 때문에 테스트가 Spring Context를 띄울 때
     # 실제 연결 가능한 DB/Redis가 필요함 (eureka-server와 다른 점)
-    # POSTGRES_DB는 application.yaml의 DB명 기본값(hub_db)과 반드시 같아야 한다
+    # 전 서비스가 DB 하나(delivery)를 공유하고 스키마로 나누므로 POSTGRES_DB는 delivery다.
+    # 테스트는 스키마를 public으로 두므로(src/test/resources/application.yaml)
+    # CI에서 CREATE SCHEMA를 따로 해줄 필요는 없다.
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: hub_db
+          POSTGRES_DB: delivery
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
