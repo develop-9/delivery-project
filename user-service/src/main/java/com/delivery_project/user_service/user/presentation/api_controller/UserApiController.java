@@ -20,9 +20,11 @@ import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.command_service.UserCommandService;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
+import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
 import com.delivery_project.user_service.user.presentation.response.UserApproveResponse;
+import com.delivery_project.user_service.user.presentation.response.UserDetailResponse;
 import com.delivery_project.user_service.user.presentation.response.UserPendingResponse;
 import com.delivery_project.user_service.user.presentation.response.UserRejectResponse;
 
@@ -35,6 +37,12 @@ public class UserApiController {
 
 	private final UserCommandService userCommandService;
 	private final UserQueryService userQueryService;
+
+	@GetMapping("/me")
+	public ResponseEntity<SuccessResponse<UserDetailResponse>> getMe(@AuthenticationPrincipal UUID callerId) {
+		UserDetailResult result = userQueryService.getMe(callerId);
+		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
+	}
 
 	@GetMapping("/pending")
 	public ResponseEntity<SuccessResponse<PageResponse<UserPendingResponse>>> getPendingUsers(

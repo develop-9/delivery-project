@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.domain.entity.Role;
@@ -37,6 +38,22 @@ class UserQueryServiceTest {
 
 	@InjectMocks
 	private UserQueryService userQueryService;
+
+	@Test
+	void 본인_정보를_조회하면_호출자가_가진_정보가_그대로_반환된다() {
+		// given
+		User caller = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+
+		// when
+		UserDetailResult result = userQueryService.getMe(caller.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(caller.getId());
+		assertThat(result.username()).isEqualTo(caller.getUsername());
+		assertThat(result.slackId()).isEqualTo(caller.getSlackId());
+		assertThat(result.role()).isEqualTo(Role.COMPANY_MANAGER);
+	}
 
 	@Test
 	void MASTER가_hubId_없이_조회하면_전체_승인대기자를_조회한다() {

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
+import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
@@ -23,6 +24,11 @@ public class UserQueryService {
 
 	private final UserQueryRepository userQueryRepository;
 	private final CallerResolver callerResolver;
+
+	public UserDetailResult getMe(UUID callerId) {
+		User caller = callerResolver.resolve(callerId);
+		return UserDetailResult.from(caller);
+	}
 
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UUID hubIdParam, Pageable pageable) {
 		User caller = callerResolver.resolve(callerId);
