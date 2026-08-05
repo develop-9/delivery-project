@@ -30,8 +30,8 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserRepository;
-import com.delivery_project.user_service.user.infrastructure.jwt.JwtPrincipal;
-import com.delivery_project.user_service.user.infrastructure.jwt.JwtProvider;
+import com.delivery_project.user_service.user.domain.token.JwtPrincipal;
+import com.delivery_project.user_service.user.domain.token.TokenProvider;
 
 @ExtendWith(MockitoExtension.class)
 class AuthCommandServiceTest {
@@ -46,7 +46,7 @@ class AuthCommandServiceTest {
 	private PasswordEncoder passwordEncoder;
 
 	@Mock
-	private JwtProvider jwtProvider;
+	private TokenProvider tokenProvider;
 
 	@InjectMocks
 	private AuthCommandService authCommandService;
@@ -223,10 +223,10 @@ class AuthCommandServiceTest {
 
 		when(userRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
 		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
-		when(jwtProvider.generateAccessToken(approvedUser.getId(), Role.COMPANY_MANAGER)).thenReturn("access-token");
-		when(jwtProvider.generateRefreshToken(approvedUser.getId())).thenReturn("refresh-token");
-		when(jwtProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
-		when(jwtProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+		when(tokenProvider.generateAccessToken(approvedUser.getId(), Role.COMPANY_MANAGER)).thenReturn("access-token");
+		when(tokenProvider.generateRefreshToken(approvedUser.getId())).thenReturn("refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
 		// when
 		UserLoginResult result = authCommandService.login(command);
@@ -300,13 +300,13 @@ class AuthCommandServiceTest {
 		ReflectionTestUtils.setField(approvedUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("old-refresh-token");
 
-		when(jwtProvider.parse("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("old-refresh-token"));
 		when(userRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
-		when(jwtProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
-		when(jwtProvider.generateRefreshToken(userId)).thenReturn("new-refresh-token");
-		when(jwtProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
-		when(jwtProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
+		when(tokenProvider.generateRefreshToken(userId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
 		// when
 		UserRefreshResult result = authCommandService.refresh(command);
@@ -324,7 +324,7 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("stolen-old-token");
 
-		when(jwtProvider.parse("stolen-old-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("stolen-old-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("current-token"));
 
 		// when & then
@@ -340,7 +340,7 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("some-token");
 
-		when(jwtProvider.parse("some-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("some-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
 		// when & then
@@ -356,7 +356,7 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(jwtProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
 		when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
@@ -382,7 +382,7 @@ class AuthCommandServiceTest {
 		ReflectionTestUtils.setField(pendingUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(jwtProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
 		when(userRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
 

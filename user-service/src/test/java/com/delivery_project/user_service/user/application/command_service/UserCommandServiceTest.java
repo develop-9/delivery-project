@@ -16,6 +16,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
@@ -29,6 +30,9 @@ class UserCommandServiceTest {
 	@Mock
 	private UserRepository userRepository;
 
+	@Mock
+	private CallerResolver callerResolver;
+
 	@InjectMocks
 	private UserCommandService userCommandService;
 
@@ -37,7 +41,7 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
@@ -54,7 +58,7 @@ class UserCommandServiceTest {
 		UUID hubId = UUID.randomUUID();
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, hubId);
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, hubId);
-		when(userRepository.findById(hubManager.getId())).thenReturn(Optional.of(hubManager));
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
@@ -69,7 +73,7 @@ class UserCommandServiceTest {
 		// given
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
-		when(userRepository.findById(hubManager.getId())).thenReturn(Optional.of(hubManager));
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
@@ -84,7 +88,7 @@ class UserCommandServiceTest {
 		// given
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(userRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
+		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
@@ -99,7 +103,7 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		UUID targetId = UUID.randomUUID();
-		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
@@ -115,7 +119,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		target.approve(UUID.randomUUID());
-		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
@@ -130,7 +134,7 @@ class UserCommandServiceTest {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
@@ -145,7 +149,7 @@ class UserCommandServiceTest {
 		// given
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
-		when(userRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
+		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
 		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then

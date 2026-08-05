@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
@@ -30,6 +31,9 @@ class UserQueryServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
+
+	@Mock
+	private CallerResolver callerResolver;
 
 	@InjectMocks
 	private UserQueryService userQueryService;
@@ -42,7 +46,7 @@ class UserQueryServiceTest {
 		User pending = createUser(Role.COMPANY_MANAGER, null);
 		Page<User> page = new PageImpl<>(List.of(pending), pageable, 1);
 
-		when(userRepository.findById(master.getId())).thenReturn(java.util.Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findAllPending(pageable)).thenReturn(page);
 
 		// when
@@ -61,7 +65,7 @@ class UserQueryServiceTest {
 		Pageable pageable = PageRequest.of(0, 10);
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
-		when(userRepository.findById(master.getId())).thenReturn(java.util.Optional.of(master));
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
 
 		// when
@@ -80,7 +84,7 @@ class UserQueryServiceTest {
 		Pageable pageable = PageRequest.of(0, 10);
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
-		when(userRepository.findById(hubManager.getId())).thenReturn(java.util.Optional.of(hubManager));
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 		when(userRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
 
 		// when
@@ -95,7 +99,7 @@ class UserQueryServiceTest {
 		// given
 		User companyManager = createUser(Role.COMPANY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
-		when(userRepository.findById(companyManager.getId())).thenReturn(java.util.Optional.of(companyManager));
+		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
 
 		// when & then
 		assertThatThrownBy(() -> userQueryService.getPendingUsers(companyManager.getId(), null, pageable))
@@ -109,7 +113,7 @@ class UserQueryServiceTest {
 		// given
 		User deliveryManager = createUser(Role.DELIVERY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
-		when(userRepository.findById(deliveryManager.getId())).thenReturn(java.util.Optional.of(deliveryManager));
+		when(callerResolver.resolve(deliveryManager.getId())).thenReturn(deliveryManager);
 
 		// when & then
 		assertThatThrownBy(() -> userQueryService.getPendingUsers(deliveryManager.getId(), null, pageable))

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.domain.entity.Role;
+import com.delivery_project.user_service.user.domain.token.JwtPrincipal;
+import com.delivery_project.user_service.user.domain.token.TokenProvider;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -21,7 +23,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 @Component
-public class JwtProvider {
+public class JwtProvider implements TokenProvider {
 
 	private static final String ROLE_CLAIM = "role";
 	private static final String BEARER_PREFIX = "Bearer ";
@@ -40,6 +42,7 @@ public class JwtProvider {
 		this.refreshTokenExpirationMillis = refreshTokenExpirationMillis;
 	}
 
+	@Override
 	public String generateAccessToken(UUID userId, Role role) {
 		Instant now = Instant.now();
 		return Jwts.builder()
@@ -52,6 +55,7 @@ public class JwtProvider {
 				.compact();
 	}
 
+	@Override
 	public String generateRefreshToken(UUID userId) {
 		Instant now = Instant.now();
 		return Jwts.builder()
@@ -70,10 +74,12 @@ public class JwtProvider {
 		return authorizationHeader.substring(BEARER_PREFIX.length());
 	}
 
+	@Override
 	public long getAccessTokenExpirationSeconds() {
 		return accessTokenExpirationMillis / 1000;
 	}
 
+	@Override
 	public long getRefreshTokenExpirationMillis() {
 		return refreshTokenExpirationMillis;
 	}
@@ -83,6 +89,7 @@ public class JwtProvider {
 	 * validateToken()+getUserId()+getRole()을 각각 호출하면 같은 토큰을 여러 번
 	 * 파싱/서명검증하게 되어 이 메서드로 통합했다.
 	 */
+	@Override
 	public JwtPrincipal parse(String token) {
 		Claims claims = parseClaims(token);
 		UUID userId = UUID.fromString(claims.getSubject());

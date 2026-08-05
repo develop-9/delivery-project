@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
-import com.delivery_project.user_service.user.infrastructure.jwt.JwtPrincipal;
+import com.delivery_project.user_service.user.domain.token.JwtPrincipal;
 import com.delivery_project.user_service.user.infrastructure.jwt.JwtProvider;
 
 import jakarta.servlet.FilterChain;

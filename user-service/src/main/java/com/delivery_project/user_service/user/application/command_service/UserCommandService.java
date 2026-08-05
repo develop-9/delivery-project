@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
@@ -24,9 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 public class UserCommandService {
 
 	private final UserRepository userRepository;
+	private final CallerResolver callerResolver;
 
 	public UserApproveResult approve(UUID callerId, UUID targetUserId) {
-		User caller = resolveCaller(callerId);
+		User caller = callerResolver.resolve(callerId);
 		User target = userRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -43,7 +45,7 @@ public class UserCommandService {
 	}
 
 	public UserRejectResult reject(UUID callerId, UUID targetUserId) {
-		User caller = resolveCaller(callerId);
+		User caller = callerResolver.resolve(callerId);
 		User target = userRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -57,11 +59,6 @@ public class UserCommandService {
 		log.info("[User] 회원가입 거절 완료 targetUserId={} rejectedBy={}", targetUserId, caller.getId());
 
 		return UserRejectResult.from(target);
-	}
-
-	private User resolveCaller(UUID callerId) {
-		return userRepository.findById(callerId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
 	}
 
 	private void validatePermission(User caller, User target, ErrorCode forbiddenCode) {
