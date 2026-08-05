@@ -10,8 +10,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import com.delivery_project.user_service.global.response.ErrorResponse;
 
@@ -74,9 +77,32 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
-	void ValidationException은_INVALID_INPUT_VALUE로_변환된다() {
+	void ValidationException은_INVALID_INPUT_VALUE와_필드_에러_목록으로_변환된다() {
 		// given
-		MethodArgumentNotValidException exception = org.mockito.Mockito.mock(MethodArgumentNotValidException.class);
+		BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "userSignupRequest");
+		bindingResult.addError(new FieldError(
+				"userSignupRequest", "username", "invalid-user!!", false, null, null,
+				"아이디는 4~10자의 소문자와 숫자로만 구성되어야 합니다."));
+		BindException exception = new BindException(bindingResult);
+
+		// when
+		ResponseEntity<ErrorResponse> response = handler.handleBindException(exception);
+
+		// then
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody().error().errorCode()).isEqualTo("INVALID_INPUT_VALUE");
+		assertThat(response.getBody().error().fieldErrors()).hasSize(1);
+		assertThat(response.getBody().error().fieldErrors().get(0).field()).isEqualTo("username");
+		assertThat(response.getBody().error().fieldErrors().get(0).rejectedValue()).isEqualTo("invalid-user!!");
+		assertThat(response.getBody().error().fieldErrors().get(0).reason())
+				.isEqualTo("아이디는 4~10자의 소문자와 숫자로만 구성되어야 합니다.");
+	}
+
+	@Test
+	void 필수_쿼리_파라미터가_누락되면_INVALID_INPUT_VALUE로_변환되고_필드_에러는_없다() {
+		// given
+		org.springframework.web.bind.MissingServletRequestParameterException exception =
+				new org.springframework.web.bind.MissingServletRequestParameterException("hubId", "UUID");
 
 		// when
 		ResponseEntity<ErrorResponse> response = handler.handleInvalidInputValueException(exception);
@@ -84,6 +110,7 @@ class GlobalExceptionHandlerTest {
 		// then
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody().error().errorCode()).isEqualTo("INVALID_INPUT_VALUE");
+		assertThat(response.getBody().error().fieldErrors()).isNull();
 	}
 
 	@Test
