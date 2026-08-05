@@ -1,4 +1,4 @@
-package com.deliveryproject.slackservice.global.config;
+package com.delivery_project.slack_service.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

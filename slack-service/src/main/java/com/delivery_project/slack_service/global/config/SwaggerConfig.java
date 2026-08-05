@@ -1,4 +1,4 @@
-package com.deliveryproject.slackservice.global.config;
+package com.delivery_project.slack_service.global.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
