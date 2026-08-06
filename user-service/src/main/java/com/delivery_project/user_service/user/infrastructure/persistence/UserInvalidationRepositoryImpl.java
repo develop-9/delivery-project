@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class RedisUserInvalidationRepository implements UserInvalidationRepository {
+public class UserInvalidationRepositoryImpl implements UserInvalidationRepository {
 
 	private static final String KEY_PREFIX = "user:";
 	private static final String KEY_SUFFIX = ":invalidatedAt";
