@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@Tag(name = "Company", description = "Company 관련 API")
+@Tag(name = "Company-Api", description = "Company 관련 API")
 public interface CompanyApi {
 
     @Operation(
