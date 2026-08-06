@@ -19,6 +19,12 @@ public enum ErrorCode {
             "SLACK_MESSAGE_SENDER_REQUIRED"
     ),
 
+    INVALID_AI_HISTORY_SEARCH_CONDITION(
+            HttpStatus.BAD_REQUEST,
+            "유효하지 않은 AI 요청 이력 검색 조건입니다.",
+            "INVALID_AI_HISTORY_SEARCH_CONDITION"
+    ),
+
     // 404
     NOT_FOUND(
             HttpStatus.NOT_FOUND,
@@ -30,6 +36,12 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "Slack 메시지가 존재하지 않습니다.",
             "SLACK_MESSAGE_NOT_FOUND"
+    ),
+
+    AI_HISTORY_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "AI 요청 이력이 존재하지 않습니다.",
+            "AI_HISTORY_NOT_FOUND"
     ),
 
     // 409
