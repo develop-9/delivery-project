@@ -11,7 +11,6 @@ import com.delivery_project.slack_service.slack.application.result.SlackMessageU
 import com.delivery_project.slack_service.slack.domain.entity.SenderType;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.domain.repository.SlackMessageCommandRepository;
-import com.delivery_project.slack_service.slack.domain.repository.SlackMessageQueryRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,18 +22,14 @@ import java.util.UUID;
 public class SlackMessageCommandService {
 
     private final SlackMessageCommandRepository slackMessageCommandRepository;
-    private final SlackMessageQueryRepository slackMessageQueryRepository;
     private final UUID systemId;
 
     public SlackMessageCommandService(
             SlackMessageCommandRepository slackMessageCommandRepository,
-            SlackMessageQueryRepository slackMessageQueryRepository,
             @Value("${system.id}") UUID systemId
     ) {
         this.slackMessageCommandRepository =
                 slackMessageCommandRepository;
-        this.slackMessageQueryRepository =
-                slackMessageQueryRepository;
         this.systemId = systemId;
     }
 
@@ -94,7 +89,7 @@ public class SlackMessageCommandService {
     private SlackMessage findSlackMessage(
             UUID slackMessageId
     ) {
-        return slackMessageQueryRepository
+        return slackMessageCommandRepository
                 .findById(slackMessageId)
                 .orElseThrow(() ->
                         new BusinessException(
