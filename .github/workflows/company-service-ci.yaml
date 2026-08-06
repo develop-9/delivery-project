@@ -37,13 +37,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: delivery
+          POSTGRES_DB: delivery_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d delivery"
+          --health-cmd "pg_isready -U postgres -d delivery_db"
           --health-interval 10s 
           --health-timeout 5s 
           --health-retries 5
@@ -81,7 +81,16 @@ jobs:
         run: chmod +x gradlew
 
 
-      # 5. Application Build 및 Test 실행
+      # 5. Delivery Service 스키마 생성
+      - name: Delivery Schema 생성
+        run: |
+          psql -h localhost \
+            -U postgres \
+            -d delivery_db \
+            -c "CREATE SCHEMA IF NOT EXISTS company_schema;"
+
+
+      # 6. Application Build 및 Test 실행
       - name: Company Service 빌드 및 테스트
         env:
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
