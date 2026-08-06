@@ -2,6 +2,7 @@ package com.delivery_project.company_service.company.application.query_service;
 
 import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
@@ -24,7 +25,7 @@ public class CompanyQueryService {
     private final CompanyQueryRepository companyQueryRepository;
     private final PageValidator pageValidator;
 
-    // 업체 단건 조회 비즈니스 로직
+    // [외부] 업체 단건 조회 비즈니스 로직
     @Transactional(readOnly = true)
     public CompanyGetResult getCompany(CompanyGetCommand companyGetCommand) {
 
@@ -35,7 +36,7 @@ public class CompanyQueryService {
         return CompanyGetResult.from(company);
     }
 
-    // 업체 검색 비즈니스 로직
+    // [외부] 업체 검색 비즈니스 로직
     @Transactional(readOnly = true)
     public CompanyGetAllResult getAllCompany(CompanyGetAllCommand companyGetAllCommand) {
         int page = pageValidator.validatePage(companyGetAllCommand.page());
@@ -53,5 +54,16 @@ public class CompanyQueryService {
                 );
 
         return CompanyGetAllResult.from(companyPage);
+    }
+
+    // [내부] 업체 단건 조회 비즈니스 로직
+    @Transactional(readOnly = true)
+    public CompanyGetForInternalResult getCompanyForInternal(CompanyGetCommand companyGetCommand) {
+
+        // Validation Check - 업체 존재 여부 판단
+        Company company = companyQueryRepository.findById(companyGetCommand.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        return CompanyGetForInternalResult.from(company);
     }
 }
