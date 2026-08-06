@@ -3,9 +3,11 @@ package com.delivery_project.slack_service.global.exception;
 import com.delivery_project.slack_service.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.NoSuchElementException;
@@ -31,7 +33,9 @@ public class GlobalExceptionHandler {
                 exception.getErrorCode()
         );
 
-        return createResponse(exception.getErrorCode());
+        return createResponse(
+                exception.getErrorCode()
+        );
     }
 
     @ExceptionHandler(NoSuchElementException.class)
@@ -43,7 +47,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.NOT_FOUND);
+        return createResponse(
+                ErrorCode.NOT_FOUND
+        );
     }
 
     @ExceptionHandler(IllegalStateException.class)
@@ -55,19 +61,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_STATE);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
-            IllegalArgumentException exception
-    ) {
-        log.warn(
-                "[IllegalArgumentException] {}",
-                exception.getMessage()
+        return createResponse(
+                ErrorCode.INVALID_STATE
         );
-
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -79,27 +75,54 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+        return createResponse(
+                ErrorCode.INVALID_INPUT_VALUE
+        );
+    }
+
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            IllegalArgumentException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidRequestException(
+            Exception exception
+    ) {
+        log.warn(
+                "[InvalidRequestException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(
+                ErrorCode.INVALID_REQUEST
+        );
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
             NoResourceFoundException exception
     ) {
-        log.info(
+        log.warn(
                 "[NoResourceFoundException] path={}",
                 exception.getResourcePath()
         );
 
-        return createResponse(ErrorCode.NOT_FOUND);
+        return createResponse(
+                ErrorCode.NOT_FOUND
+        );
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception exception
     ) {
-        log.error("[Exception]", exception);
+        log.error(
+                "[Exception]",
+                exception
+        );
 
-        return createResponse(ErrorCode.INTERNAL_SERVER_ERROR);
+        return createResponse(
+                ErrorCode.INTERNAL_SERVER_ERROR
+        );
     }
 }
