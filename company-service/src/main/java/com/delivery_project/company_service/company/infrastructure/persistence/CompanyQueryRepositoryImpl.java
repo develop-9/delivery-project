@@ -6,6 +6,7 @@ import com.delivery_project.company_service.company.domain.entity.QCompany;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -42,36 +43,18 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
 
         BooleanBuilder condition = new BooleanBuilder();
 
-        if (name != null && !name.isBlank()) {
-            condition.and(
-                    company.name.contains(name)
-            );
-        }
-
-        if (type != null) {
-            condition.and(
-                    company.type.eq(type)
-            );
-        }
-
-        if (hubId != null) {
-            condition.and(
-                    company.hubId.eq(hubId)
-            );
-        }
-
         List<Company> content = jpaQueryFactory
                 .selectFrom(company)
-                .where(condition)
-                .orderBy(
-                        getOrderSpecifier(
-                                company,
-                                pageable.getSort()
-                        )
+                .where(
+                        nameContains(company, name),
+                        typeEq(company, type),
+                        hubIdEq(company, hubId)
                 )
+                .orderBy(getOrderSpecifier(company, pageable.getSort()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
+
 
         JPAQuery<Long> countQuery = jpaQueryFactory
                 .select(company.count())
@@ -96,5 +79,32 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
         }
 
         return company.createdAt.asc();
+    }
+
+    private BooleanExpression nameContains(
+            QCompany company,
+            String name
+    ) {
+        return name != null
+                ? company.name.contains(name)
+                : null;
+    }
+
+    private BooleanExpression typeEq(
+            QCompany company,
+            CompanyType type
+    ) {
+        return type != null
+                ? company.type.eq(type)
+                : null;
+    }
+
+    private BooleanExpression hubIdEq(
+            QCompany company,
+            UUID hubId
+    ) {
+        return hubId != null
+                ? company.hubId.eq(hubId)
+                : null;
     }
 }
