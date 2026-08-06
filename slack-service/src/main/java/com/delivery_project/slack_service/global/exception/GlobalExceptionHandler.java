@@ -14,17 +14,34 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode) {
+    private ResponseEntity<ErrorResponse> createResponse(
+            ErrorCode errorCode
+    ) {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ErrorResponse.from(errorCode));
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(
+            BusinessException exception
+    ) {
+        log.info(
+                "[BusinessException] errorCode={}",
+                exception.getErrorCode()
+        );
+
+        return createResponse(exception.getErrorCode());
     }
 
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ErrorResponse> handleNoSuchElementException(
             NoSuchElementException exception
     ) {
-        log.warn("[NoSuchElementException] {}", exception.getMessage());
+        log.warn(
+                "[NoSuchElementException] {}",
+                exception.getMessage()
+        );
 
         return createResponse(ErrorCode.NOT_FOUND);
     }
@@ -33,24 +50,47 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalStateException(
             IllegalStateException exception
     ) {
-        log.warn("[IllegalStateException] {}", exception.getMessage());
+        log.warn(
+                "[IllegalStateException] {}",
+                exception.getMessage()
+        );
 
         return createResponse(ErrorCode.INVALID_STATE);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException exception
+    ) {
+        log.warn(
+                "[IllegalArgumentException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException exception
     ) {
-        log.warn("[MethodArgumentNotValidException] {}", exception.getMessage());
+        log.warn(
+                "[MethodArgumentNotValidException] {}",
+                exception.getMessage()
+        );
 
         return createResponse(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
-            NoResourceFoundException e
+            NoResourceFoundException exception
     ) {
+        log.info(
+                "[NoResourceFoundException] path={}",
+                exception.getResourcePath()
+        );
+
         return createResponse(ErrorCode.NOT_FOUND);
     }
 
