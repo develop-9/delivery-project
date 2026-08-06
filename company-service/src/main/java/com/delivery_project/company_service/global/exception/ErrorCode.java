@@ -10,6 +10,7 @@ public enum ErrorCode {
     EMPTY_FILE(HttpStatus.BAD_REQUEST, "파일이 비어 있습니다.", "EMPTY_FILE"),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "입력조건을 불충족하였습니다.", "INVALID_REQUEST"),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "요청값이 올바르지 않습니다.", "INVALID_INPUT_VALUE"),
+    INVALID_PAGE(HttpStatus.BAD_REQUEST, "올바른 Page 입력이 아닙니다.", "INVALID_PAGE"),
 
     // 401
     AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 올바르지 않습니다.", "AUTH_UNAUTHORIZED"),
@@ -32,11 +33,14 @@ public enum ErrorCode {
 
 
     // === company ===
-    // 400
-    INVALID_PAGE(HttpStatus.BAD_REQUEST, "올바른 Page 입력이 아닙니다.", "INVALID_PAGE"),
-
     // 404
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "업체가 존재하지 않습니다.", "COMPANY_NOT_FOUND"),
+
+
+    // === product ===
+    // 400
+    PRODUCT_PRICE_INVALID(HttpStatus.BAD_REQUEST, "금액은 1원 이상이어야합니다.", "PRODUCT_PRICE_INVALID"),
+    PRODUCT_NAME_INVALID(HttpStatus.BAD_REQUEST, "상품의 이름이 존재하지 않습니다.", "PRODUCT_NAME_INVALID"),
     ;
 
     private final HttpStatus status;

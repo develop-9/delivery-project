@@ -1,11 +1,10 @@
 package com.delivery_project.company_service.company.domain.entity;
 
 import com.delivery_project.company_service.global.common.BaseDeletableEntity;
+import com.delivery_project.company_service.global.exception.BusinessException;
+import com.delivery_project.company_service.global.exception.ErrorCode;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
@@ -30,4 +29,34 @@ public class Product extends BaseDeletableEntity {
 
     @Column(name = "price", nullable = false)
     Integer price;
+
+    @Builder
+    public Product(UUID companyId, String name, Integer price) {
+        this.companyId = companyId;
+        this.name = name;
+        this.price = price;
+    }
+
+    private static final int MAX_NAME_LENGTH = 100;
+
+    public static Product create(UUID companyId, String name, Integer price) {
+
+        // Validation Check - 올바른 금액 기입 여부 판별
+        if (price == null || price <= 0) {
+            throw new BusinessException(ErrorCode.PRODUCT_PRICE_INVALID);
+        }
+
+        // Validation Check - 올바른 상품명 기입 여부 판멸
+        if (name == null
+                || name.isBlank()
+                || name.codePointCount(0, name.length()) > MAX_NAME_LENGTH) {
+            throw new BusinessException(ErrorCode.PRODUCT_NAME_INVALID);
+        }
+
+        return Product.builder()
+                .companyId(companyId)
+                .name(name)
+                .price(price)
+                .build();
+    }
 }

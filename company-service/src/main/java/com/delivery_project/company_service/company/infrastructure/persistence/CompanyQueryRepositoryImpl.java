@@ -33,6 +33,11 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
     }
 
     @Override
+    public Boolean existsById(UUID companyId) {
+        return springDataCompanyRepository.existsById(companyId);
+    }
+
+    @Override
     public Page<Company> search(
             String name,
             CompanyType type,
