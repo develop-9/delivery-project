@@ -32,6 +32,18 @@ public enum ErrorCode {
             "SLACK_MESSAGE_NOT_FOUND"
     ),
 
+    USER_SLACK_ID_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "사용자의 Slack ID를 찾을 수 없습니다.",
+            "USER_SLACK_ID_NOT_FOUND"
+    ),
+
+    DEPENDENCY_SERVICE_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "연관 서비스를 사용할 수 없습니다.",
+            "DEPENDENCY_SERVICE_UNAVAILABLE"
+    ),
+
     // 409
     INVALID_STATE(
             HttpStatus.CONFLICT,
