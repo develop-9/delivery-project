@@ -84,6 +84,7 @@ jobs:
           POSTGRES_DB: delivery_db
           POSTGRES_USERNAME: postgres
           POSTGRES_PASSWORD: postgres
+          SYSTEM_ID: 00000000-0000-0000-0000-000000000001
         run: ./gradlew build --no-daemon
 
       # 7. 테스트 실패 시 결과 업로드
