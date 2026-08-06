@@ -11,13 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
-import com.delivery_project.user_service.user.application.command.InternalUserBatchCommand;
-import com.delivery_project.user_service.user.application.command.InternalUserGetCommand;
-import com.delivery_project.user_service.user.application.command.InternalUserHubRoleCommand;
-import com.delivery_project.user_service.user.application.command.InternalUserSlackCommand;
-import com.delivery_project.user_service.user.application.command.UserGetByIdCommand;
-import com.delivery_project.user_service.user.application.command.UserListCommand;
-import com.delivery_project.user_service.user.application.command.UserPendingCommand;
+import com.delivery_project.user_service.user.application.query.InternalUserBatchQuery;
+import com.delivery_project.user_service.user.application.query.InternalUserGetQuery;
+import com.delivery_project.user_service.user.application.query.InternalUserHubRoleQuery;
+import com.delivery_project.user_service.user.application.query.InternalUserSlackQuery;
+import com.delivery_project.user_service.user.application.query.UserGetByIdQuery;
+import com.delivery_project.user_service.user.application.query.UserListQuery;
+import com.delivery_project.user_service.user.application.query.UserPendingQuery;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.support.pagination.PageValidator;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
@@ -46,7 +46,7 @@ public class UserQueryService {
 		return UserDetailResult.from(caller);
 	}
 
-	public Page<UserListResult> getUsers(UUID callerId, UserListCommand command) {
+	public Page<UserListResult> getUsers(UUID callerId, UserListQuery command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
 			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 목록 조회 권한이 없습니다.");
@@ -61,7 +61,7 @@ public class UserQueryService {
 	 * 판단할 수 있어 대상을 먼저 불러올 필요가 없고, 순서를 바꾸면 권한 없는 호출자가 404/403
 	 * 상태코드 차이로 대상 존재 여부를 알아낼 수 있는 정보 노출도 같이 막힌다.
 	 */
-	public UserDetailResult getById(UUID callerId, UserGetByIdCommand command) {
+	public UserDetailResult getById(UUID callerId, UserGetByIdQuery command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster() && !caller.isSelf(command.targetUserId())) {
 			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 조회 권한이 없습니다.");
@@ -78,7 +78,7 @@ public class UserQueryService {
 	 * 이건 승인 워크플로우 전용이라 HUB_MANAGER도 본인 담당 허브 범위로 쓸 수 있다. companyId
 	 * 필터가 없는 것도 같은 이유 — HUB_MANAGER는 허브 단위로만 승인 처리를 하기 때문에 의도적으로 뺐다.
 	 */
-	public Page<UserPendingResult> getPendingUsers(UUID callerId, UserPendingCommand command) {
+	public Page<UserPendingResult> getPendingUsers(UUID callerId, UserPendingQuery command) {
 		User caller = callerResolver.resolve(callerId);
 		Pageable pageable = pageValidator.normalizeSize(command.pageable());
 
@@ -94,14 +94,14 @@ public class UserQueryService {
 		return pendingUsers.map(UserPendingResult::from);
 	}
 
-	public InternalUserResult getInternalUser(InternalUserGetCommand command) {
+	public InternalUserResult getInternalUser(InternalUserGetQuery command) {
 		User user = userQueryRepository.findById(command.userId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 		return InternalUserResult.from(user);
 	}
 
 	/** 존재하지 않는 id는 결과에서 조용히 제외한다(문서 3번, N+1 방지용 배치 조회). */
-	public List<InternalUserResult> getInternalUsersBatch(InternalUserBatchCommand command) {
+	public List<InternalUserResult> getInternalUsersBatch(InternalUserBatchQuery command) {
 		if (command.userIds().size() > MAX_BATCH_SIZE) {
 			throw new BusinessException(ErrorCode.INVALID_BATCH_SIZE,
 					"한 번에 최대 %d건까지 조회할 수 있습니다(요청 %d건).".formatted(MAX_BATCH_SIZE, command.userIds().size()));
@@ -118,7 +118,7 @@ public class UserQueryService {
 	 * 조회는 createdAt 오름차순으로 정렬돼 있어(findByHubIdAndRoleOrderByCreatedAtAsc), 먼저 등록된
 	 * 담당자가 항상 first로 고정된다.
 	 */
-	public InternalUserResult getInternalUserByHubAndRole(InternalUserHubRoleCommand command) {
+	public InternalUserResult getInternalUserByHubAndRole(InternalUserHubRoleQuery command) {
 		List<User> users = userQueryRepository.findByHubIdAndRole(command.hubId(), command.role());
 		if (users.isEmpty()) {
 			throw new BusinessException(ErrorCode.INTERNAL_USER_NOT_FOUND,
@@ -127,7 +127,7 @@ public class UserQueryService {
 		return InternalUserResult.from(users.get(0));
 	}
 
-	public InternalUserSlackResult getInternalUserSlack(InternalUserSlackCommand command) {
+	public InternalUserSlackResult getInternalUserSlack(InternalUserSlackQuery command) {
 		User user = userQueryRepository.findById(command.userId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 		return InternalUserSlackResult.from(user);

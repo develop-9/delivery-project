@@ -21,11 +21,11 @@ import com.delivery_project.user_service.global.response.PageResponse;
 import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.command.UserApproveCommand;
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
-import com.delivery_project.user_service.user.application.command.UserGetByIdCommand;
-import com.delivery_project.user_service.user.application.command.UserListCommand;
-import com.delivery_project.user_service.user.application.command.UserPendingCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command_service.UserCommandService;
+import com.delivery_project.user_service.user.application.query.UserGetByIdQuery;
+import com.delivery_project.user_service.user.application.query.UserListQuery;
+import com.delivery_project.user_service.user.application.query.UserPendingQuery;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
@@ -82,7 +82,7 @@ public class UserApiController {
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
 		UserSearchCondition condition = new UserSearchCondition(approvalStatus, role, hubId, companyId);
-		Page<UserListResult> results = userQueryService.getUsers(callerId, new UserListCommand(condition, pageable));
+		Page<UserListResult> results = userQueryService.getUsers(callerId, new UserListQuery(condition, pageable));
 		PageResponse<UserListResponse> response = PageResponse.from(results, UserListResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
@@ -94,7 +94,7 @@ public class UserApiController {
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
 		Page<UserPendingResult> results =
-				userQueryService.getPendingUsers(callerId, new UserPendingCommand(hubId, pageable));
+				userQueryService.getPendingUsers(callerId, new UserPendingQuery(hubId, pageable));
 		PageResponse<UserPendingResponse> response = PageResponse.from(results, UserPendingResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
@@ -104,7 +104,7 @@ public class UserApiController {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID userId
 	) {
-		UserDetailResult result = userQueryService.getById(callerId, new UserGetByIdCommand(userId));
+		UserDetailResult result = userQueryService.getById(callerId, new UserGetByIdQuery(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
 	}
 
