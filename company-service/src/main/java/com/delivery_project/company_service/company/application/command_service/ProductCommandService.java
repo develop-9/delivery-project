@@ -8,11 +8,13 @@ import com.delivery_project.company_service.company.domain.repository.ProductCom
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductCommandService {
@@ -42,6 +44,12 @@ public class ProductCommandService {
          *  Inventory 호출하여 각 Hub별로 Product 생성
          *  이때, 수량은 0으로 설정
          */
+
+        log.info(
+                "상품 생성 완료. productId={}, createdBy={}",
+                savedProduct.getId(),
+                savedProduct.getCreatedBy()
+        );
 
         // 결과 반환
         return ProductCreateResult.from(savedProduct);
