@@ -3,6 +3,7 @@ package com.delivery_project.slack_service.slack.application.command_service;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.slack.application.command.SlackMessageCreateCommand;
+import com.delivery_project.slack_service.slack.application.command.SlackMessageDeleteCommand;
 import com.delivery_project.slack_service.slack.application.command.SlackMessageUpdateCommand;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageCreateResult;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageDeleteResult;
@@ -69,11 +70,10 @@ public class SlackMessageCommandService {
     }
 
     public SlackMessageUpdateResult update(
-            UUID slackMessageId,
             SlackMessageUpdateCommand command
     ) {
         SlackMessage slackMessage =
-                findSlackMessage(slackMessageId);
+                findSlackMessage(command.slackMessageId());
 
         slackMessage.updateMessage(command.message());
 
@@ -81,13 +81,12 @@ public class SlackMessageCommandService {
     }
 
     public SlackMessageDeleteResult delete(
-            UUID slackMessageId,
-            UUID deletedBy
+            SlackMessageDeleteCommand command
     ) {
         SlackMessage slackMessage =
-                findSlackMessage(slackMessageId);
+                findSlackMessage(command.slackMessageId());
 
-        slackMessage.delete(deletedBy);
+        slackMessage.delete(command.deletedBy());
 
         return SlackMessageDeleteResult.from(slackMessage);
     }

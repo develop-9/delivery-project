@@ -1,16 +1,19 @@
 package com.delivery_project.slack_service.slack.presentation.api_controller;
 
-import com.delivery_project.slack_service.slack.application.result.SlackMessageDeleteResult;
-import com.delivery_project.slack_service.slack.presentation.response.SlackMessageDeleteResponse;
+import com.delivery_project.slack_service.global.common.PageData;
+import com.delivery_project.slack_service.global.response.PageResponse;
 import com.delivery_project.slack_service.global.response.SuccessResponse;
+import com.delivery_project.slack_service.slack.application.command.SlackMessageDeleteCommand;
 import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageCreateResult;
+import com.delivery_project.slack_service.slack.application.result.SlackMessageDeleteResult;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageQueryResult;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageUpdateResult;
 import com.delivery_project.slack_service.slack.presentation.request.SlackMessageCreateRequest;
 import com.delivery_project.slack_service.slack.presentation.request.SlackMessageUpdateRequest;
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageCreateResponse;
+import com.delivery_project.slack_service.slack.presentation.response.SlackMessageDeleteResponse;
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageQueryResponse;
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageUpdateResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,15 +22,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-import com.delivery_project.slack_service.global.common.PageData;
-import com.delivery_project.slack_service.global.response.PageResponse;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
@@ -57,7 +65,9 @@ public class SlackMessageApiController {
             @Valid @RequestBody SlackMessageCreateRequest request
     ) {
         SlackMessageCreateResult result =
-                slackMessageCommandService.create(request.toCommand());
+                slackMessageCommandService.create(
+                        request.toCommand()
+                );
 
         SlackMessageCreateResponse response =
                 SlackMessageCreateResponse.from(result);
@@ -81,12 +91,16 @@ public class SlackMessageApiController {
             @PathVariable UUID slackMessageId
     ) {
         SlackMessageQueryResult result =
-                slackMessageQueryService.findById(slackMessageId);
+                slackMessageQueryService.findById(
+                        slackMessageId
+                );
 
         SlackMessageQueryResponse response =
                 SlackMessageQueryResponse.from(result);
 
-        return ResponseEntity.ok(SuccessResponse.success(response));
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
     }
 
     @Operation(
@@ -153,14 +167,15 @@ public class SlackMessageApiController {
     ) {
         SlackMessageUpdateResult result =
                 slackMessageCommandService.update(
-                        slackMessageId,
-                        request.toCommand()
+                        request.toCommand(slackMessageId)
                 );
 
         SlackMessageUpdateResponse response =
                 SlackMessageUpdateResponse.from(result);
 
-        return ResponseEntity.ok(SuccessResponse.success(response));
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
     }
 
     @Operation(
@@ -185,11 +200,14 @@ public class SlackMessageApiController {
             @PathVariable UUID slackMessageId,
             @AuthenticationPrincipal UUID callerId
     ) {
-        SlackMessageDeleteResult result =
-                slackMessageCommandService.delete(
+        SlackMessageDeleteCommand command =
+                SlackMessageDeleteCommand.of(
                         slackMessageId,
                         callerId
                 );
+
+        SlackMessageDeleteResult result =
+                slackMessageCommandService.delete(command);
 
         SlackMessageDeleteResponse response =
                 SlackMessageDeleteResponse.from(result);
