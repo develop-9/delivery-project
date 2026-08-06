@@ -1,5 +1,8 @@
 package com.delivery_project.slack_service.ai_history.presentation.internal_controller;
 
+import com.delivery_project.slack_service.global.response.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
 import com.delivery_project.slack_service.ai_history.application.command_service.AiHistoryCommandService;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
@@ -43,23 +46,53 @@ public class AiHistoryInternalController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "잘못된 요청값"
+                    description = "잘못된 요청값",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "주문 또는 배송 경로를 찾을 수 없음"
-            ),
-            @ApiResponse(
-                    responseCode = "502",
-                    description = "AI 요청 실패"
-            ),
-            @ApiResponse(
-                    responseCode = "503",
-                    description = "연관 서비스 사용 불가"
+                    description = "주문 또는 배송 경로를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류"
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "502",
+                    description = "AI 요청 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "503",
+                    description = "연관 서비스 사용 불가",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             )
     })
     @PostMapping

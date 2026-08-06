@@ -1,5 +1,8 @@
 package com.delivery_project.slack_service.ai_history.presentation.api_controller;
 
+import com.delivery_project.slack_service.global.response.ErrorResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.delivery_project.slack_service.ai_history.application.command.AiHistorySearchCommand;
 import com.delivery_project.slack_service.ai_history.application.query_service.AiHistoryQueryService;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
@@ -48,19 +51,37 @@ public class AiHistoryApiController {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "AI 요청 이력 조회 성공"
+                    description = "AI 요청 이력 단건 조회 성공"
             ),
             @ApiResponse(
                     responseCode = "403",
-                    description = "조회 권한 없음"
+                    description = "조회 권한 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "AI 요청 이력을 찾을 수 없음"
+                    description = "AI 요청 이력을 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류"
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             )
     })
     @PreAuthorize("hasRole('MASTER')")
@@ -90,15 +111,33 @@ public class AiHistoryApiController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "유효하지 않은 검색 조건"
+                    description = "유효하지 않은 검색 조건",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "403",
-                    description = "조회 권한 없음"
+                    description = "조회 권한 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류"
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = ErrorResponse.class
+                            )
+                    )
             )
     })
     @PreAuthorize("hasRole('MASTER')")
