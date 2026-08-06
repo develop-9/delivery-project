@@ -1,13 +1,13 @@
-package com.delivery_project.slack_service.domain.slack.dto.response;
+package com.delivery_project.slack_service.slack.application.result;
 
-import com.delivery_project.slack_service.domain.slack.entity.SenderType;
-import com.delivery_project.slack_service.domain.slack.entity.SlackMessage;
-import com.delivery_project.slack_service.domain.slack.entity.SlackMessageStatus;
+import com.delivery_project.slack_service.slack.domain.entity.SenderType;
+import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
+import com.delivery_project.slack_service.slack.domain.entity.SlackMessageStatus;
 
 import java.time.Instant;
 import java.util.UUID;
 
-public record SlackMessageResponse(
+public record SlackMessageQueryResult(
         UUID id,
         UUID senderUserId,
         SenderType senderType,
@@ -22,8 +22,8 @@ public record SlackMessageResponse(
         Instant updatedAt
 ) {
 
-    public static SlackMessageResponse from(SlackMessage slackMessage) {
-        return new SlackMessageResponse(
+    public static SlackMessageQueryResult from(SlackMessage slackMessage) {
+        return new SlackMessageQueryResult(
                 slackMessage.getId(),
                 slackMessage.getSenderUserId(),
                 slackMessage.getSenderType(),
