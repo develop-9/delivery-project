@@ -15,10 +15,25 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+    properties:
+      hibernate:
+        # user-service 소유 스키마. Hibernate는 스키마를 만들지 않으므로
+        # docker/postgres/init.sql이 CREATE SCHEMA로 미리 만들어 둔다.
+        default_schema: user_schema
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: 6379
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+  access-token-expiration: 3600000
+  refresh-token-expiration: 1209600000
+
+# 인증된 행위자가 없는 상태에서 생성되는 행(회원가입 등)의 created_by/updated_by에 쓰는
+# 팀 공통 시스템 주체 ID. 전 서비스가 같은 값을 쓰도록 .env에서 관리한다.
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
 eureka:
   client:
