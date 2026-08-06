@@ -19,11 +19,15 @@ import org.springframework.data.domain.Sort;
  */
 public final class PageableFactory {
 
+	/**
+	 * 모든 도메인이 공통으로 허용하는 감사 필드. 도메인은 여기에 자기 정렬 키를 얹기만 하면 된다.
+	 */
+	public static final Set<String> AUDIT_SORTS = Set.of("createdAt", "updatedAt");
+
 	private static final int DEFAULT_SIZE = 10;
 	private static final Set<Integer> ALLOWED_SIZES = Set.of(10, 30, 50);
 
 	private static final String DEFAULT_SORT = "createdAt";
-	private static final Set<String> ALLOWED_SORTS = Set.of("createdAt", "updatedAt");
 
 	private static final Sort.Direction DEFAULT_DIRECTION = Sort.Direction.DESC;
 
@@ -31,10 +35,18 @@ public final class PageableFactory {
 	}
 
 	public static Pageable of(Integer page, Integer size, String sort, String direction) {
+		return of(page, size, sort, direction, null);
+	}
+
+	/**
+	 * 도메인 고유 정렬 키를 추가로 허용한다. 감사 필드는 {@code allowedSorts} 와 무관하게 항상 허용된다.
+	 */
+	public static Pageable of(Integer page, Integer size, String sort, String direction,
+			Set<String> allowedSorts) {
 		return PageRequest.of(
 				resolvePage(page),
 				resolveSize(size),
-				Sort.by(resolveDirection(direction), resolveSort(sort))
+				Sort.by(resolveDirection(direction), resolveSort(sort, allowedSorts))
 		);
 	}
 
@@ -46,8 +58,14 @@ public final class PageableFactory {
 		return size != null && ALLOWED_SIZES.contains(size) ? size : DEFAULT_SIZE;
 	}
 
-	private static String resolveSort(String sort) {
-		return sort != null && ALLOWED_SORTS.contains(sort) ? sort : DEFAULT_SORT;
+	private static String resolveSort(String sort, Set<String> allowedSorts) {
+		if (sort == null) {
+			return DEFAULT_SORT;
+		}
+		if (AUDIT_SORTS.contains(sort)) {
+			return sort;
+		}
+		return allowedSorts != null && allowedSorts.contains(sort) ? sort : DEFAULT_SORT;
 	}
 
 	private static Sort.Direction resolveDirection(String direction) {

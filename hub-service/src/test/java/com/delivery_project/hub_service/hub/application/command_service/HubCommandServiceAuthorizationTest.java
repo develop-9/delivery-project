@@ -23,6 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
+import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
@@ -81,10 +82,11 @@ class HubCommandServiceAuthorizationTest {
 		// given
 		authenticateAs(role);
 
-		HubUpdateCommand command = new HubUpdateCommand("새 이름", null, null, null, null, null);
+		HubUpdateCommand command = new HubUpdateCommand(
+				UUID.randomUUID(), "새 이름", null, null, null, null, null);
 
 		// when & then
-		assertThatThrownBy(() -> hubCommandService.update(UUID.randomUUID(), UUID.randomUUID(), command))
+		assertThatThrownBy(() -> hubCommandService.update(UUID.randomUUID(), command))
 				.isInstanceOf(AccessDeniedException.class);
 	}
 
@@ -96,7 +98,8 @@ class HubCommandServiceAuthorizationTest {
 		authenticateAs(role);
 
 		// when & then
-		assertThatThrownBy(() -> hubCommandService.delete(UUID.randomUUID(), UUID.randomUUID()))
+		assertThatThrownBy(() ->
+				hubCommandService.delete(UUID.randomUUID(), new HubDeleteCommand(UUID.randomUUID())))
 				.isInstanceOf(AccessDeniedException.class);
 	}
 

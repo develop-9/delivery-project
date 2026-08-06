@@ -4,9 +4,12 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 
+import org.springdoc.core.annotations.ParameterObject;
+
 import com.delivery_project.hub_service.global.response.PageResponse;
 import com.delivery_project.hub_service.global.response.SuccessResponse;
 import com.delivery_project.hub_service.hub.presentation.request.HubRouteCreateRequest;
+import com.delivery_project.hub_service.hub.presentation.request.HubRouteSearchRequest;
 import com.delivery_project.hub_service.hub.presentation.request.HubRouteUpdateRequest;
 import com.delivery_project.hub_service.hub.presentation.response.HubPathResponse;
 import com.delivery_project.hub_service.hub.presentation.response.HubRouteCreateResponse;
@@ -88,19 +91,22 @@ public interface HubRouteApiSpec {
 
 					departureHubId 와 arrivalHubId 를 둘 다 주면 유향 특성상 결과는 최대 1건이다.
 
-					size 는 10·30·50 만 허용하며 그 외 값은 에러가 아니라 10 으로 보정된다."""
+					소요 시간(minDurationMin·maxDurationMin)과 거리(minDistanceKm·maxDistanceKm)는
+					각각 범위 검색이다. 한쪽만 주면 열린 범위로 본다.
+
+					size 는 10·30·50 만 허용하며 그 외 값은 에러가 아니라 10 으로 보정된다.
+					sort 는 createdAt·updatedAt 에 더해 durationMin·distanceKm 를 허용한다 —
+					허용 밖의 값도 에러가 아니라 createdAt 으로 보정된다."""
 	)
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "조회 성공"),
 			@ApiResponse(responseCode = "400",
-					description = "INVALID_INPUT_VALUE — maxDurationMin < minDurationMin, 소요 시간 음수"),
+					description = "INVALID_INPUT_VALUE — maxDurationMin < minDurationMin, 소요 시간 음수, "
+							+ "maxDistanceKm < minDistanceKm, 거리 음수"),
 			@ApiResponse(responseCode = "404", description = "HUB_NOT_FOUND — 출발·도착 허브 없음")
 	})
 	ResponseEntity<SuccessResponse<PageResponse<HubRouteDetailResponse>>> searchHubRoutes(
-			UUID departureHubId,
-			UUID arrivalHubId,
-			Integer minDurationMin,
-			Integer maxDurationMin,
+			@ParameterObject HubRouteSearchRequest request,
 			Integer page,
 			Integer size,
 			String sort,

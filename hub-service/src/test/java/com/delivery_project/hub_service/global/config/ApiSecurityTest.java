@@ -33,6 +33,7 @@ import com.delivery_project.hub_service.global.security.JwtProvider;
 import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command_service.HubCommandService;
+import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
@@ -138,7 +139,7 @@ class ApiSecurityTest {
 	void internalApiIsOpenWithoutToken() throws Exception {
 		// given: 게이트웨이 라우팅이 외부 인입을 막는 것에 의존한다 (03_internal.md)
 		UUID hubId = UUID.randomUUID();
-		when(hubQueryService.getHubSummary(hubId)).thenReturn(new HubSummaryResult(
+		when(hubQueryService.getHubSummary(new HubSummaryQuery(hubId))).thenReturn(new HubSummaryResult(
 				hubId, "대구광역시 센터", "대구광역시 동구 동대구로 550",
 				BigDecimal.valueOf(35.8797), BigDecimal.valueOf(128.6286), HubType.MAIN, hubId));
 

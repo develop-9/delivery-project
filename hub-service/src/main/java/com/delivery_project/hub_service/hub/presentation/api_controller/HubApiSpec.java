@@ -2,12 +2,13 @@ package com.delivery_project.hub_service.hub.presentation.api_controller;
 
 import java.util.UUID;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 
 import com.delivery_project.hub_service.global.response.PageResponse;
 import com.delivery_project.hub_service.global.response.SuccessResponse;
-import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.presentation.request.HubCreateRequest;
+import com.delivery_project.hub_service.hub.presentation.request.HubSearchRequest;
 import com.delivery_project.hub_service.hub.presentation.request.HubUpdateRequest;
 import com.delivery_project.hub_service.hub.presentation.response.HubCreateResponse;
 import com.delivery_project.hub_service.hub.presentation.response.HubDeleteResponse;
@@ -68,6 +69,8 @@ public interface HubApiSpec {
 					parentHubId 는 D1 자기참조 때문에 해당 중앙 허브 자신도 포함한다.
 					자신을 빼려면 hubType=SUB 를 함께 준다.
 
+					keyword 는 최대 100자다. 허브명이 100자라 그보다 길면 어떤 행도 맞히지 못한다.
+
 					size 는 10·30·50 만 허용하며 그 외 값은 에러가 아니라 10 으로 보정된다.
 					sort 는 createdAt·updatedAt, direction 은 asc·desc 만 허용하고 나머지는 기본값으로 되돌린다."""
 	)
@@ -76,9 +79,7 @@ public interface HubApiSpec {
 			@ApiResponse(responseCode = "404", description = "HUB_NOT_FOUND — parentHubId 허브 없음")
 	})
 	ResponseEntity<SuccessResponse<PageResponse<HubDetailResponse>>> searchHubs(
-			String keyword,
-			HubType hubType,
-			UUID parentHubId,
+			@ParameterObject HubSearchRequest request,
 			Integer page,
 			Integer size,
 			String sort,

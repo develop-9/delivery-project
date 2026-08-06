@@ -2,6 +2,8 @@ package com.delivery_project.hub_service.global.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Set;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -93,5 +95,65 @@ class PageableFactoryTest {
 		// then
 		assertThat(pageable.getSort().getOrderFor("createdAt").getDirection())
 				.isEqualTo(Sort.Direction.DESC);
+	}
+
+	@Test
+	@DisplayName("도메인이 추가로 허용한 sort 는 그대로 쓴다")
+	void keepsDomainAllowedSort() {
+		// given
+		Set<String> allowedSorts = Set.of("durationMin", "distanceKm");
+
+		// when
+		Pageable pageable = PageableFactory.of(0, 10, "durationMin", "asc", allowedSorts);
+
+		// then
+		assertThat(pageable.getSort().getOrderFor("durationMin")).isNotNull();
+		assertThat(pageable.getSort().getOrderFor("durationMin").getDirection())
+				.isEqualTo(Sort.Direction.ASC);
+	}
+
+	@Test
+	@DisplayName("도메인이 허용하지 않은 sort 는 createdAt 으로 되돌린다")
+	void correctsSortOutsideDomainWhitelistToDefault() {
+		// given
+		Set<String> allowedSorts = Set.of("durationMin", "distanceKm");
+
+		// when
+		Pageable pageable = PageableFactory.of(0, 10, "name", "asc", allowedSorts);
+
+		// then
+		assertThat(pageable.getSort().getOrderFor("name")).isNull();
+		assertThat(pageable.getSort().getOrderFor("createdAt")).isNotNull();
+	}
+
+	@Test
+	@DisplayName("감사 필드는 도메인 허용값에 없어도 항상 허용된다")
+	void alwaysAllowsAuditSortsRegardlessOfDomainWhitelist() {
+		// given: 감사 필드를 빼고 도메인 키만 넘긴다
+		Set<String> allowedSorts = Set.of("durationMin");
+
+		// when
+		Pageable pageable = PageableFactory.of(0, 10, "updatedAt", "asc", allowedSorts);
+
+		// then
+		assertThat(pageable.getSort().getOrderFor("updatedAt")).isNotNull();
+		assertThat(pageable.getSort().getOrderFor("updatedAt").getDirection())
+				.isEqualTo(Sort.Direction.ASC);
+	}
+
+	@Test
+	@DisplayName("allowedSorts 가 null 이거나 비어 있으면 감사 필드만 허용한다")
+	void fallsBackToAuditSortsWhenAllowedSortsMissing() {
+		// given & when
+		Pageable nullWhitelist = PageableFactory.of(0, 10, "durationMin", "asc", null);
+		Pageable emptyWhitelist = PageableFactory.of(0, 10, "durationMin", "asc", Set.of());
+		Pageable auditSort = PageableFactory.of(0, 10, "updatedAt", "asc", null);
+
+		// then
+		assertThat(nullWhitelist.getSort().getOrderFor("durationMin")).isNull();
+		assertThat(nullWhitelist.getSort().getOrderFor("createdAt")).isNotNull();
+		assertThat(emptyWhitelist.getSort().getOrderFor("durationMin")).isNull();
+		assertThat(emptyWhitelist.getSort().getOrderFor("createdAt")).isNotNull();
+		assertThat(auditSort.getSort().getOrderFor("updatedAt")).isNotNull();
 	}
 }

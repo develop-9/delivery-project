@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.delivery_project.hub_service.global.response.SuccessResponse;
+import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubRouteQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
 import com.delivery_project.hub_service.hub.presentation.response.HubPathInternalResponse;
@@ -22,7 +23,8 @@ import lombok.RequiredArgsConstructor;
  * 응답의 {@code segments} 배열이 그대로 행이 된다.
  *
  * <p>외부 경로 조회(11번)와 <b>같은 서비스 메서드</b>를 쓴다. 산출 로직이 갈라지면
- * 화면에 보이는 경로와 실제 배송 경로가 어긋날 수 있어서다. 응답에서 필드만 달리 고른다.
+ * 화면에 보이는 경로와 실제 배송 경로가 어긋날 수 있어서다. 입력도 같은 {@link HubPathQuery} 로 묶고
+ * 응답에서 필드만 달리 고른다.
  */
 @RestController
 @RequestMapping("/internal/v1/hub-routes")
@@ -37,7 +39,7 @@ public class HubRouteInternalController implements HubRouteInternalSpec {
 			@RequestParam UUID departureHubId,
 			@RequestParam UUID arrivalHubId
 	) {
-		HubPathResult result = hubRouteQueryService.findPath(departureHubId, arrivalHubId);
+		HubPathResult result = hubRouteQueryService.findPath(new HubPathQuery(departureHubId, arrivalHubId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubPathInternalResponse.from(result)));
 	}

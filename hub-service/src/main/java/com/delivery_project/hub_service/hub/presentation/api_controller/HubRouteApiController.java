@@ -1,5 +1,6 @@
 package com.delivery_project.hub_service.hub.presentation.api_controller;
 
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,15 +22,18 @@ import org.springframework.web.bind.annotation.RestController;
 import com.delivery_project.hub_service.global.response.PageResponse;
 import com.delivery_project.hub_service.global.response.SuccessResponse;
 import com.delivery_project.hub_service.global.util.PageableFactory;
+import com.delivery_project.hub_service.hub.application.command.HubRouteDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command_service.HubRouteCommandService;
+import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
+import com.delivery_project.hub_service.hub.application.query.HubRouteGetQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubRouteQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDetailResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateResult;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteSearchCondition;
 import com.delivery_project.hub_service.hub.presentation.request.HubRouteCreateRequest;
+import com.delivery_project.hub_service.hub.presentation.request.HubRouteSearchRequest;
 import com.delivery_project.hub_service.hub.presentation.request.HubRouteUpdateRequest;
 import com.delivery_project.hub_service.hub.presentation.response.HubPathResponse;
 import com.delivery_project.hub_service.hub.presentation.response.HubRouteCreateResponse;
@@ -44,11 +49,18 @@ import lombok.RequiredArgsConstructor;
  *
  * <p>{@code /path} 는 {@code /{hubRouteId}} 보다 구체적인 패턴이라 Spring 이 먼저 매칭한다.
  * 선언 순서와 무관하다.
+ *
+ * <p>서비스로 넘기는 입력은 출처(PathVariable·RequestBody·QueryParameter)와 무관하게
+ * <b>Command·Query 하나로 모아서</b> 전달한다. {@code callerId} 만 예외인데, 클라이언트가 제출한
+ * 데이터가 아니라 JWT 에서 파생된 인증 컨텍스트라 섞지 않는다.
  */
 @RestController
 @RequestMapping("/api/v1/hub-routes")
 @RequiredArgsConstructor
 public class HubRouteApiController implements HubRouteApiSpec {
+
+	/** 감사 필드는 {@link PageableFactory} 가 항상 허용하므로 도메인 고유 키만 얹는다. */
+	private static final Set<String> SORTABLE_KEYS = Set.of("durationMin", "distanceKm");
 
 	private final HubRouteCommandService hubRouteCommandService;
 	private final HubRouteQueryService hubRouteQueryService;
@@ -77,7 +89,7 @@ public class HubRouteApiController implements HubRouteApiSpec {
 			@RequestParam UUID departureHubId,
 			@RequestParam UUID arrivalHubId
 	) {
-		HubPathResult result = hubRouteQueryService.findPath(departureHubId, arrivalHubId);
+		HubPathResult result = hubRouteQueryService.findPath(new HubPathQuery(departureHubId, arrivalHubId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubPathResponse.from(result)));
 	}
@@ -87,28 +99,30 @@ public class HubRouteApiController implements HubRouteApiSpec {
 	public ResponseEntity<SuccessResponse<HubRouteDetailResponse>> getHubRoute(
 			@PathVariable UUID hubRouteId
 	) {
-		HubRouteDetailResult result = hubRouteQueryService.getHubRoute(hubRouteId);
+		HubRouteDetailResult result = hubRouteQueryService.getHubRoute(new HubRouteGetQuery(hubRouteId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubRouteDetailResponse.from(result)));
 	}
 
+	/**
+	 * 소요 시간·거리 범위 검색을 지원한다 (8번).
+	 *
+	 * <p>{@code size} 가 10·30·50 이 아니거나 {@code sort}·{@code direction} 이 허용값이 아니면
+	 * 에러가 아니라 기본값으로 보정된다 ({@link PageableFactory}).
+	 */
 	@Override
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PageResponse<HubRouteDetailResponse>>> searchHubRoutes(
-			@RequestParam(required = false) UUID departureHubId,
-			@RequestParam(required = false) UUID arrivalHubId,
-			@RequestParam(required = false) Integer minDurationMin,
-			@RequestParam(required = false) Integer maxDurationMin,
+			@Valid @ModelAttribute HubRouteSearchRequest request,
 			@RequestParam(required = false) Integer page,
 			@RequestParam(required = false) Integer size,
 			@RequestParam(required = false) String sort,
 			@RequestParam(required = false) String direction
 	) {
-		Pageable pageable = PageableFactory.of(page, size, sort, direction);
-		HubRouteSearchCondition condition = new HubRouteSearchCondition(
-				departureHubId, arrivalHubId, minDurationMin, maxDurationMin);
+		Pageable pageable = PageableFactory.of(page, size, sort, direction, SORTABLE_KEYS);
 
-		Page<HubRouteDetailResult> results = hubRouteQueryService.searchHubRoutes(condition, pageable);
+		Page<HubRouteDetailResult> results =
+				hubRouteQueryService.searchHubRoutes(request.toQuery(), pageable);
 
 		return ResponseEntity.ok(
 				SuccessResponse.success(PageResponse.from(results, HubRouteDetailResponse::from)));
@@ -122,7 +136,8 @@ public class HubRouteApiController implements HubRouteApiSpec {
 			@PathVariable UUID hubRouteId,
 			@Valid @RequestBody HubRouteUpdateRequest request
 	) {
-		HubRouteUpdateResult result = hubRouteCommandService.update(callerId, hubRouteId, request.toCommand());
+		HubRouteUpdateResult result =
+				hubRouteCommandService.update(callerId, request.toCommand(hubRouteId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubRouteUpdateResponse.from(result)));
 	}
@@ -133,7 +148,8 @@ public class HubRouteApiController implements HubRouteApiSpec {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID hubRouteId
 	) {
-		HubRouteDeleteResult result = hubRouteCommandService.delete(callerId, hubRouteId);
+		HubRouteDeleteResult result =
+				hubRouteCommandService.delete(callerId, new HubRouteDeleteCommand(hubRouteId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubRouteDeleteResponse.from(result)));
 	}

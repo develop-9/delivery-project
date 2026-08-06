@@ -24,6 +24,7 @@ import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
+import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
@@ -149,10 +150,11 @@ class HubCommandServiceTest {
 
 			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
 
-			HubUpdateCommand command = new HubUpdateCommand(null, null, null, null, HubType.MAIN, null);
+			HubUpdateCommand command = new HubUpdateCommand(
+					sub.getId(), null, null, null, null, HubType.MAIN, null);
 
 			// when
-			hubCommandService.update(CALLER_ID, sub.getId(), command);
+			hubCommandService.update(CALLER_ID, command);
 
 			// then
 			assertThat(sub.getHubType()).isEqualTo(HubType.MAIN);
@@ -171,10 +173,10 @@ class HubCommandServiceTest {
 			when(hubRepository.countChildren(main.getId())).thenReturn(1L);
 
 			HubUpdateCommand command = new HubUpdateCommand(
-					null, null, null, null, HubType.SUB, otherMain.getId());
+					main.getId(), null, null, null, null, HubType.SUB, otherMain.getId());
 
 			// when & then
-			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, main.getId(), command))
+			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, command))
 					.isEqualTo(ErrorCode.HUB_HAS_CHILDREN);
 		}
 
@@ -188,10 +190,10 @@ class HubCommandServiceTest {
 			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
 
 			HubUpdateCommand command = new HubUpdateCommand(
-					null, null, null, null, HubType.SUB, sub.getId());
+					sub.getId(), null, null, null, null, HubType.SUB, sub.getId());
 
 			// when & then
-			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, sub.getId(), command))
+			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, command))
 					.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
 		}
 	}
@@ -215,7 +217,7 @@ class HubCommandServiceTest {
 			when(hubRouteRepository.findAllByHubId(sub.getId())).thenReturn(List.of(outbound, inbound));
 
 			// when
-			HubDeleteResult result = hubCommandService.delete(CALLER_ID, sub.getId());
+			HubDeleteResult result = hubCommandService.delete(CALLER_ID, new HubDeleteCommand(sub.getId()));
 
 			// then
 			assertThat(result.deletedHubRouteCount()).isEqualTo(2);
@@ -238,7 +240,7 @@ class HubCommandServiceTest {
 			when(hubRepository.countChildren(main.getId())).thenReturn(4L);
 
 			// when & then
-			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, main.getId()))
+			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, new HubDeleteCommand(main.getId())))
 					.isEqualTo(ErrorCode.HUB_HAS_CHILDREN);
 		}
 
@@ -250,7 +252,7 @@ class HubCommandServiceTest {
 			when(hubRepository.findById(missingHubId)).thenReturn(Optional.empty());
 
 			// when & then
-			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, missingHubId))
+			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, new HubDeleteCommand(missingHubId)))
 					.isEqualTo(ErrorCode.HUB_NOT_FOUND);
 		}
 	}

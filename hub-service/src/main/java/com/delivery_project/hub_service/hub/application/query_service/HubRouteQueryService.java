@@ -20,6 +20,9 @@ import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.hub.application.HubPathCalculator;
 import com.delivery_project.hub_service.hub.application.HubSegmentPair;
+import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
+import com.delivery_project.hub_service.hub.application.query.HubRouteGetQuery;
+import com.delivery_project.hub_service.hub.application.query.HubRouteSearchQuery;
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
 import com.delivery_project.hub_service.hub.application.result.HubPathSegmentResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDetailResult;
@@ -48,8 +51,8 @@ public class HubRouteQueryService {
 	private final HubQueryRepository hubQueryRepository;
 	private final HubPathCalculator hubPathCalculator;
 
-	public HubRouteDetailResult getHubRoute(UUID hubRouteId) {
-		HubRoute hubRoute = hubRouteQueryRepository.findById(hubRouteId)
+	public HubRouteDetailResult getHubRoute(HubRouteGetQuery query) {
+		HubRoute hubRoute = hubRouteQueryRepository.findById(query.hubRouteId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_ROUTE_NOT_FOUND));
 
 		Map<UUID, String> hubNames = resolveHubNames(
@@ -58,12 +61,12 @@ public class HubRouteQueryService {
 		return toDetailResult(hubRoute, hubNames);
 	}
 
-	public Page<HubRouteDetailResult> searchHubRoutes(HubRouteSearchCondition condition, Pageable pageable) {
-		validateDurationRange(condition);
-		validateHubExists(condition.departureHubId());
-		validateHubExists(condition.arrivalHubId());
+	public Page<HubRouteDetailResult> searchHubRoutes(HubRouteSearchQuery query, Pageable pageable) {
+		validateRanges(query);
+		validateHubExists(query.departureHubId());
+		validateHubExists(query.arrivalHubId());
 
-		Page<HubRoute> hubRoutes = hubRouteQueryRepository.search(condition, pageable);
+		Page<HubRoute> hubRoutes = hubRouteQueryRepository.search(toSearchCondition(query), pageable);
 		Map<UUID, String> hubNames = resolveHubNames(collectHubIds(hubRoutes.getContent()));
 
 		return hubRoutes.map(hubRoute -> toDetailResult(hubRoute, hubNames));
@@ -75,16 +78,19 @@ public class HubRouteQueryService {
 	 * <p>계층 규칙으로 구간을 쪼갠 뒤 각 구간의 거리·시간을 {@code p_hub_routes} 에서 읽는다.
 	 * 하나라도 없으면 {@code 404 HUB_ROUTE_PATH_NOT_FOUND} 다 —
 	 * <b>허브는 멀쩡한데 사이를 잇는 간선이 없는</b> 상태라 {@code HUB_NOT_FOUND} 와 원인이 다르다.
+	 *
+	 * <p>캐시 키는 규약이 정한 {@code hubPath:{depId}:{arrId}} 그대로다. 파라미터를 Query 로 묶은 뒤에도
+	 * <b>만들어지는 문자열이 달라지면 안 되므로</b> 키 표현식만 {@code #query.xxx()} 로 바꿨다.
 	 */
 	@Cacheable(cacheNames = CacheConfig.HUB_PATH_CACHE,
-			key = "#departureHubId.toString() + ':' + #arrivalHubId.toString()")
-	public HubPathResult findPath(UUID departureHubId, UUID arrivalHubId) {
-		if (departureHubId.equals(arrivalHubId)) {
+			key = "#query.departureHubId().toString() + ':' + #query.arrivalHubId().toString()")
+	public HubPathResult findPath(HubPathQuery query) {
+		if (query.departureHubId().equals(query.arrivalHubId())) {
 			throw new BusinessException(ErrorCode.SAME_HUB_NOT_ALLOWED);
 		}
 
-		Hub departure = loadHub(departureHubId);
-		Hub arrival = loadHub(arrivalHubId);
+		Hub departure = loadHub(query.departureHubId());
+		Hub arrival = loadHub(query.arrivalHubId());
 
 		List<HubSegmentPair> pairs = hubPathCalculator.calculate(departure, arrival);
 		List<HubRoute> segments = loadSegments(pairs);
@@ -192,12 +198,39 @@ public class HubRouteQueryService {
 				.collect(Collectors.toMap(Hub::getId, Hub::getName, (left, right) -> left));
 	}
 
-	private void validateDurationRange(HubRouteSearchCondition condition) {
-		Integer min = condition.minDurationMin();
-		Integer max = condition.maxDurationMin();
+	/**
+	 * Query 를 리포지토리 포트의 입력 계약으로 옮긴다.
+	 *
+	 * <p>{@code HubRouteSearchCondition} 은 {@code domain/repository} 의 계약이라 presentation 이
+	 * 직접 만들지 않는다. 변환은 검증을 마친 이 계층에서만 일어난다.
+	 */
+	private HubRouteSearchCondition toSearchCondition(HubRouteSearchQuery query) {
+		return new HubRouteSearchCondition(
+				query.departureHubId(),
+				query.arrivalHubId(),
+				query.minDurationMin(),
+				query.maxDurationMin(),
+				query.minDistanceKm(),
+				query.maxDistanceKm()
+		);
+	}
 
-		boolean negative = (min != null && min < 0) || (max != null && max < 0);
-		boolean inverted = min != null && max != null && max < min;
+	/** 소요 시간·거리 모두 같은 규칙이라 검증을 하나로 모았다. */
+	private void validateRanges(HubRouteSearchQuery query) {
+		validateRange(query.minDurationMin(), query.maxDurationMin(), 0);
+		validateRange(query.minDistanceKm(), query.maxDistanceKm(), BigDecimal.ZERO);
+	}
+
+	/**
+	 * 음수와 역전({@code max < min})을 {@code 400 INVALID_INPUT_VALUE} 로 막는다.
+	 *
+	 * <p>둘 중 하나만 주는 것은 정상이다 — 열린 범위로 본다. 0 을 타입마다 다르게 표현해야 해서
+	 * ({@code 0} vs {@link BigDecimal#ZERO}) 기준값을 인자로 받는다.
+	 */
+	private <T extends Comparable<T>> void validateRange(T min, T max, T zero) {
+		boolean negative = (min != null && min.compareTo(zero) < 0)
+				|| (max != null && max.compareTo(zero) < 0);
+		boolean inverted = min != null && max != null && max.compareTo(min) < 0;
 
 		if (negative || inverted) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);

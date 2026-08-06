@@ -1,8 +1,10 @@
 package com.delivery_project.hub_service.hub.presentation.api_controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,7 +31,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
+import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command_service.HubCommandService;
+import com.delivery_project.hub_service.hub.application.query.HubGetQuery;
+import com.delivery_project.hub_service.hub.application.query.HubSearchQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
@@ -47,6 +53,7 @@ import com.delivery_project.hub_service.hub.domain.entity.HubType;
 class HubApiControllerTest {
 
 	private static final UUID HUB_ID = UUID.randomUUID();
+	private static final HubGetQuery GET_QUERY = new HubGetQuery(HUB_ID);
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -110,7 +117,7 @@ class HubApiControllerTest {
 	@DisplayName("Validation 실패가 아닌 에러에는 fieldErrors 가 아예 담기지 않는다")
 	void nonValidationErrorOmitsFieldErrors() throws Exception {
 		// given: NON_NULL 이라 null 로도 내려보내지 않는 것이 규약이다
-		when(hubQueryService.getHub(HUB_ID)).thenThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND));
+		when(hubQueryService.getHub(GET_QUERY)).thenThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/hubs/{hubId}", HUB_ID))
@@ -122,7 +129,7 @@ class HubApiControllerTest {
 	@DisplayName("단건 조회 응답에는 감사 필드가 없다")
 	void getHubOmitsAuditFields() throws Exception {
 		// given
-		when(hubQueryService.getHub(HUB_ID)).thenReturn(new HubDetailResult(
+		when(hubQueryService.getHub(GET_QUERY)).thenReturn(new HubDetailResult(
 				HUB_ID, "부산광역시 센터", "부산광역시 동구 중앙대로 206",
 				BigDecimal.valueOf(35.1156), BigDecimal.valueOf(129.041),
 				HubType.SUB, UUID.randomUUID(), "대구광역시 센터"));
@@ -140,7 +147,7 @@ class HubApiControllerTest {
 	@DisplayName("없는 허브를 조회하면 404 HUB_NOT_FOUND 다")
 	void getHubReturnsNotFound() throws Exception {
 		// given
-		when(hubQueryService.getHub(HUB_ID)).thenThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND));
+		when(hubQueryService.getHub(GET_QUERY)).thenThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/hubs/{hubId}", HUB_ID))
@@ -168,11 +175,47 @@ class HubApiControllerTest {
 	}
 
 	@Test
+	@DisplayName("검색 파라미터는 Query 하나로 모여 서비스에 전달된다")
+	void searchPassesConditionsAsSingleQuery() throws Exception {
+		// given
+		UUID parentHubId = UUID.randomUUID();
+		when(hubQueryService.searchHubs(any(), any()))
+				.thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(10), 0));
+
+		// when
+		mockMvc.perform(get("/api/v1/hubs")
+						.param("keyword", "센터")
+						.param("hubType", "SUB")
+						.param("parentHubId", parentHubId.toString()))
+				.andExpect(status().isOk());
+
+		// then
+		ArgumentCaptor<HubSearchQuery> queryCaptor = ArgumentCaptor.forClass(HubSearchQuery.class);
+		verify(hubQueryService).searchHubs(queryCaptor.capture(), any());
+
+		assertThat(queryCaptor.getValue())
+				.isEqualTo(new HubSearchQuery("센터", HubType.SUB, parentHubId));
+	}
+
+	@Test
+	@DisplayName("keyword 가 100자를 넘으면 400 INVALID_INPUT_VALUE 다")
+	void searchRejectsTooLongKeyword() throws Exception {
+		// given: 허브명이 100자라 그보다 긴 검색어는 어떤 행도 맞히지 못한다
+		String tooLongKeyword = "가".repeat(101);
+
+		// when & then
+		mockMvc.perform(get("/api/v1/hubs").param("keyword", tooLongKeyword))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.errorCode").value("INVALID_INPUT_VALUE"))
+				.andExpect(jsonPath("$.error.fieldErrors[*].field", containsInAnyOrder("keyword")));
+	}
+
+	@Test
 	@DisplayName("삭제 응답에는 함께 지워진 이동정보 수가 담긴다")
 	void deleteReturnsCascadedHubRouteCount() throws Exception {
 		// given: D6 로 연관 구간 2개가 함께 논리 삭제됐다
 		UUID callerId = UUID.randomUUID();
-		when(hubCommandService.delete(any(), eq(HUB_ID))).thenReturn(new HubDeleteResult(
+		when(hubCommandService.delete(any(), eq(new HubDeleteCommand(HUB_ID)))).thenReturn(new HubDeleteResult(
 				HUB_ID, "인천광역시 센터", 2, Instant.now(), callerId));
 
 		// when & then

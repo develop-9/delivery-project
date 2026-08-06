@@ -11,6 +11,7 @@ import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
+import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
@@ -58,7 +59,8 @@ public class HubCommandService {
 	}
 
 	@PreAuthorize("hasRole('MASTER')")
-	public HubUpdateResult update(UUID callerId, UUID hubId, HubUpdateCommand command) {
+	public HubUpdateResult update(UUID callerId, HubUpdateCommand command) {
+		UUID hubId = command.hubId();
 		log.info("[Hub] 허브 수정 요청 hubId={} callerId={}", hubId, callerId);
 
 		Hub hub = loadHub(hubId);
@@ -85,7 +87,8 @@ public class HubCommandService {
 	 * 중간 상태는 생기지 않는다.
 	 */
 	@PreAuthorize("hasRole('MASTER')")
-	public HubDeleteResult delete(UUID callerId, UUID hubId) {
+	public HubDeleteResult delete(UUID callerId, HubDeleteCommand command) {
+		UUID hubId = command.hubId();
 		log.info("[Hub] 허브 삭제 요청 hubId={} callerId={}", hubId, callerId);
 
 		Hub hub = loadHub(hubId);

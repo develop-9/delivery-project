@@ -17,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.delivery_project.hub_service.global.config.CacheConfig;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
+import com.delivery_project.hub_service.hub.application.query.HubBatchQuery;
+import com.delivery_project.hub_service.hub.application.query.HubGetQuery;
+import com.delivery_project.hub_service.hub.application.query.HubSearchQuery;
+import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
 import com.delivery_project.hub_service.hub.application.result.HubDetailResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
@@ -47,18 +51,25 @@ public class HubQueryService {
 	 * <p>내부 API 의 {@code getHubSummary} 는 캐시하지 않는다 — 응답 형태가 달라 같은 키를 쓸 수 없고,
 	 * 별도 키를 두면 무효화 지점이 하나 더 늘어난다.
 	 */
-	@Cacheable(cacheNames = CacheConfig.HUB_CACHE, key = "#hubId.toString()")
-	public HubDetailResult getHub(UUID hubId) {
-		Hub hub = loadHub(hubId);
+	@Cacheable(cacheNames = CacheConfig.HUB_CACHE, key = "#query.hubId().toString()")
+	public HubDetailResult getHub(HubGetQuery query) {
+		Hub hub = loadHub(query.hubId());
 
 		return HubDetailResult.from(hub, resolveParentHubName(hub));
 	}
 
-	public Page<HubDetailResult> searchHubs(HubSearchCondition condition, Pageable pageable) {
+	/**
+	 * 리포지토리 포트의 입력인 {@link HubSearchCondition} 은 여기서 만든다.
+	 * 컨트롤러가 직접 만들면 presentation 이 {@code domain.repository} 를 알게 된다.
+	 */
+	public Page<HubDetailResult> searchHubs(HubSearchQuery query, Pageable pageable) {
 		// 없는 허브의 관할을 물으면 빈 목록이 아니라 404 다 (01_hubs.md 3번).
-		if (condition.parentHubId() != null) {
-			loadHub(condition.parentHubId());
+		if (query.parentHubId() != null) {
+			loadHub(query.parentHubId());
 		}
+
+		HubSearchCondition condition =
+				new HubSearchCondition(query.keyword(), query.hubType(), query.parentHubId());
 
 		Page<Hub> hubs = hubQueryRepository.search(condition, pageable);
 		Map<UUID, String> parentNames = resolveParentHubNames(hubs.getContent());
@@ -66,8 +77,8 @@ public class HubQueryService {
 		return hubs.map(hub -> HubDetailResult.from(hub, parentNames.get(hub.getParentHubId())));
 	}
 
-	public HubSummaryResult getHubSummary(UUID hubId) {
-		return HubSummaryResult.from(loadHub(hubId));
+	public HubSummaryResult getHubSummary(HubSummaryQuery query) {
+		return HubSummaryResult.from(loadHub(query.hubId()));
 	}
 
 	/**
@@ -76,11 +87,11 @@ public class HubQueryService {
 	 * <p>일부만 없는 것은 에러가 아니라 {@code notFoundHubIds} 로 돌려준다.
 	 * <b>하나도 못 찾았을 때만</b> 404 다.
 	 */
-	public HubBatchResult getHubs(Collection<UUID> hubIds) {
-		validateBatchSize(hubIds);
+	public HubBatchResult getHubs(HubBatchQuery query) {
+		validateBatchSize(query.hubIds());
 
 		// 같은 ID 를 여러 번 보내도 응답이 부풀지 않게 중복을 먼저 없앤다.
-		Set<UUID> requestedIds = Set.copyOf(hubIds);
+		Set<UUID> requestedIds = Set.copyOf(query.hubIds());
 		List<Hub> found = hubQueryRepository.findAllByIds(requestedIds);
 
 		if (found.isEmpty()) {

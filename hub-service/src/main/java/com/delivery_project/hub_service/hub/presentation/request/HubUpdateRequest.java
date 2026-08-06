@@ -42,7 +42,7 @@ public record HubUpdateRequest(
 
 		UUID parentHubId
 ) {
-	public HubUpdateCommand toCommand() {
-		return new HubUpdateCommand(name, address, latitude, longitude, hubType, parentHubId);
+	public HubUpdateCommand toCommand(UUID hubId) {
+		return new HubUpdateCommand(hubId, name, address, latitude, longitude, hubType, parentHubId);
 	}
 }

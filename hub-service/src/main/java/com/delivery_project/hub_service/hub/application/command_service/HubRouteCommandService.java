@@ -10,6 +10,7 @@ import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubRouteCreateCommand;
+import com.delivery_project.hub_service.hub.application.command.HubRouteDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
@@ -72,7 +73,9 @@ public class HubRouteCommandService {
 	 * 지도 API 연동이 들어오면 그 형태가 재계산 요청이 될 자리라 400 으로 막지 않는다.
 	 */
 	@PreAuthorize("hasRole('MASTER')")
-	public HubRouteUpdateResult update(UUID callerId, UUID hubRouteId, HubRouteUpdateCommand command) {
+	public HubRouteUpdateResult update(UUID callerId, HubRouteUpdateCommand command) {
+		UUID hubRouteId = command.hubRouteId();
+
 		log.info("[HubRoute] 이동정보 수정 요청 hubRouteId={} callerId={}", hubRouteId, callerId);
 
 		HubRoute hubRoute = loadHubRoute(hubRouteId);
@@ -95,7 +98,9 @@ public class HubRouteCommandService {
 	 * 영향 범위({@code affectedHubPairCount})만 응답에 담아주고 판단은 호출자 몫으로 남긴다.
 	 */
 	@PreAuthorize("hasRole('MASTER')")
-	public HubRouteDeleteResult delete(UUID callerId, UUID hubRouteId) {
+	public HubRouteDeleteResult delete(UUID callerId, HubRouteDeleteCommand command) {
+		UUID hubRouteId = command.hubRouteId();
+
 		log.info("[HubRoute] 이동정보 삭제 요청 hubRouteId={} callerId={}", hubRouteId, callerId);
 
 		HubRoute hubRoute = loadHubRoute(hubRouteId);

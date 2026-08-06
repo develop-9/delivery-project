@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.delivery_project.hub_service.global.response.SuccessResponse;
+import com.delivery_project.hub_service.hub.application.query.HubBatchQuery;
+import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
@@ -41,7 +43,7 @@ public class HubInternalController implements HubInternalSpec {
 	public ResponseEntity<SuccessResponse<HubSummaryResponse>> getHub(
 			@PathVariable UUID hubId
 	) {
-		HubSummaryResult result = hubQueryService.getHubSummary(hubId);
+		HubSummaryResult result = hubQueryService.getHubSummary(new HubSummaryQuery(hubId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubSummaryResponse.from(result)));
 	}
@@ -56,7 +58,7 @@ public class HubInternalController implements HubInternalSpec {
 	public ResponseEntity<SuccessResponse<HubBatchResponse>> getHubs(
 			@RequestParam List<UUID> hubIds
 	) {
-		HubBatchResult result = hubQueryService.getHubs(hubIds);
+		HubBatchResult result = hubQueryService.getHubs(new HubBatchQuery(hubIds));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubBatchResponse.from(result)));
 	}

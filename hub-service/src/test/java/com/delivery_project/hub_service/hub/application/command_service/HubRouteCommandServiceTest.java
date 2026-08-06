@@ -23,6 +23,7 @@ import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubRouteCreateCommand;
+import com.delivery_project.hub_service.hub.application.command.HubRouteDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
@@ -180,14 +181,13 @@ class HubRouteCommandServiceTest {
 		@Test
 		@DisplayName("보낸 필드만 바뀌고 생략한 필드는 현재 값을 유지한다")
 		void updatesOnlyGivenFields() {
-			// given: 소요 시간만 보낸다
+			// given: 소요 시간만 보낸다. 대상 식별자는 Command 가 들고 있다
 			HubRoute hubRoute = stubExistingHubRoute();
 
-			HubRouteUpdateCommand command = new HubRouteUpdateCommand(null, 90);
+			HubRouteUpdateCommand command = new HubRouteUpdateCommand(HUB_ROUTE_ID, null, 90);
 
 			// when
-			HubRouteUpdateResult result = hubRouteCommandService.update(
-					CALLER_ID, HUB_ROUTE_ID, command);
+			HubRouteUpdateResult result = hubRouteCommandService.update(CALLER_ID, command);
 
 			// then
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
@@ -202,11 +202,10 @@ class HubRouteCommandServiceTest {
 			// given
 			stubExistingHubRoute();
 
-			HubRouteUpdateCommand command = new HubRouteUpdateCommand(null, null);
+			HubRouteUpdateCommand command = new HubRouteUpdateCommand(HUB_ROUTE_ID, null, null);
 
 			// when
-			HubRouteUpdateResult result = hubRouteCommandService.update(
-					CALLER_ID, HUB_ROUTE_ID, command);
+			HubRouteUpdateResult result = hubRouteCommandService.update(CALLER_ID, command);
 
 			// then
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
@@ -219,10 +218,11 @@ class HubRouteCommandServiceTest {
 			// given
 			when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
 
-			HubRouteUpdateCommand command = new HubRouteUpdateCommand(BigDecimal.valueOf(10.00), 15);
+			HubRouteUpdateCommand command = new HubRouteUpdateCommand(
+					HUB_ROUTE_ID, BigDecimal.valueOf(10.00), 15);
 
 			// when & then
-			assertThatErrorCode(() -> hubRouteCommandService.update(CALLER_ID, HUB_ROUTE_ID, command))
+			assertThatErrorCode(() -> hubRouteCommandService.update(CALLER_ID, command))
 					.isEqualTo(ErrorCode.HUB_ROUTE_NOT_FOUND);
 		}
 	}
@@ -247,7 +247,8 @@ class HubRouteCommandServiceTest {
 			when(hubRepository.countChildren(daegu.getId())).thenReturn(4L);
 
 			// when
-			HubRouteDeleteResult result = hubRouteCommandService.delete(CALLER_ID, HUB_ROUTE_ID);
+			HubRouteDeleteResult result = hubRouteCommandService.delete(
+					CALLER_ID, new HubRouteDeleteCommand(HUB_ROUTE_ID));
 
 			// then
 			assertThat(result.affectedHubPairCount()).isEqualTo(25);
@@ -262,7 +263,8 @@ class HubRouteCommandServiceTest {
 			when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
 
 			// when & then
-			assertThatErrorCode(() -> hubRouteCommandService.delete(CALLER_ID, HUB_ROUTE_ID))
+			assertThatErrorCode(() -> hubRouteCommandService.delete(
+					CALLER_ID, new HubRouteDeleteCommand(HUB_ROUTE_ID)))
 					.isEqualTo(ErrorCode.HUB_ROUTE_NOT_FOUND);
 		}
 	}
