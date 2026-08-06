@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -35,7 +35,7 @@ class UserApiControllerTest {
 	private MockMvcTester mvc;
 
 	@Autowired
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
@@ -186,7 +186,7 @@ class UserApiControllerTest {
 				}
 				""".formatted(username, slackId, role, hubField, companyField);
 		mvc.post().uri("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body).exchange();
-		return userRepository.findByUsername(username).orElseThrow().getId();
+		return userCommandRepository.findByUsername(username).orElseThrow().getId();
 	}
 
 	private String signupApprovedUserAndLogin(String username, String slackId, Role role, UUID hubId, UUID companyId) {

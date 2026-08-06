@@ -31,13 +31,13 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AuthCommandServiceTest {
 
 	@Mock
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
@@ -59,10 +59,10 @@ class AuthCommandServiceTest {
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 		User saved = createUser(command);
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userRepository.save(any(User.class))).thenReturn(saved);
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -79,7 +79,7 @@ class AuthCommandServiceTest {
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(true);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(true);
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.signup(command))
@@ -95,8 +95,8 @@ class AuthCommandServiceTest {
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0123456789")).thenReturn(true);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(true);
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.signup(command))
@@ -113,10 +113,10 @@ class AuthCommandServiceTest {
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userRepository.save(any(User.class))).thenThrow(
+		when(userCommandRepository.save(any(User.class))).thenThrow(
 				new org.springframework.dao.DataIntegrityViolationException(
 						"could not execute statement; Detail: Key (username)=(kim123) already exists."));
 
@@ -134,10 +134,10 @@ class AuthCommandServiceTest {
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userRepository.save(any(User.class))).thenThrow(
+		when(userCommandRepository.save(any(User.class))).thenThrow(
 				new org.springframework.dao.DataIntegrityViolationException(
 						"could not execute statement; Detail: Key (slack_id)=(U0123456789) already exists."));
 
@@ -155,10 +155,10 @@ class AuthCommandServiceTest {
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());
 
-		when(userRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userRepository.save(any(User.class))).thenThrow(
+		when(userCommandRepository.save(any(User.class))).thenThrow(
 				new org.springframework.dao.DataIntegrityViolationException("unrelated constraint violation"));
 
 		// when & then
@@ -203,10 +203,10 @@ class AuthCommandServiceTest {
 				Role.MASTER, null, null);
 		User saved = createUser(command);
 
-		when(userRepository.existsByUsername("master1")).thenReturn(false);
-		when(userRepository.existsBySlackId("U0000000000")).thenReturn(false);
+		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000000")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userRepository.save(any(User.class))).thenReturn(saved);
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -221,7 +221,7 @@ class AuthCommandServiceTest {
 		UserLoginCommand command = new UserLoginCommand("kim123", "Abcd1234!");
 		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
 
-		when(userRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
+		when(userCommandRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
 		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
 		when(tokenProvider.generateAccessToken(approvedUser.getId(), Role.COMPANY_MANAGER)).thenReturn("access-token");
 		when(tokenProvider.generateRefreshToken(approvedUser.getId())).thenReturn("refresh-token");
@@ -244,7 +244,7 @@ class AuthCommandServiceTest {
 		// given
 		UserLoginCommand command = new UserLoginCommand("no-such-user", "Abcd1234!");
 
-		when(userRepository.findByUsername("no-such-user")).thenReturn(Optional.empty());
+		when(userCommandRepository.findByUsername("no-such-user")).thenReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.login(command))
@@ -259,7 +259,7 @@ class AuthCommandServiceTest {
 		UserLoginCommand command = new UserLoginCommand("kim123", "wrong-password");
 		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
 
-		when(userRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
+		when(userCommandRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
 		when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
 		// when & then
@@ -282,7 +282,7 @@ class AuthCommandServiceTest {
 				.companyId(UUID.randomUUID())
 				.build();
 
-		when(userRepository.findByUsername("pendinguser")).thenReturn(Optional.of(pendingUser));
+		when(userCommandRepository.findByUsername("pendinguser")).thenReturn(Optional.of(pendingUser));
 		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
 
 		// when & then
@@ -302,7 +302,7 @@ class AuthCommandServiceTest {
 
 		when(tokenProvider.parse("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("old-refresh-token"));
-		when(userRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
 		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
 		when(tokenProvider.generateRefreshToken(userId)).thenReturn("new-refresh-token");
 		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
@@ -358,7 +358,7 @@ class AuthCommandServiceTest {
 
 		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
-		when(userRepository.findById(userId)).thenReturn(Optional.empty());
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.refresh(command))
@@ -384,7 +384,7 @@ class AuthCommandServiceTest {
 
 		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
-		when(userRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.refresh(command))

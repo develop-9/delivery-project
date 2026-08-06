@@ -15,7 +15,7 @@ import com.delivery_project.user_service.user.domain.entity.User;
  * 사용자 쿼리 측 포트. UserQueryService가 쓴다.
  *
  * 여기 있는 조회는 상태를 바꾸기 위한 것이 아니라 화면에 보여주기 위한 것이다.
- * 상태 변경/불변식 검사를 위한 조회는 UserRepository에 있다.
+ * 상태 변경/불변식 검사를 위한 조회는 UserCommandRepository에 있다.
  */
 public interface UserQueryRepository {
 

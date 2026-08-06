@@ -18,13 +18,13 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CallerResolverTest {
 
 	@Mock
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@InjectMocks
 	private CallerResolver callerResolver;
@@ -41,7 +41,7 @@ class CallerResolverTest {
 				.build();
 		UUID callerId = UUID.randomUUID();
 		ReflectionTestUtils.setField(user, "id", callerId);
-		when(userRepository.findById(callerId)).thenReturn(Optional.of(user));
+		when(userCommandRepository.findById(callerId)).thenReturn(Optional.of(user));
 
 		// when
 		User result = callerResolver.resolve(callerId);
@@ -54,7 +54,7 @@ class CallerResolverTest {
 	void 존재하지_않는_callerId면_AUTH_TOKEN_INVALID_예외가_발생한다() {
 		// given
 		UUID callerId = UUID.randomUUID();
-		when(userRepository.findById(callerId)).thenReturn(Optional.empty());
+		when(userCommandRepository.findById(callerId)).thenReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> callerResolver.resolve(callerId))

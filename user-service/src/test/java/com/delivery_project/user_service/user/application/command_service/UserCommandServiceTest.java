@@ -26,13 +26,13 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserCommandServiceTest {
 
 	@Mock
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
@@ -48,7 +48,7 @@ class UserCommandServiceTest {
 		// given
 		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
-		when(userRepository.existsBySlackId("U9999999999")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U9999999999")).thenReturn(false);
 
 		// when
 		UserUpdateMeResult result = userCommandService.updateMe(
@@ -80,7 +80,7 @@ class UserCommandServiceTest {
 		// given
 		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
-		when(userRepository.existsBySlackId("U1111111111")).thenReturn(true);
+		when(userCommandRepository.existsBySlackId("U1111111111")).thenReturn(true);
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.updateMe(
@@ -110,7 +110,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
 		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
@@ -141,7 +141,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		UUID targetId = UUID.randomUUID();
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(targetId)).thenReturn(Optional.empty());
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.delete(master.getId(), targetId))
@@ -156,7 +156,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
 		UserApproveResult result = userCommandService.approve(master.getId(), target.getId());
@@ -173,7 +173,7 @@ class UserCommandServiceTest {
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, hubId);
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, hubId);
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
 		UserApproveResult result = userCommandService.approve(hubManager.getId(), target.getId());
@@ -188,7 +188,7 @@ class UserCommandServiceTest {
 		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.approve(hubManager.getId(), target.getId()))
@@ -203,7 +203,7 @@ class UserCommandServiceTest {
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.approve(companyManager.getId(), target.getId()))
@@ -218,7 +218,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		UUID targetId = UUID.randomUUID();
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(targetId)).thenReturn(Optional.empty());
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.approve(master.getId(), targetId))
@@ -234,7 +234,7 @@ class UserCommandServiceTest {
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.approve(master.getId(), target.getId()))
@@ -249,7 +249,7 @@ class UserCommandServiceTest {
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
 		UserRejectResult result = userCommandService.reject(master.getId(), target.getId());
@@ -264,7 +264,7 @@ class UserCommandServiceTest {
 		User companyManager = createUser("company1", Role.COMPANY_MANAGER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
-		when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.reject(companyManager.getId(), target.getId()))

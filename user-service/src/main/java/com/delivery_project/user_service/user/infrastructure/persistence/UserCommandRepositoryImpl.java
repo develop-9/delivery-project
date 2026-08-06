@@ -6,13 +6,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class UserRepositoryImpl implements UserRepository {
+public class UserCommandRepositoryImpl implements UserCommandRepository {
 
 	private final SpringDataUserRepository springDataUserRepository;
 

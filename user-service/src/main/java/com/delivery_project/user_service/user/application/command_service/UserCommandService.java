@@ -17,7 +17,7 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class UserCommandService {
 
-	private final UserRepository userRepository;
+	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final CallerResolver callerResolver;
 
@@ -37,7 +37,7 @@ public class UserCommandService {
 
 		if (command.slackId() != null
 				&& !command.slackId().equals(caller.getSlackId())
-				&& userRepository.existsBySlackId(command.slackId())) {
+				&& userCommandRepository.existsBySlackId(command.slackId())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
 		}
 
@@ -49,7 +49,7 @@ public class UserCommandService {
 
 	public UserApproveResult approve(UUID callerId, UUID targetUserId) {
 		User caller = callerResolver.resolve(callerId);
-		User target = userRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		validatePermission(caller, target, ErrorCode.APPROVE_USER_FORBIDDEN);
@@ -66,7 +66,7 @@ public class UserCommandService {
 
 	public UserRejectResult reject(UUID callerId, UUID targetUserId) {
 		User caller = callerResolver.resolve(callerId);
-		User target = userRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		validatePermission(caller, target, ErrorCode.REJECT_USER_FORBIDDEN);
@@ -87,7 +87,7 @@ public class UserCommandService {
 			throw new BusinessException(ErrorCode.DELETE_USER_FORBIDDEN);
 		}
 
-		User target = userRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// TODO: target이 DELIVERY_MANAGER인 경우 Delivery Service 내부 API로 배송 중/담당 배송 존재 여부를
