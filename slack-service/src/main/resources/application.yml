@@ -29,6 +29,12 @@ spring:
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
+# Gemini 생성형 AI API 설정
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+
 eureka:
   client:
     register-with-eureka: true
