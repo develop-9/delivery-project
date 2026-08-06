@@ -28,6 +28,9 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.infrastructure.client.delivery.DeliveryManagerClient;
+
+import feign.FeignException;
 
 @ExtendWith(MockitoExtension.class)
 class UserCommandServiceTest {
@@ -37,6 +40,9 @@ class UserCommandServiceTest {
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
+	private DeliveryManagerClient deliveryManagerClient;
 
 	@Mock
 	private CallerResolver callerResolver;
@@ -136,6 +142,67 @@ class UserCommandServiceTest {
 		assertThat(result.userId()).isEqualTo(target.getId());
 		assertThat(target.isDeleted()).isTrue();
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
+	}
+
+	@Test
+	void DELIVERY_MANAGER를_삭제하면_Delivery_Service에도_삭제를_동기화한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		userCommandService.delete(master.getId(), target.getId());
+
+		// then
+		org.mockito.Mockito.verify(deliveryManagerClient).deleteByUserId(target.getId());
+	}
+
+	@Test
+	void DELIVERY_MANAGER_레코드가_Delivery_Service에_없어도_사용자_삭제는_그대로_진행된다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		feign.Request request = feign.Request.create(
+				"DELETE", "/internal/v1/delivery-managers/users/" + target.getId(),
+				java.util.Collections.emptyMap(), null, (java.nio.charset.Charset) null);
+		org.mockito.Mockito.doThrow(new FeignException.NotFound("Not Found", request, null, java.util.Collections.emptyMap()))
+				.when(deliveryManagerClient).deleteByUserId(target.getId());
+
+		// when
+		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+		assertThat(target.isDeleted()).isTrue();
+	}
+
+	@Test
+	void Delivery_Service_연동이_404가_아닌_이유로_실패하면_사용자_삭제_자체가_막힌다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		feign.Request request = feign.Request.create(
+				"DELETE", "/internal/v1/delivery-managers/users/" + target.getId(),
+				java.util.Collections.emptyMap(), null, (java.nio.charset.Charset) null);
+		org.mockito.Mockito.doThrow(new feign.RetryableException(
+						503, "Read timed out", feign.Request.HttpMethod.DELETE, (Long) null, request))
+				.when(deliveryManagerClient).deleteByUserId(target.getId());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), target.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+		assertThat(target.isDeleted()).isFalse();
+		org.mockito.Mockito.verify(refreshTokenRepository, org.mockito.Mockito.never()).deleteByUserId(target.getId());
 	}
 
 	@Test

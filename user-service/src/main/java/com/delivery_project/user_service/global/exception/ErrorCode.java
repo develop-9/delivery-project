@@ -42,6 +42,9 @@ public enum ErrorCode {
 	// 415
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 미디어 타입입니다."),
 
+	// 503
+	DELIVERY_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "배송 담당자 정보를 확인할 수 없어 잠시 후 다시 시도해주세요."),
+
 	// 500
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
