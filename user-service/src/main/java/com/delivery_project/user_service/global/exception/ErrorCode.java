@@ -37,6 +37,7 @@ public enum ErrorCode {
 	USER_DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
 	USER_DUPLICATE_SLACK_ID(HttpStatus.CONFLICT, "이미 등록된 Slack ID입니다."),
 	USER_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 가입 신청입니다."),
+	LAST_MASTER_DELETE_FORBIDDEN(HttpStatus.CONFLICT, "마지막 MASTER 계정은 삭제할 수 없습니다."),
 
 	// 415
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 미디어 타입입니다."),

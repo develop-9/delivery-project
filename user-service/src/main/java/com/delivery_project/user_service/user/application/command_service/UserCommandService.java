@@ -90,6 +90,12 @@ public class UserCommandService {
 		User target = userCommandRepository.findById(targetUserId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+		if (target.getRole() == Role.MASTER
+				&& target.getApprovalStatus() == ApprovalStatus.APPROVED
+				&& userCommandRepository.countActiveMasters() <= 1) {
+			throw new BusinessException(ErrorCode.LAST_MASTER_DELETE_FORBIDDEN);
+		}
+
 		// TODO: target이 DELIVERY_MANAGER인 경우 Delivery Service 내부 API로 배송 중/담당 배송 존재 여부를
 		//       확인해서 있으면 삭제를 막아야 하나, 해당 내부 API가 아직 없어 보류
 		//       (COMPANY_MANAGER는 Company Service에 연동 대상 레코드가 없어 확인 결과 연동 불필요로 확정됨).

@@ -22,4 +22,7 @@ public interface UserCommandRepository {
 	boolean existsByUsername(String username);
 
 	boolean existsBySlackId(String slackId);
+
+	/** 삭제 시 마지막 MASTER를 지우는 걸 막기 위한 활성 MASTER 수 확인용. */
+	long countActiveMasters();
 }

@@ -136,6 +136,56 @@ class UserCommandServiceTest {
 	}
 
 	@Test
+	void 마지막_남은_MASTER를_삭제하려하면_LAST_MASTER_DELETE_FORBIDDEN_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), target.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.LAST_MASTER_DELETE_FORBIDDEN);
+	}
+
+	@Test
+	void MASTER가_여러_명이면_그중_하나를_삭제할_수_있다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMasters()).thenReturn(2L);
+
+		// when
+		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(target.getId());
+		assertThat(target.isDeleted()).isTrue();
+	}
+
+	@Test
+	void 아직_승인되지_않은_MASTER_신청자는_활성_MASTER_수와_무관하게_삭제할_수_있다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User pendingMaster = createUser("pending-master", Role.MASTER, null);
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(pendingMaster.getId())).thenReturn(Optional.of(pendingMaster));
+
+		// when
+		UserDeleteResult result = userCommandService.delete(master.getId(), pendingMaster.getId());
+
+		// then
+		assertThat(result.userId()).isEqualTo(pendingMaster.getId());
+	}
+
+	@Test
 	void 삭제_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
