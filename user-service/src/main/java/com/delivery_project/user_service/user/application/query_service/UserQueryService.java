@@ -99,11 +99,14 @@ public class UserQueryService {
 	/**
 	 * 허브당 담당자는 1명이라는 가정이 DB로 강제되진 않으므로, 여러 건이 매칭되면 첫 번째를 반환한다
 	 * (예외 대신 결정적인 값을 돌려주는 쪽을 택함 — 이 가정이 깨진 데이터가 있어도 API가 죽지 않게).
+	 * 조회는 createdAt 오름차순으로 정렬돼 있어(findByHubIdAndRoleOrderByCreatedAtAsc), 먼저 등록된
+	 * 담당자가 항상 first로 고정된다.
 	 */
 	public InternalUserResult getInternalUserByHubAndRole(InternalUserHubRoleCommand command) {
 		List<User> users = userQueryRepository.findByHubIdAndRole(command.hubId(), command.role());
 		if (users.isEmpty()) {
-			throw new BusinessException(ErrorCode.HUB_MANAGER_NOT_FOUND);
+			throw new BusinessException(ErrorCode.INTERNAL_USER_NOT_FOUND,
+					"%s 역할의 담당자를 찾을 수 없습니다(hubId=%s).".formatted(command.role(), command.hubId()));
 		}
 		return InternalUserResult.from(users.get(0));
 	}

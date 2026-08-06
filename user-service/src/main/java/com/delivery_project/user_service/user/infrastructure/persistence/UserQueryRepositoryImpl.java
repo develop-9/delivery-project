@@ -58,7 +58,7 @@ public class UserQueryRepositoryImpl implements UserQueryRepository {
 
 	@Override
 	public List<User> findByHubIdAndRole(UUID hubId, Role role) {
-		return springDataUserRepository.findByHubIdAndRole(hubId, role);
+		return springDataUserRepository.findByHubIdAndRoleOrderByCreatedAtAsc(hubId, role);
 	}
 
 	@Override

@@ -30,7 +30,7 @@ public enum ErrorCode {
 	// 404
 	NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다."),
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
-	HUB_MANAGER_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 허브의 담당자를 찾을 수 없습니다."),
+	INTERNAL_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "조건에 맞는 사용자를 찾을 수 없습니다."),
 
 	// 409
 	INVALID_STATE(HttpStatus.CONFLICT, "요청을 처리할 수 없는 상태입니다."),

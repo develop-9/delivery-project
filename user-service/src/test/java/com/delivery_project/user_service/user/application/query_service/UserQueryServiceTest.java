@@ -292,7 +292,7 @@ class UserQueryServiceTest {
 	}
 
 	@Test
-	void Internal_허브_역할_조회에_매칭되는_사용자가_없으면_HUB_MANAGER_NOT_FOUND_예외가_발생한다() {
+	void Internal_허브_역할_조회에_매칭되는_사용자가_없으면_INTERNAL_USER_NOT_FOUND_예외가_발생한다() {
 		// given
 		UUID hubId = UUID.randomUUID();
 		when(userQueryRepository.findByHubIdAndRole(hubId, Role.HUB_MANAGER)).thenReturn(List.of());
@@ -301,7 +301,21 @@ class UserQueryServiceTest {
 		assertThatThrownBy(() -> userQueryService.getInternalUserByHubAndRole(new InternalUserHubRoleCommand(hubId, Role.HUB_MANAGER)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.HUB_MANAGER_NOT_FOUND);
+				.isEqualTo(ErrorCode.INTERNAL_USER_NOT_FOUND);
+	}
+
+	@Test
+	void Internal_허브_역할_조회에_매칭되는_사용자가_없으면_요청한_역할이_에러_메시지에_포함된다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		when(userQueryRepository.findByHubIdAndRole(hubId, Role.DELIVERY_MANAGER)).thenReturn(List.of());
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getInternalUserByHubAndRole(new InternalUserHubRoleCommand(hubId, Role.DELIVERY_MANAGER)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(Throwable::getMessage)
+				.asString()
+				.contains("DELIVERY_MANAGER");
 	}
 
 	@Test

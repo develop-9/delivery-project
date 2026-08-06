@@ -32,7 +32,8 @@ public interface UserQueryRepository {
 
 	/**
 	 * 허브당 담당자는 1명이라는 팀 결정 기준(문서 3번, Internal API)이지만 DB 제약으로 강제되진
-	 * 않으므로, 여러 건이 매칭될 가능성을 배제하지 않고 List로 받는다.
+	 * 않으므로, 여러 건이 매칭될 가능성을 배제하지 않고 List로 받는다. createdAt 오름차순으로
+	 * 정렬돼 반환된다.
 	 */
 	List<User> findByHubIdAndRole(UUID hubId, Role role);
 
