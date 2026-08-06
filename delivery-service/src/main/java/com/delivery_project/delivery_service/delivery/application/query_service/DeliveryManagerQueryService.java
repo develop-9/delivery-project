@@ -38,11 +38,12 @@ public class DeliveryManagerQueryService {
             DeliveryManagerListCommand command
     ) {
         validatePage(command.page());
-        validateSize(command.size());
+
+        int size = validateSize(command.size());
 
         Pageable pageable = PageRequest.of(
                 command.page(),
-                command.size(),
+                size,
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
@@ -58,12 +59,11 @@ public class DeliveryManagerQueryService {
         }
     }
 
-    private void validateSize(int size) {
+    private int validateSize(int size) {
         if (size != 10 && size != 30 && size != 50) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_PAGE_SIZE
-            );
+            return 10;
         }
+        return size;
     }
 
     public DeliveryManagerDetailResult getMyDeliveryManager(
