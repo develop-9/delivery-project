@@ -56,6 +56,23 @@ public enum ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR,
             "서버 내부 오류가 발생했습니다.",
             "INTERNAL_SERVER_ERROR"
+    ),
+
+    DEPENDENCY_SERVICE_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "연관 서비스를 사용할 수 없습니다.",
+            "DEPENDENCY_SERVICE_UNAVAILABLE"
+    ),
+    AI_REQUEST_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "AI 요청에 실패했습니다.",
+            "AI_REQUEST_FAILED"
+    ),
+
+    AI_RESPONSE_PARSE_FAILED(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "AI 응답 분석에 실패했습니다.",
+            "AI_RESPONSE_PARSE_FAILED"
     );
 
     private final HttpStatus status;
