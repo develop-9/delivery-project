@@ -27,24 +27,35 @@ services:
 
   # API Gateway
   # 모든 클라이언트 요청의 단일 진입점 및 라우팅
-#  api-gateway:
-#    build:
-#      context: ..
-#      dockerfile: api-gateway/Dockerfile
-#      args:
-#        JAR_FILE: api-gateway/build/libs/*.jar
-#
-#    container_name: api-gateway
-#
-#    ports:
-#      - "8080:8080"
-#
-#    depends_on:
-#      eureka-server:
-#        condition: service_healthy
-#
-#    networks:
-#      - delivery-network
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/Dockerfile
+      args:
+        JAR_FILE: api-gateway/build/libs/*.jar
+
+    container_name: api-gateway
+
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
 
 
   postgres:
