@@ -1,11 +1,11 @@
 package com.delivery_project.slack_service.slack.application;
 
+import com.delivery_project.slack_service.slack.application.result.SlackMessageTemplateData;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
+import java.util.List;
 
 @Component
 public class SlackMessageTemplateGenerator {
@@ -13,27 +13,104 @@ public class SlackMessageTemplateGenerator {
     private static final ZoneId KOREA_ZONE_ID =
             ZoneId.of("Asia/Seoul");
 
-    private static final DateTimeFormatter DEADLINE_FORMATTER =
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
                     .withZone(KOREA_ZONE_ID);
 
     public String generateSystemMessage(
-            UUID orderId,
-            Instant finalDispatchDeadline
+            SlackMessageTemplateData data
     ) {
+        String formattedOrderedAt =
+                DATE_TIME_FORMATTER.format(data.orderedAt());
+
         String formattedDeadline =
-                DEADLINE_FORMATTER.format(finalDispatchDeadline);
+                DATE_TIME_FORMATTER.format(
+                        data.finalDispatchDeadline()
+                );
+
+        String formattedRoute =
+                formatRouteHubNames(data.routeHubNames());
+
+        String requestMessage =
+                normalizeText(
+                        data.requestMessage(),
+                        "요청사항 없음"
+                );
+
+        String deliveryManager =
+                formatUserInformation(
+                        data.deliveryManagerName(),
+                        data.deliveryManagerSlackId()
+                );
+
+        String orderer =
+                formatUserInformation(
+                        data.ordererName(),
+                        data.ordererSlackId()
+                );
 
         return """
-                [배송 출발 알림]
+                💡 전달 메시지
                 
-                주문 번호: %s
-                최종 발송 시한: %s
+                주문 번호 : %s
+                주문자 정보 : %s
+                주문시간 : %s
+                상품 정보 : %s
+                요청 사항 : %s
+                발송지 : %s
+                경유지 : %s
+                도착지 : %s
+                배송담당자 : %s
                 
-                해당 시한까지 배송 출발 처리를 완료해 주세요.
+                위 내용을 기반으로 도출된 최종 발송 시한은 %s입니다.
                 """.formatted(
-                orderId,
+                data.orderId(),
+                orderer,
+                formattedOrderedAt,
+                data.productName(),
+                requestMessage,
+                data.originHubName(),
+                formattedRoute,
+                data.destinationAddress(),
+                deliveryManager,
                 formattedDeadline
         );
+    }
+
+    private String formatRouteHubNames(
+            List<String> routeHubNames
+    ) {
+        if (routeHubNames == null || routeHubNames.isEmpty()) {
+            return "경유지 없음";
+        }
+
+        return String.join(", ", routeHubNames);
+    }
+
+    private String formatUserInformation(
+            String name,
+            String slackId
+    ) {
+        String normalizedName =
+                normalizeText(name, "이름 없음");
+
+        String normalizedSlackId =
+                normalizeText(slackId, "Slack ID 없음");
+
+        return "%s / %s".formatted(
+                normalizedName,
+                normalizedSlackId
+        );
+    }
+
+    private String normalizeText(
+            String value,
+            String defaultValue
+    ) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+
+        return value;
     }
 }
