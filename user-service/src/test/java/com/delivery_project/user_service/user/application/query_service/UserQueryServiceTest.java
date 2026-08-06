@@ -85,7 +85,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.search(condition, pageable)).thenReturn(page);
 
 		// when
-		Page<UserListResult> result = userQueryService.list(master.getId(), new UserListCommand(condition, pageable));
+		Page<UserListResult> result = userQueryService.getUsers(master.getId(), new UserListCommand(condition, pageable));
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(1);
@@ -106,7 +106,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.search(condition, normalizedPageable)).thenReturn(page);
 
 		// when
-		userQueryService.list(master.getId(), new UserListCommand(condition, requestedPageable));
+		userQueryService.getUsers(master.getId(), new UserListCommand(condition, requestedPageable));
 
 		// then
 		org.mockito.Mockito.verify(userQueryRepository).search(condition, normalizedPageable);
@@ -121,7 +121,7 @@ class UserQueryServiceTest {
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.list(hubManager.getId(), new UserListCommand(condition, pageable)))
+		assertThatThrownBy(() -> userQueryService.getUsers(hubManager.getId(), new UserListCommand(condition, pageable)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);

@@ -73,7 +73,7 @@ public class UserApiController {
 	}
 
 	@GetMapping
-	public ResponseEntity<SuccessResponse<PageResponse<UserListResponse>>> list(
+	public ResponseEntity<SuccessResponse<PageResponse<UserListResponse>>> getUsers(
 			@AuthenticationPrincipal UUID callerId,
 			@RequestParam(required = false) ApprovalStatus approvalStatus,
 			@RequestParam(required = false) Role role,
@@ -82,7 +82,7 @@ public class UserApiController {
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
 		UserSearchCondition condition = new UserSearchCondition(approvalStatus, role, hubId, companyId);
-		Page<UserListResult> results = userQueryService.list(callerId, new UserListCommand(condition, pageable));
+		Page<UserListResult> results = userQueryService.getUsers(callerId, new UserListCommand(condition, pageable));
 		PageResponse<UserListResponse> response = PageResponse.from(results, UserListResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}

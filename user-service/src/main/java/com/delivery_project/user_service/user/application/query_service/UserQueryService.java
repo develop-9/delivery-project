@@ -46,7 +46,7 @@ public class UserQueryService {
 		return UserDetailResult.from(caller);
 	}
 
-	public Page<UserListResult> list(UUID callerId, UserListCommand command) {
+	public Page<UserListResult> getUsers(UUID callerId, UserListCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
 			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 목록 조회 권한이 없습니다.");
