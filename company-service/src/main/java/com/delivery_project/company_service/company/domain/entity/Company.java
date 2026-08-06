@@ -12,6 +12,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_companies")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @Getter
 @SQLRestriction("deleted_at IS NULL")
 public class Company extends BaseDeletableEntity {

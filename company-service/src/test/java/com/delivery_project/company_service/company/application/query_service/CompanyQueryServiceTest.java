@@ -3,6 +3,7 @@ package com.delivery_project.company_service.company.application.query_service;
 import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
+import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.domain.entity.Company;
@@ -24,8 +25,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -253,6 +255,79 @@ class CompanyQueryServiceTest {
                     .normalizeSort(any());
 
             verifyNoInteractions(companyQueryRepository);
+        }
+    }
+
+    @Nested
+    @DisplayName("내부 업체 단건 조회")
+    class GetCompanyForInternal {
+
+        @Test
+        @DisplayName("업체 ID로 업체를 정상적으로 조회한다")
+        void getCompanyForInternal_success() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            CompanyGetCommand command =
+                    new CompanyGetCommand(companyId);
+
+            Company company = new Company(
+                    companyId,
+                    hubId,
+                    "테스트 업체",
+                    CompanyType.PRODUCER,
+                    "서울특별시 강남구"
+            );
+
+            given(companyQueryRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
+            // when
+            CompanyGetForInternalResult result =
+                    companyQueryService.getCompanyForInternal(command);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.companyId()).isEqualTo(companyId);
+            assertThat(result.name()).isEqualTo("테스트 업체");
+            assertThat(result.type()).isEqualTo(CompanyType.PRODUCER);
+
+            then(companyQueryRepository)
+                    .should()
+                    .findById(companyId);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 조회하면 COMPANY_NOT_FOUND 예외가 발생한다")
+        void getCompanyForInternal_notFound() {
+            // given
+            UUID companyId = UUID.randomUUID();
+
+            CompanyGetCommand command =
+                    new CompanyGetCommand(companyId);
+
+            given(companyQueryRepository.findById(companyId))
+                    .willReturn(Optional.empty());
+
+            // when
+            Throwable thrown = catchThrowable(
+                    () -> companyQueryService.getCompanyForInternal(command)
+            );
+
+            // then
+            assertThat(thrown)
+                    .isInstanceOf(BusinessException.class);
+
+            BusinessException exception =
+                    (BusinessException) thrown;
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+            then(companyQueryRepository)
+                    .should()
+                    .findById(companyId);
         }
     }
 }
