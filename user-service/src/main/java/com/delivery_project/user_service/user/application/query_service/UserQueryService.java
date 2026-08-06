@@ -87,10 +87,16 @@ public class UserQueryService {
 	}
 
 	/** 허브 관리자는 허브당 1명이라는 팀 결정 기준(문서 3번, Internal API). */
+	/**
+	 * 허브당 담당자는 1명이라는 가정이 DB로 강제되진 않으므로, 여러 건이 매칭되면 첫 번째를 반환한다
+	 * (예외 대신 결정적인 값을 돌려주는 쪽을 택함 — 이 가정이 깨진 데이터가 있어도 API가 죽지 않게).
+	 */
 	public InternalUserResult getInternalUserByHubAndRole(UUID hubId, Role role) {
-		User user = userQueryRepository.findByHubIdAndRole(hubId, role)
-				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_MANAGER_NOT_FOUND));
-		return InternalUserResult.from(user);
+		List<User> users = userQueryRepository.findByHubIdAndRole(hubId, role);
+		if (users.isEmpty()) {
+			throw new BusinessException(ErrorCode.HUB_MANAGER_NOT_FOUND);
+		}
+		return InternalUserResult.from(users.get(0));
 	}
 
 	public InternalUserSlackResult getInternalUserSlack(UUID userId) {

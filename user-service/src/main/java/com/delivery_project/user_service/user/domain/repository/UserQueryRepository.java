@@ -30,8 +30,11 @@ public interface UserQueryRepository {
 	/** Internal API 배치 조회용. 존재하지 않는 id는 결과에서 제외된다. */
 	List<User> findAllByIds(Collection<UUID> ids);
 
-	/** 허브당 담당자는 1명이라는 팀 결정 기준(문서 3번, Internal API). */
-	Optional<User> findByHubIdAndRole(UUID hubId, Role role);
+	/**
+	 * 허브당 담당자는 1명이라는 팀 결정 기준(문서 3번, Internal API)이지만 DB 제약으로 강제되진
+	 * 않으므로, 여러 건이 매칭될 가능성을 배제하지 않고 List로 받는다.
+	 */
+	List<User> findByHubIdAndRole(UUID hubId, Role role);
 
 	/** 사용자 목록 동적 조합 검색 (approvalStatus/role/hubId/companyId, 문서 3번). */
 	Page<User> search(UserSearchCondition condition, Pageable pageable);

@@ -27,5 +27,5 @@ public interface SpringDataUserRepository extends JpaRepository<User, UUID> {
 
 	List<User> findByIdIn(Collection<UUID> ids);
 
-	Optional<User> findByHubIdAndRole(UUID hubId, Role role);
+	List<User> findByHubIdAndRole(UUID hubId, Role role);
 }
