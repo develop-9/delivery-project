@@ -1,7 +1,10 @@
 package com.delivery_project.company_service.company.application.query_service;
 
+import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
+import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
@@ -14,8 +17,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +33,9 @@ class CompanyQueryServiceTest {
 
     @Mock
     private CompanyQueryRepository companyQueryRepository;
+
+    @Mock
+    private PageValidator pageValidator;
 
     @InjectMocks
     private CompanyQueryService companyQueryService;
@@ -113,6 +121,138 @@ class CompanyQueryServiceTest {
                     .findById(companyId);
 
             verifyNoMoreInteractions(companyQueryRepository);
+        }
+    }
+
+    @Nested
+    @DisplayName("업체 목록 조회 및 검색 비즈니스 로직 검증")
+    class GetAllCompany {
+
+        @Test
+        @DisplayName("업체 검색에 성공한다.")
+        void getAllCompany_success() {
+            // Given
+            int page = 0;
+            int size = 10;
+
+            Sort sort = Sort.by(
+                    Sort.Direction.DESC,
+                    "createdAt"
+            );
+
+            UUID hubId = UUID.randomUUID();
+
+            CompanyGetAllCommand command = new CompanyGetAllCommand(
+                    page,
+                    size,
+                    "createdAt,desc",
+                    "테스트",
+                    CompanyType.PRODUCER,
+                    hubId
+            );
+
+            Pageable pageable = PageRequest.of(
+                    page,
+                    size,
+                    sort
+            );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            Page<Company> companyPage =
+                    new PageImpl<>(
+                            List.of(company),
+                            pageable,
+                            1
+                    );
+
+            when(pageValidator.validatePage(page))
+                    .thenReturn(page);
+
+            when(pageValidator.normalizeSize(size))
+                    .thenReturn(size);
+
+            when(pageValidator.normalizeSort("createdAt,desc"))
+                    .thenReturn(sort);
+
+            when(companyQueryRepository.search(
+                    command.name(),
+                    command.type(),
+                    command.hubId(),
+                    pageable
+            )).thenReturn(companyPage);
+
+            // When
+            CompanyGetAllResult result =
+                    companyQueryService.getAllCompany(command);
+
+            // Then
+            assertThat(result)
+                    .isNotNull();
+
+            verify(pageValidator)
+                    .validatePage(page);
+
+            verify(pageValidator)
+                    .normalizeSize(size);
+
+            verify(pageValidator)
+                    .normalizeSort("createdAt,desc");
+
+            verify(companyQueryRepository)
+                    .search(
+                            command.name(),
+                            command.type(),
+                            command.hubId(),
+                            pageable
+                    );
+        }
+
+        @Test
+        @DisplayName("페이지 번호가 유효하지 않으면 업체 검색에 실패한다.")
+        void getAllCompany_fail_whenInvalidPage() {
+            // Given
+            Integer page = -1;
+
+            CompanyGetAllCommand command = new CompanyGetAllCommand(
+                    page,
+                    10,
+                    "createdAt,desc",
+                    null,
+                    null,
+                    null
+            );
+
+            when(pageValidator.validatePage(page))
+                    .thenThrow(
+                            new BusinessException(ErrorCode.INVALID_PAGE)
+                    );
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    companyQueryService.getAllCompany(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.INVALID_PAGE
+                    );
+
+            verify(pageValidator)
+                    .validatePage(page);
+
+            verify(pageValidator, never())
+                    .normalizeSize(any());
+
+            verify(pageValidator, never())
+                    .normalizeSort(any());
+
+            verifyNoInteractions(companyQueryRepository);
         }
     }
 }

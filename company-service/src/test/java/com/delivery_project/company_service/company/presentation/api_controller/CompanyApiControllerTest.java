@@ -6,10 +6,7 @@ import com.delivery_project.company_service.company.application.command.CompanyG
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
-import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
-import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
-import com.delivery_project.company_service.company.application.result.CompanyGetResult;
-import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
+import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
@@ -28,6 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -382,6 +380,153 @@ class CompanyApiControllerTest {
                                     command.companyId().equals(companyId)
                             )
                     );
+        }
+    }
+
+    @Nested
+    @DisplayName("업체 목록 조회/검색 API 테스트")
+    class GetAllCompany {
+        @Test
+        @DisplayName("업체 목록을 검색한다.")
+        void getAllCompany_success() throws Exception {
+
+            // Given
+            UUID hubId = UUID.randomUUID();
+
+            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+
+            when(result.content())
+                    .thenReturn(Collections.emptyList());
+
+            when(result.page())
+                    .thenReturn(0);
+
+            when(result.size())
+                    .thenReturn(10);
+
+            when(result.totalElements())
+                    .thenReturn(0L);
+
+            when(result.totalPages())
+                    .thenReturn(0);
+
+            when(companyQueryService.getAllCompany(any()))
+                    .thenReturn(result);
+
+            // When
+            mockMvc.perform(
+                            get("/api/v1/companies")
+                                    .param("page", "0")
+                                    .param("size", "10")
+                                    .param("sort", "createdAt,desc")
+                                    .param("companyName", "테스트")
+                                    .param("companyType", "PRODUCER")
+                                    .param("hubId", hubId.toString())
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+
+                    // Then
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10))
+                    .andExpect(jsonPath("$.data.totalElements").value(0))
+                    .andExpect(jsonPath("$.data.totalPages").value(0))
+                    .andExpect(jsonPath("$.data.content").isArray());
+
+            verify(companyQueryService)
+                    .getAllCompany(any());
+
+            verifyNoMoreInteractions(companyQueryService);
+        }
+
+
+        @Test
+        @DisplayName("검색 조건 없이 기본값으로 업체 목록을 검색한다.")
+        void getAllCompany_success_withDefaultParameter() throws Exception {
+
+            // Given
+            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+
+            when(result.content())
+                    .thenReturn(Collections.emptyList());
+
+            when(result.page())
+                    .thenReturn(0);
+
+            when(result.size())
+                    .thenReturn(10);
+
+            when(result.totalElements())
+                    .thenReturn(0L);
+
+            when(result.totalPages())
+                    .thenReturn(0);
+
+            when(companyQueryService.getAllCompany(any()))
+                    .thenReturn(result);
+
+            // When
+            mockMvc.perform(
+                            get("/api/v1/companies")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+
+                    // Then
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10))
+                    .andExpect(jsonPath("$.data.totalElements").value(0))
+                    .andExpect(jsonPath("$.data.totalPages").value(0))
+                    .andExpect(jsonPath("$.data.content").isArray());
+
+            verify(companyQueryService)
+                    .getAllCompany(any());
+
+            verifyNoMoreInteractions(companyQueryService);
+        }
+
+
+        @Test
+        @DisplayName("잘못된 업체 유형으로 요청하면 400을 반환한다.")
+        void getAllCompany_fail_whenInvalidCompanyType() throws Exception {
+
+            // Given
+            String invalidCompanyType = "INVALID_TYPE";
+
+            // When
+            mockMvc.perform(
+                            get("/api/v1/companies")
+                                    .param("page", "0")
+                                    .param("size", "10")
+                                    .param("sort", "createdAt,desc")
+                                    .param("companyType", invalidCompanyType)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+
+                    // Then
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(companyQueryService);
+        }
+
+        @Test
+        @DisplayName("잘못된 page 타입으로 요청하면 400을 반환한다.")
+        void getAllCompany_fail_whenInvalidPage() throws Exception {
+
+            // Given
+            String invalidPage = "abc";
+
+            // When
+            mockMvc.perform(
+                            get("/api/v1/companies")
+                                    .param("page", invalidPage)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+
+                    // Then
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(companyQueryService);
         }
     }
 }
