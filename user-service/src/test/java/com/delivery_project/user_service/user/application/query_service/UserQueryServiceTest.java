@@ -308,6 +308,36 @@ class UserQueryServiceTest {
 	}
 
 	@Test
+	void Internal_배치_조회는_최대_100건까지만_허용하고_초과하면_예외가_발생한다() {
+		// given
+		List<UUID> tooManyIds = java.util.stream.Stream.generate(UUID::randomUUID)
+				.limit(101)
+				.toList();
+
+		// when & then
+		assertThatThrownBy(() -> userQueryService.getInternalUsersBatch(new InternalUserBatchCommand(tooManyIds)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_BATCH_SIZE);
+		org.mockito.Mockito.verify(userQueryRepository, org.mockito.Mockito.never()).findAllByIds(org.mockito.ArgumentMatchers.any());
+	}
+
+	@Test
+	void Internal_배치_조회는_정확히_100건이면_허용된다() {
+		// given
+		List<UUID> exactlyMaxIds = java.util.stream.Stream.generate(UUID::randomUUID)
+				.limit(100)
+				.toList();
+		when(userQueryRepository.findAllByIds(exactlyMaxIds)).thenReturn(List.of());
+
+		// when
+		userQueryService.getInternalUsersBatch(new InternalUserBatchCommand(exactlyMaxIds));
+
+		// then
+		org.mockito.Mockito.verify(userQueryRepository).findAllByIds(exactlyMaxIds);
+	}
+
+	@Test
 	void Internal_허브_역할_조회는_조건에_맞는_사용자를_반환한다() {
 		// given
 		UUID hubId = UUID.randomUUID();

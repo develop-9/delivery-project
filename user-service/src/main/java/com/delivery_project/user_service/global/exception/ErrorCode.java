@@ -12,6 +12,7 @@ public enum ErrorCode {
 	// 400
 	INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다."),
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
+	INVALID_BATCH_SIZE(HttpStatus.BAD_REQUEST, "한 번에 조회할 수 있는 최대 개수를 초과했습니다."),
 
 	// 401
 	AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 일치하지 않습니다."),

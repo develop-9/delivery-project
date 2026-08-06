@@ -35,6 +35,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class UserQueryService {
 
+	private static final int MAX_BATCH_SIZE = 100;
+
 	private final UserQueryRepository userQueryRepository;
 	private final CallerResolver callerResolver;
 	private final PageValidator pageValidator;
@@ -95,6 +97,11 @@ public class UserQueryService {
 
 	/** 존재하지 않는 id는 결과에서 조용히 제외한다(문서 3번, N+1 방지용 배치 조회). */
 	public List<InternalUserResult> getInternalUsersBatch(InternalUserBatchCommand command) {
+		if (command.userIds().size() > MAX_BATCH_SIZE) {
+			throw new BusinessException(ErrorCode.INVALID_BATCH_SIZE,
+					"한 번에 최대 %d건까지 조회할 수 있습니다(요청 %d건).".formatted(MAX_BATCH_SIZE, command.userIds().size()));
+		}
+
 		return userQueryRepository.findAllByIds(command.userIds()).stream()
 				.map(InternalUserResult::from)
 				.toList();
