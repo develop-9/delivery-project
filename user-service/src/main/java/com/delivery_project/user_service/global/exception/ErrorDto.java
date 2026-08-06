@@ -18,7 +18,7 @@ public record ErrorDto(
 		return new ErrorDto(errorCode.name(), errorCode.getMessage(), fieldErrors);
 	}
 
-	public static ErrorDto of(ErrorCode errorCode, String message) {
+	public static ErrorDto from(ErrorCode errorCode, String message) {
 		return new ErrorDto(errorCode.name(), message, null);
 	}
 }

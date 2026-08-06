@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.from(errorCode));
 	}
 
+	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode, String message) {
+		return ResponseEntity.status(errorCode.getHttpStatus())
+				.body(ErrorResponse.from(errorCode, message));
+	}
+
 	private ResponseEntity<ErrorResponse> createResponse(ErrorCode errorCode, List<FieldErrorDto> fieldErrors) {
 		return ResponseEntity.status(errorCode.getHttpStatus())
 				.body(ErrorResponse.from(errorCode, fieldErrors));
@@ -39,8 +44,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
 		log.info("[Global] 비즈니스 예외 발생 errorCode={}", e.getErrorCode());
-		return ResponseEntity.status(e.getErrorCode().getHttpStatus())
-				.body(ErrorResponse.of(e.getErrorCode(), e.getMessage()));
+		return createResponse(e.getErrorCode(), e.getMessage());
 	}
 
 	@ExceptionHandler(IllegalStateException.class)
