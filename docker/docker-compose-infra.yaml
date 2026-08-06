@@ -36,15 +36,21 @@ services:
 
     container_name: api-gateway
 
+    env_file:
+      - ../.env
+
     environment:
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
       ZIPKIN_HOST: zipkin
+      REDIS_HOST: redis
 
     ports:
       - "8080:8080"
 
     depends_on:
       eureka-server:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     healthcheck:
