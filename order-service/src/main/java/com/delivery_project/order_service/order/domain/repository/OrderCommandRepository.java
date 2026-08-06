@@ -9,7 +9,7 @@ import java.util.UUID;
  * 주문 커맨드 측 포트. 상태 변경과 불변식 검사를 위한 조회만 둔다.
  * 화면에 보여주기 위한 조회는 OrderQueryRepository 에 있다.
  */
-public interface OrderRepository {
+public interface OrderCommandRepository {
 
 	Order save(Order order);
 

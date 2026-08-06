@@ -9,23 +9,28 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 주문. 컬럼 구성은 팀문서 p_orders 명세를 그대로 따른다.
+ *
+ * <p>출발·도착 허브는 여기 저장하지 않는다. 출발 허브는 상품(p_products.hub_id),
+ * 도착 허브는 수령 업체(p_companies.hub_id)에서 도출되므로 order 가 복제해 들고 있으면
+ * 원본이 바뀔 때 어긋난다. 배송 ID 도 갖지 않는다 — 참조는 p_deliveries.order_id 단방향이다.
+ */
 @Entity
 @Getter
 @Table(
         name = "p_orders",
         indexes = {
                 @Index(name = "idx_orders_status_created", columnList = "status, created_at"),
-                @Index(name = "idx_orders_origin_hub", columnList = "origin_hub_id, status"),
+                @Index(name = "idx_orders_supplier", columnList = "supplier_company_id, status"),
                 @Index(name = "idx_orders_receiver", columnList = "receiver_company_id, status"),
-                @Index(name = "idx_orders_requester", columnList = "requester_user_id")
+                @Index(name = "idx_orders_receiver_user", columnList = "receiver_user_id")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,60 +40,24 @@ public class Order extends BaseDeletableEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /** 생산·공급 업체 */
     @Column(name = "supplier_company_id", nullable = false)
     private UUID supplierCompanyId;
 
+    /** 수령 업체 */
     @Column(name = "receiver_company_id", nullable = false)
     private UUID receiverCompanyId;
 
-    /** 출발 허브 (재고 선점 대상 — 재고 연동 단계에서 사용) */
-    @Column(name = "origin_hub_id", nullable = false)
-    private UUID originHubId;
-
-    /** 도착 허브 (수령 업체 소속 허브) */
-    @Column(name = "dest_hub_id", nullable = false)
-    private UUID destHubId;
-
-    /** 주문 요청자 — Gateway 가 넘겨준 X-User-Id */
-    @Column(name = "requester_user_id", nullable = false)
-    private UUID requesterUserId;
-
-    @Column(name = "item_count", nullable = false)
-    private Integer itemCount;
-
-    @Column(name = "total_quantity", nullable = false)
-    private Integer totalQuantity;
-
-    @Column(name = "total_price", nullable = false, precision = 14, scale = 2)
-    private BigDecimal totalPrice;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
-    private OrderStatus status;
-
-    /** 배송 연동 단계에서 delivery-service 가 채워준다 */
-    @Column(name = "delivery_id")
-    private UUID deliveryId;
+    /** 주문 수신자 (논리 FK → p_users.id) */
+    @Column(name = "receiver_user_id", nullable = false)
+    private UUID receiverUserId;
 
     @Column(name = "request_details", columnDefinition = "TEXT")
     private String requestDetails;
 
-    @Column(name = "due_at")
-    private LocalDateTime dueAt;
-
-    @Column(name = "dispatch_deadline_at")
-    private LocalDateTime dispatchDeadlineAt;
-
-    @Column(name = "cancel_reason", length = 255)
-    private String cancelReason;
-
-    /**
-     * 동시에 같은 주문을 수정하면 나중 커밋이 예외로 튕긴다.
-     * 수량 변경과 취소가 겹쳐 집계 컬럼이 어긋나는 것을 막는다.
-     */
-    @Version
-    @Column(name = "version")
-    private Long version;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private OrderStatus status;
 
     /**
      * cascade = ALL       : 주문 저장 시 줄도 함께 저장
@@ -99,19 +68,12 @@ public class Order extends BaseDeletableEntity {
 
     @Builder
     private Order(UUID supplierCompanyId, UUID receiverCompanyId,
-                  UUID originHubId, UUID destHubId, UUID requesterUserId,
-                  String requestDetails, LocalDateTime dueAt) {
+                  UUID receiverUserId, String requestDetails) {
         this.supplierCompanyId = supplierCompanyId;
         this.receiverCompanyId = receiverCompanyId;
-        this.originHubId = originHubId;
-        this.destHubId = destHubId;
-        this.requesterUserId = requesterUserId;
+        this.receiverUserId = receiverUserId;
         this.requestDetails = requestDetails;
-        this.dueAt = dueAt;
         this.status = OrderStatus.PENDING;
-        this.itemCount = 0;
-        this.totalQuantity = 0;
-        this.totalPrice = BigDecimal.ZERO;
     }
 
     // ────────── 줄 관리 ──────────
@@ -125,7 +87,6 @@ public class Order extends BaseDeletableEntity {
 
         items.add(item);
         item.assignOrder(this);
-        recalculate();
     }
 
     public void removeItem(UUID productId) {
@@ -138,8 +99,6 @@ public class Order extends BaseDeletableEntity {
         if (!removed) {
             throw new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND);
         }
-
-        recalculate();
     }
 
     public OrderItem findItem(UUID productId) {
@@ -176,39 +135,30 @@ public class Order extends BaseDeletableEntity {
                     .filter(i -> i.getProductId().equals(newItem.getProductId()))
                     .findFirst()
                     .ifPresentOrElse(
-                            existing -> existing.change(newItem.getProductName(),
-                                    newItem.getQuantity(), newItem.getUnitPrice()),
+                            existing -> existing.change(newItem.getQuantity(), newItem.getInventoryId()),
                             () -> {
                                 newItem.assignOrder(this);
                                 items.add(newItem);
                             });
         }
-
-        recalculate();
     }
 
     // ────────── 상태 전이 ──────────
 
-    public void confirmDelivery(UUID deliveryId) {
+    /** 배송·경로 생성이 끝났을 때 delivery-service 통보로 호출된다 */
+    public void confirm() {
         validateTransit(OrderStatus.CONFIRMED);
-        this.deliveryId = deliveryId;
         this.status = OrderStatus.CONFIRMED;
     }
 
-    public void complete() {
-        validateTransit(OrderStatus.COMPLETED);
-        this.status = OrderStatus.COMPLETED;
-    }
-
-    public void cancel(String reason) {
+    public void cancel() {
         validateTransit(OrderStatus.CANCELED);
         this.status = OrderStatus.CANCELED;
-        this.cancelReason = reason;
     }
 
-    public void markFailed(String reason) {
+    public void markFailed() {
+        validateTransit(OrderStatus.FAILED);
         this.status = OrderStatus.FAILED;
-        this.cancelReason = reason;
     }
 
     private void validateTransit(OrderStatus next) {
@@ -225,41 +175,21 @@ public class Order extends BaseDeletableEntity {
         }
     }
 
-    /** 배송이 이미 시작된 주문은 줄 구성을 못 바꾼다 */
+    /**
+     * 배송이 이미 만들어진 주문은 줄 구성을 못 바꾼다.
+     * 배송 생성 여부는 order 가 아니라 status(CONFIRMED)가 말해준다.
+     */
     public void validateItemsModifiable() {
         validateModifiable();
-        if (this.deliveryId != null) {
+        if (this.status == OrderStatus.CONFIRMED) {
             throw new BusinessException(ErrorCode.DELIVERY_ALREADY_STARTED,
                     "배송이 생성된 주문의 상품 구성은 변경할 수 없습니다.");
         }
     }
 
-    public void updateDetails(String requestDetails, LocalDateTime dueAt) {
+    public void updateDetails(String requestDetails) {
         if (requestDetails != null) {
             this.requestDetails = requestDetails;
         }
-        if (dueAt != null) {
-            this.dueAt = dueAt;
-        }
-    }
-
-    public void updateDispatchDeadline(LocalDateTime deadline) {
-        this.dispatchDeadlineAt = deadline;
-    }
-
-    /** 줄이 바뀔 때마다 집계 컬럼 재계산 */
-    private void recalculate() {
-        this.itemCount = items.size();
-        this.totalQuantity = items.stream().mapToInt(OrderItem::getQuantity).sum();
-        this.totalPrice = items.stream()
-                .map(OrderItem::getLinePrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    /** 발송 시한이 지났는데 아직 안 나갔는지 */
-    public boolean isDispatchOverdue() {
-        return dispatchDeadlineAt != null
-                && LocalDateTime.now().isAfter(dispatchDeadlineAt)
-                && (status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED);
     }
 }

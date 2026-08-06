@@ -14,6 +14,8 @@ public interface SpringDataInventoryRepository
 
 	Optional<Inventory> findByIdAndDeletedAtIsNull(UUID id);
 
+	Optional<Inventory> findByProductIdAndDeletedAtIsNull(UUID productId);
+
 	Optional<Inventory> findByProductIdAndHubIdAndDeletedAtIsNull(UUID productId, UUID hubId);
 
 	@Lock(LockModeType.OPTIMISTIC)

@@ -1,7 +1,5 @@
 package com.delivery_project.order_service.order.presentation.request;
 
-import com.delivery_project.order_service.order.application.command.InventoryCreateCommand;
-
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -28,7 +26,4 @@ public record InventoryCreateRequest(
 		@Min(value = 0, message = "초기 수량은 0 이상이어야 합니다.")
 		Integer quantity
 ) {
-	public InventoryCreateCommand toCommand() {
-		return new InventoryCreateCommand(productId, hubId, companyId, quantity);
-	}
 }

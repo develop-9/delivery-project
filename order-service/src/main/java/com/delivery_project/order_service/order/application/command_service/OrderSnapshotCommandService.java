@@ -1,15 +1,12 @@
 package com.delivery_project.order_service.order.application.command_service;
 
-import com.delivery_project.order_service.global.config.SystemUser;
 import com.delivery_project.order_service.order.domain.entity.EventType;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderSnapshot;
-import com.delivery_project.order_service.order.domain.repository.OrderSnapshotRepository;
+import com.delivery_project.order_service.order.domain.repository.OrderSnapshotCommandRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +24,21 @@ import java.util.UUID;
 @Transactional
 public class OrderSnapshotCommandService {
 
-	private final OrderSnapshotRepository orderSnapshotRepository;
+	private final OrderSnapshotCommandRepository orderSnapshotCommandRepository;
 
-	public OrderSnapshot capture(Order order, EventType eventType, String note) {
-		int nextSequence = orderSnapshotRepository.findMaxSequenceByOrderId(order.getId()).orElse(0) + 1;
+	/**
+	 * 이력 작성자 공급자.
+	 *
+	 * 스냅샷의 {@code created_by} 는 엔티티가 직접 채우므로(@CreatedBy 미사용) JPA 감사와 같은
+	 * 판단 기준을 여기서도 그대로 써야 한다. 같은 로직을 복사하지 않고 감사자 빈을 재사용한다.
+	 */
+	private final AuditorAware<UUID> auditorAware;
 
-		OrderSnapshot snapshot = OrderSnapshot.capture(order, nextSequence, eventType, note, currentUserId());
-		orderSnapshotRepository.save(snapshot);
+	public OrderSnapshot capture(Order order, EventType eventType) {
+		int nextSequence = orderSnapshotCommandRepository.findMaxSequenceByOrderId(order.getId()).orElse(0) + 1;
+
+		OrderSnapshot snapshot = OrderSnapshot.capture(order, nextSequence, eventType, currentUserId());
+		orderSnapshotCommandRepository.save(snapshot);
 
 		log.info("[스냅샷] 기록 : [{}] orderId={} sequence={} eventType={} status={}",
 				snapshot.getId(), order.getId(), nextSequence, eventType, order.getStatus());
@@ -41,23 +46,8 @@ public class OrderSnapshotCommandService {
 		return snapshot;
 	}
 
-	/**
-	 * 이력 작성자.
-	 * TODO JWT 파싱 필터가 들어오면 SystemUser 대체를 제거한다.
-	 */
 	private UUID currentUserId() {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-		if (authentication == null
-				|| !authentication.isAuthenticated()
-				|| authentication instanceof AnonymousAuthenticationToken) {
-			return SystemUser.ID;
-		}
-
-		try {
-			return UUID.fromString(authentication.getName());
-		} catch (IllegalArgumentException e) {
-			return SystemUser.ID;
-		}
+		return auditorAware.getCurrentAuditor()
+				.orElseThrow(() -> new IllegalStateException("감사자를 확인할 수 없습니다."));
 	}
 }

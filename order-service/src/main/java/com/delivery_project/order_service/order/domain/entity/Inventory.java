@@ -114,20 +114,6 @@ public class Inventory extends BaseDeletableEntity {
         this.quantity = newQuantity;
     }
 
-    /** 이관 — 가용 범위 안에서만 */
-    public void transferOut(int qty) {
-        if (getAvailableQuantity() < qty) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                    String.format("이관 가능한 가용 재고가 부족합니다. (요청: %d, 가용: %d)",
-                            qty, getAvailableQuantity()));
-        }
-        this.quantity -= qty;
-    }
-
-    public void transferIn(int qty) {
-        this.quantity += qty;
-    }
-
     /** 삭제 가능 여부 — 진행 중 주문이 선점한 재고가 있으면 못 지운다 */
     public void validateDeletable() {
         if (this.reservedQuantity > 0) {

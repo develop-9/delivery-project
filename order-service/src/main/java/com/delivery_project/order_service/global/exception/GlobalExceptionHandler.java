@@ -135,12 +135,8 @@ public class GlobalExceptionHandler {
         return createResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
     }
 
-    /**
-     * 매핑되지 않은 경로(예: 경로변수가 빈 /api/v1/orders/).
-     *
-     * 이 핸들러가 없으면 아래 Exception 캐치올이 먼저 받아서,
-     * Spring 이 스스로 냈을 404 가 500 으로 바뀐다.
-     */
+
+    //매핑되지 않은 경로(예: 경로변수가 빈 /api/v1/orders/).
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
         log.warn("[NoResourceFoundException] 매핑되지 않은 경로: {}", e.getResourcePath());

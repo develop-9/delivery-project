@@ -1,7 +1,7 @@
 package com.delivery_project.order_service.order.infrastructure.persistence;
 
 import com.delivery_project.order_service.order.domain.entity.Order;
-import com.delivery_project.order_service.order.domain.repository.OrderRepository;
+import com.delivery_project.order_service.order.domain.repository.OrderCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class OrderRepositoryImpl implements OrderRepository {
+public class OrderCommandRepositoryImpl implements OrderCommandRepository {
 
 	private final SpringDataOrderRepository springDataOrderRepository;
 

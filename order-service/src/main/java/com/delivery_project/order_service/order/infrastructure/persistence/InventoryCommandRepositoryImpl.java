@@ -1,7 +1,7 @@
 package com.delivery_project.order_service.order.infrastructure.persistence;
 
 import com.delivery_project.order_service.order.domain.entity.Inventory;
-import com.delivery_project.order_service.order.domain.repository.InventoryRepository;
+import com.delivery_project.order_service.order.domain.repository.InventoryCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class InventoryRepositoryImpl implements InventoryRepository {
+public class InventoryCommandRepositoryImpl implements InventoryCommandRepository {
 
 	private final SpringDataInventoryRepository springDataInventoryRepository;
 
@@ -22,6 +22,11 @@ public class InventoryRepositoryImpl implements InventoryRepository {
 	@Override
 	public Optional<Inventory> findById(UUID inventoryId) {
 		return springDataInventoryRepository.findByIdAndDeletedAtIsNull(inventoryId);
+	}
+
+	@Override
+	public Optional<Inventory> findByProductId(UUID productId) {
+		return springDataInventoryRepository.findByProductIdAndDeletedAtIsNull(productId);
 	}
 
 	@Override

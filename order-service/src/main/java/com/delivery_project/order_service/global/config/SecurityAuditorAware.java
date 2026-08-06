@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.global.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,12 +18,19 @@ import java.util.UUID;
  * {@code AuditorAware} 빈이 없으면 {@code @CreatedBy} 가 값을 채우지 않는다.
  * 두 컬럼은 {@code nullable = false} 이므로 이 빈이 없으면 INSERT 가 항상 실패한다.
  *
- * <p>TODO JWT 파싱 필터가 들어오기 전까지는 인증 주체가 없어 {@link SystemUser#ID} 로 대체한다.
- * 필터가 붙으면 이 대체 로직을 제거한다.
+ * <p>인증 주체가 없으면 팀 공통 시스템 주체 ID 로 대체한다. 값은 루트 {@code .env} 의
+ * {@code SYSTEM_ID} → {@code application.yaml} 의 {@code system.id} 로 주입받는다
+ * (user-service 와 동일). 전 서비스가 같은 값을 써야 해서 코드에 박지 않는다.
  */
 @Slf4j
 @Component
 public class SecurityAuditorAware implements AuditorAware<UUID> {
+
+	private final UUID systemId;
+
+	public SecurityAuditorAware(@Value("${system.id}") UUID systemId) {
+		this.systemId = systemId;
+	}
 
 	@Override
 	public Optional<UUID> getCurrentAuditor() {
@@ -31,7 +39,7 @@ public class SecurityAuditorAware implements AuditorAware<UUID> {
 		if (authentication == null
 				|| !authentication.isAuthenticated()
 				|| authentication instanceof AnonymousAuthenticationToken) {
-			return Optional.of(SystemUser.ID);
+			return Optional.of(systemId);
 		}
 
 		return Optional.of(parseUserId(authentication.getName()));
@@ -42,7 +50,7 @@ public class SecurityAuditorAware implements AuditorAware<UUID> {
 			return UUID.fromString(name);
 		} catch (IllegalArgumentException e) {
 			log.warn("[Audit] 사용자 ID 가 UUID 형식이 아니다 principal={}", name);
-			return SystemUser.ID;
+			return systemId;
 		}
 	}
 }

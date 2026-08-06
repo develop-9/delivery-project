@@ -12,8 +12,8 @@ public final class PageableUtil {
     private static final Set<String> DEFAULT_ALLOWED_SORTS = Set.of("createdAt", "updatedAt");
     private static final int DEFAULT_SIZE = 10;
 
-    /** 주문 검색에서 추가로 허용하는 정렬 컬럼 */
-    public static final Set<String> ORDER_SORTS = Set.of("createdAt", "updatedAt", "totalPrice", "dueAt");
+    /** 주문 검색에서 허용하는 정렬 컬럼 (p_orders 가 실제로 가진 컬럼만) */
+    public static final Set<String> ORDER_SORTS = Set.of("createdAt", "updatedAt");
 
     /** 주문 이력 조회에서 허용하는 정렬 컬럼 */
     public static final Set<String> SNAPSHOT_SORTS = Set.of("createdAt", "sequence");

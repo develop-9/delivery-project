@@ -4,7 +4,7 @@ import com.delivery_project.order_service.global.config.JpaConfig;
 import com.delivery_project.order_service.global.config.SecurityAuditorAware;
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 import com.delivery_project.order_service.order.infrastructure.persistence.InventoryQueryRepositoryImpl;
-import com.delivery_project.order_service.order.infrastructure.persistence.InventoryRepositoryImpl;
+import com.delivery_project.order_service.order.infrastructure.persistence.InventoryCommandRepositoryImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** 재고 CRUD — 등록 · 조회 · 입고/보정 · 논리 삭제 · 검색 */
 @DataJpaTest
-@Import({JpaConfig.class, SecurityAuditorAware.class, InventoryRepositoryImpl.class, InventoryQueryRepositoryImpl.class})
+@Import({JpaConfig.class, SecurityAuditorAware.class, InventoryCommandRepositoryImpl.class, InventoryQueryRepositoryImpl.class})
 class InventoryCrudTest {
 
 	@Autowired
-	private InventoryRepository inventoryRepository;
+	private InventoryCommandRepository inventoryCommandRepository;
 
 	@Autowired
 	private InventoryQueryRepository inventoryQueryRepository;
@@ -44,7 +44,7 @@ class InventoryCrudTest {
 	@DisplayName("재고를 등록하면 선점 수량 0, 가용 수량은 보유 수량과 같다")
 	void create() {
 		// given & when
-		Inventory saved = inventoryRepository.save(newInventory(500));
+		Inventory saved = inventoryCommandRepository.save(newInventory(500));
 
 		// then
 		assertThat(saved.getId()).isNotNull();
@@ -57,20 +57,20 @@ class InventoryCrudTest {
 	@DisplayName("상품과 허브로 재고를 찾을 수 있다")
 	void read() {
 		// given
-		Inventory saved = inventoryRepository.save(newInventory(500));
+		Inventory saved = inventoryCommandRepository.save(newInventory(500));
 
 		// when & then
 		assertThat(inventoryQueryRepository.findDetailById(saved.getId())).isPresent();
-		assertThat(inventoryRepository.findByProductIdAndHubId(productId, hubId)).isPresent();
-		assertThat(inventoryRepository.existsByProductIdAndHubId(productId, hubId)).isTrue();
-		assertThat(inventoryRepository.findByProductIdAndHubId(UUID.randomUUID(), hubId)).isEmpty();
+		assertThat(inventoryCommandRepository.findByProductIdAndHubId(productId, hubId)).isPresent();
+		assertThat(inventoryCommandRepository.existsByProductIdAndHubId(productId, hubId)).isTrue();
+		assertThat(inventoryCommandRepository.findByProductIdAndHubId(UUID.randomUUID(), hubId)).isEmpty();
 	}
 
 	@Test
 	@DisplayName("입고는 누적하고 보정은 덮어쓴다")
 	void update() {
 		// given
-		Inventory inventory = inventoryRepository.save(newInventory(500));
+		Inventory inventory = inventoryCommandRepository.save(newInventory(500));
 
 		// when
 		inventory.inbound(100);
@@ -86,16 +86,16 @@ class InventoryCrudTest {
 	@DisplayName("논리 삭제하면 조회에서 빠지고 같은 상품·허브로 다시 등록할 수 있다")
 	void delete() {
 		// given
-		Inventory inventory = inventoryRepository.save(newInventory(500));
+		Inventory inventory = inventoryCommandRepository.save(newInventory(500));
 
 		// when
 		inventory.delete(UUID.randomUUID());
 
 		// then
-		assertThat(inventoryRepository.findById(inventory.getId())).isEmpty();
-		assertThat(inventoryRepository.existsByProductIdAndHubId(productId, hubId)).isFalse();
+		assertThat(inventoryCommandRepository.findById(inventory.getId())).isEmpty();
+		assertThat(inventoryCommandRepository.existsByProductIdAndHubId(productId, hubId)).isFalse();
 
-		Inventory reRegistered = inventoryRepository.save(newInventory(10));
+		Inventory reRegistered = inventoryCommandRepository.save(newInventory(10));
 		assertThat(reRegistered.getId()).isNotEqualTo(inventory.getId());
 	}
 
@@ -103,13 +103,13 @@ class InventoryCrudTest {
 	@DisplayName("가용 수량 조건으로 품절 임박 재고를 뽑을 수 있다")
 	void search() {
 		// given — 가용 500 / 가용 0(전량 선점) / 가용 5
-		inventoryRepository.save(newInventory(500));
+		inventoryCommandRepository.save(newInventory(500));
 
-		Inventory reserved = inventoryRepository.save(Inventory.builder()
+		Inventory reserved = inventoryCommandRepository.save(Inventory.builder()
 				.productId(UUID.randomUUID()).hubId(hubId).companyId(UUID.randomUUID()).quantity(200).build());
 		reserved.reserve(200, "건조 다시마");
 
-		inventoryRepository.save(Inventory.builder()
+		inventoryCommandRepository.save(Inventory.builder()
 				.productId(UUID.randomUUID()).hubId(UUID.randomUUID()).companyId(UUID.randomUUID())
 				.quantity(5).build());
 

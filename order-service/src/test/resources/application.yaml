@@ -6,11 +6,71 @@ spring:
       ddl-auto: create-drop
     properties:
       hibernate:
-        # 운영 스키마(order_db)를 그대로 쓰되, H2 에서도 만들어지도록 create_namespaces 를 켠다
-        default_schema: order_db
+        # 운영 스키마(order_schema)를 그대로 쓰되, H2 에서도 만들어지도록 create_namespaces 를 켠다
+        default_schema: order_schema
         hbm2ddl:
           create_namespaces: true
+
+# 감사 컬럼(created_by/updated_by) 대체값. 운영 값은 .env 의 SYSTEM_ID 가 넣는다.
+system:
+  id: 00000000-0000-0000-0000-000000000000
 
 logging:
   level:
     com.delivery_project.order_service: info
+
+---
+# 컨텍스트 스모크 테스트(OrderServiceApplicationTests) 전용.
+#
+# @SpringBootTest 는 @DataJpaTest 와 달리 datasource 를 내장 DB 로 바꿔주지 않으므로
+# DB·Redis·Eureka·Zipkin 이 하나도 없어도 뜨도록 "연결을 시도하지 않는" 설정을 둔다.
+# hub-service 의 test application.yaml 과 같은 방식이다.
+spring:
+  config:
+    activate:
+      on-profile: smoke
+
+  application:
+    name: order-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/delivery_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # 커넥션을 못 얻어도 풀 생성을 실패로 처리하지 않는다(기동 차단 방지).
+      initialization-fail-timeout: -1
+
+  jpa:
+    hibernate:
+      # 스모크 테스트는 스키마를 건드리지 않는다.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        # Dialect 를 명시하지 않으면 Hibernate 가 기동 시 JDBC 로 접속해 메타데이터를 읽으려 하고,
+        # DB 가 없으면 여기서 컨텍스트 로딩이 깨진다.
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        boot:
+          allow_jdbc_metadata_access: false
+        # 운영 스키마(order_schema)가 아니라 public 을 쓴다. Hibernate 는 CREATE SCHEMA 를
+        # 내지 않으므로 스키마가 없는 환경에서 테스트가 환경에 좌우된다.
+        default_schema: public
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
+    discovery:
+      enabled: false
+  tracing:
+    enabled: false

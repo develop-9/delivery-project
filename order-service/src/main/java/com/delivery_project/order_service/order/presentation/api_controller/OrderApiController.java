@@ -1,8 +1,9 @@
 package com.delivery_project.order_service.order.presentation.api_controller;
 
-import com.delivery_project.order_service.global.config.SystemUser;
 import com.delivery_project.order_service.global.response.PageResponse;
 import com.delivery_project.order_service.global.response.SuccessResponse;
+import com.delivery_project.order_service.order.application.command.OrderCreateCommand;
+import com.delivery_project.order_service.order.application.command.OrderUpdateCommand;
 import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.domain.repository.OrderSearchCondition;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,18 +36,26 @@ public class OrderApiController {
 	private final OrderCommandService orderCommandService;
 	private final OrderQueryService orderQueryService;
 
-	@Operation(summary = "주문 접수", description = "상품 여러 종을 한 주문에 담는다. 금액은 서버가 계산한다.")
+	/**
+	 * JWT 파싱 필터가 붙기 전까지 인증 주체가 없을 때 쓰는 팀 공통 시스템 주체 ID.
+	 * 루트 .env 의 SYSTEM_ID → application.yaml 의 system.id 로 들어온다.
+	 */
+	@Value("${system.id}")
+	private UUID systemUserId;
+
+	@Operation(summary = "주문 접수", description = "상품 여러 종을 한 주문에 담는다. 수신자는 인증 주체에서 온다.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "201", description = "접수 성공"),
-			@ApiResponse(responseCode = "400", description = "입력값 오류 · 중복 상품")
+			@ApiResponse(responseCode = "400", description = "입력값 오류 · 중복 상품"),
+			@ApiResponse(responseCode = "404", description = "재고가 등록되지 않은 상품")
 	})
 	@PostMapping
 	public ResponseEntity<SuccessResponse<OrderResponse>> create(
 			@AuthenticationPrincipal UUID callerId,
 			@Valid @RequestBody OrderCreateRequest request
 	) {
-		OrderResponse response = OrderResponse.from(
-				orderCommandService.create(request.toCommand(SystemUser.orSystem(callerId))));
+		OrderCreateCommand command = OrderCreateCommand.from(receiverOrSystem(callerId), request);
+		OrderResponse response = OrderResponse.from(orderCommandService.create(command));
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
 	}
 
@@ -62,7 +72,7 @@ public class OrderApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
-	@Operation(summary = "주문 검색", description = "상태 · 업체 · 허브 · 상품 · 키워드 · 기간 조건과 페이징을 지원한다.")
+	@Operation(summary = "주문 검색", description = "상태 · 업체 · 수신자 · 상품 · 요청사항 · 기간 조건과 페이징을 지원한다.")
 	@ApiResponses(@ApiResponse(responseCode = "200", description = "조회 성공"))
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PageResponse<OrderSummaryResponse>>> searchOrders(
@@ -74,7 +84,7 @@ public class OrderApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
-	@Operation(summary = "주문 수정", description = "요청사항 · 납품 기한 · 상품 구성을 부분 수정한다. 배송 생성 후에는 구성 변경이 막힌다.")
+	@Operation(summary = "주문 수정", description = "요청사항 · 상품 구성을 부분 수정한다. 배송 생성 후에는 구성 변경이 막힌다.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "수정 성공"),
 			@ApiResponse(responseCode = "400", description = "변경 불가 상태 · 입력값 오류"),
@@ -85,7 +95,12 @@ public class OrderApiController {
 			@PathVariable UUID orderId,
 			@Valid @RequestBody OrderUpdateRequest request
 	) {
-		OrderResponse response = OrderResponse.from(orderCommandService.update(request.toCommand(orderId)));
+		OrderUpdateCommand command = OrderUpdateCommand.from(orderId, request);
+		OrderResponse response = OrderResponse.from(orderCommandService.update(command));
 		return ResponseEntity.ok(SuccessResponse.success(response));
+	}
+
+	private UUID receiverOrSystem(UUID callerId) {
+		return callerId != null ? callerId : systemUserId;
 	}
 }

@@ -24,7 +24,6 @@ public enum ErrorCode {
     ORDER_SNAPSHOT_NOT_FOUND(HttpStatus.NOT_FOUND, "스냅샷을 찾을 수 없습니다.", "ORDER_SNAPSHOT_NOT_FOUND"),
     INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "현재 상태에서 처리할 수 없는 요청입니다.", "INVALID_ORDER_STATUS"),
     DELIVERY_ALREADY_STARTED(HttpStatus.BAD_REQUEST, "이미 배송이 시작되었습니다.", "DELIVERY_ALREADY_STARTED"),
-    MULTIPLE_ORIGIN_HUB(HttpStatus.BAD_REQUEST, "출발 허브가 다른 상품은 한 주문에 담을 수 없습니다.", "MULTIPLE_ORIGIN_HUB"),
     DUPLICATE_ORDER_ITEM(HttpStatus.BAD_REQUEST, "같은 상품을 여러 줄로 담을 수 없습니다.", "DUPLICATE_ORDER_ITEM"),
     ORDER_ITEM_REQUIRED(HttpStatus.BAD_REQUEST, "주문 상품은 1개 이상이어야 합니다.", "ORDER_ITEM_REQUIRED"),
     ORDER_ITEM_NOT_FOUND(HttpStatus.BAD_REQUEST, "주문에 없는 상품입니다.", "ORDER_ITEM_NOT_FOUND"),

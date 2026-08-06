@@ -31,7 +31,7 @@ public class OrderQueryService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
 		log.info("[주문] 단건 조회 : [{}] status={} itemCount={}",
-				orderId, order.getStatus(), order.getItemCount());
+				orderId, order.getStatus(), order.getItems().size());
 
 		return OrderResult.from(order);
 	}
@@ -44,8 +44,8 @@ public class OrderQueryService {
 		Pageable normalized = PageableUtil.normalize(pageable, PageableUtil.ORDER_SORTS);
 		Page<Order> orders = orderQueryRepository.search(condition, normalized);
 
-		log.info("[주문] 검색 : [status={}, originHubId={}, keyword={}] page={} size={} totalElements={}",
-				condition.status(), condition.originHubId(), condition.keyword(),
+		log.info("[주문] 검색 : [status={}, receiverCompanyId={}, keyword={}] page={} size={} totalElements={}",
+				condition.status(), condition.receiverCompanyId(), condition.keyword(),
 				normalized.getPageNumber(), normalized.getPageSize(), orders.getTotalElements());
 
 		return orders.map(OrderSummaryResult::from);

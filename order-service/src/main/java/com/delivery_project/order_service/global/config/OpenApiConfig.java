@@ -16,8 +16,10 @@ public class OpenApiConfig {
                 .description("""
                         주문 · 재고 · 주문 이력(스냅샷) API
 
-                        인증: api-gateway 가 JWT 를 검증한 뒤 X-User-Id / X-User-Role 헤더를 주입한다.
-                        Gateway 없이 직접 호출하면 order.auth.dev-user-* 설정의 개발용 사용자로 동작한다.
+                        인증: api-gateway 가 JWT 를 검증한 뒤 원본 토큰을 relay 하고,
+                        각 서비스가 Authorization 헤더의 토큰을 파싱해 인증 주체를 얻는다
+                        (user-service 의 JwtAuthenticationFilter 와 동일한 방식).
+                        JWT 파싱 필터가 붙기 전까지 인증 주체가 없는 요청은 system.id 로 기록된다.
                         """));
     }
 }

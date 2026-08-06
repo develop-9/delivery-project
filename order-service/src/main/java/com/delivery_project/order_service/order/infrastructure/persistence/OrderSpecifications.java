@@ -33,17 +33,7 @@ public final class OrderSpecifications {
             }
             addEquals(predicates, cb, root, "supplierCompanyId", condition.supplierCompanyId());
             addEquals(predicates, cb, root, "receiverCompanyId", condition.receiverCompanyId());
-            addEquals(predicates, cb, root, "originHubId", condition.originHubId());
-            addEquals(predicates, cb, root, "destHubId", condition.destHubId());
-            addEquals(predicates, cb, root, "requesterUserId", condition.requesterUserId());
-            addEquals(predicates, cb, root, "deliveryId", condition.deliveryId());
-
-            if (condition.minTotalPrice() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("totalPrice"), condition.minTotalPrice()));
-            }
-            if (condition.maxTotalPrice() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("totalPrice"), condition.maxTotalPrice()));
-            }
+            addEquals(predicates, cb, root, "receiverUserId", condition.receiverUserId());
 
             if (condition.createdFrom() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"),
@@ -65,18 +55,9 @@ public final class OrderSpecifications {
                 predicates.add(cb.exists(sub));
             }
 
+            // 상품명은 order 가 소유하지 않으므로(company-service) 요청사항만 본다
             if (condition.hasKeyword()) {
-                String pattern = condition.keywordPattern();
-
-                Subquery<Long> sub = query.subquery(Long.class);
-                Root<OrderItem> item = sub.from(OrderItem.class);
-                sub.select(cb.literal(1L)).where(
-                        cb.equal(item.get("order"), root),
-                        cb.like(cb.lower(item.get("productName")), pattern));
-
-                predicates.add(cb.or(
-                        cb.exists(sub),
-                        cb.like(cb.lower(root.get("requestDetails")), pattern)));
+                predicates.add(cb.like(cb.lower(root.get("requestDetails")), condition.keywordPattern()));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

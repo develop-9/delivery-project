@@ -11,7 +11,7 @@ import com.delivery_project.order_service.order.application.result.InventoryDele
 import com.delivery_project.order_service.order.application.result.InventoryInboundResult;
 import com.delivery_project.order_service.order.application.result.InventoryResult;
 import com.delivery_project.order_service.order.domain.entity.Inventory;
-import com.delivery_project.order_service.order.domain.repository.InventoryRepository;
+import com.delivery_project.order_service.order.domain.repository.InventoryCommandRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,16 +31,16 @@ import java.util.UUID;
 @Transactional
 public class InventoryCommandService {
 
-	private final InventoryRepository inventoryRepository;
+	private final InventoryCommandRepository inventoryCommandRepository;
 
 	/** 재고 등록 — 상품을 특정 허브에 배치한다. 수량 증가가 아니다(그건 입고) */
 	public InventoryResult create(InventoryCreateCommand command) {
-		if (inventoryRepository.existsByProductIdAndHubId(command.productId(), command.hubId())) {
+		if (inventoryCommandRepository.existsByProductIdAndHubId(command.productId(), command.hubId())) {
 			throw new BusinessException(ErrorCode.INVENTORY_ALREADY_EXISTS,
 					"해당 허브에 이미 등록된 상품입니다. 입고 API를 사용해 주세요.");
 		}
 
-		Inventory inventory = inventoryRepository.save(Inventory.builder()
+		Inventory inventory = inventoryCommandRepository.save(Inventory.builder()
 				.productId(command.productId())
 				.hubId(command.hubId())
 				.companyId(command.companyId())
@@ -92,7 +92,7 @@ public class InventoryCommandService {
 	}
 
 	private Inventory findActive(UUID inventoryId) {
-		return inventoryRepository.findById(inventoryId)
+		return inventoryCommandRepository.findById(inventoryId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND));
 	}
 }

@@ -7,9 +7,10 @@ import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderItem;
 import com.delivery_project.order_service.order.domain.entity.OrderItemSnapshot;
 import com.delivery_project.order_service.order.domain.entity.OrderSnapshot;
-import com.delivery_project.order_service.order.infrastructure.persistence.OrderRepositoryImpl;
+import com.delivery_project.order_service.order.domain.entity.OrderStatus;
+import com.delivery_project.order_service.order.infrastructure.persistence.OrderCommandRepositoryImpl;
+import com.delivery_project.order_service.order.infrastructure.persistence.OrderSnapshotCommandRepositoryImpl;
 import com.delivery_project.order_service.order.infrastructure.persistence.OrderSnapshotQueryRepositoryImpl;
-import com.delivery_project.order_service.order.infrastructure.persistence.OrderSnapshotRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,20 +28,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** 주문 이력(스냅샷) CRUD — 기록 · 조회 · 필터 · 논리 삭제 */
 @DataJpaTest
-@Import({JpaConfig.class, SecurityAuditorAware.class, OrderRepositoryImpl.class,
-		OrderSnapshotRepositoryImpl.class, OrderSnapshotQueryRepositoryImpl.class})
+@Import({JpaConfig.class, SecurityAuditorAware.class, OrderCommandRepositoryImpl.class,
+		OrderSnapshotCommandRepositoryImpl.class, OrderSnapshotQueryRepositoryImpl.class})
 class OrderSnapshotCrudTest {
 
 	@Autowired
-	private OrderRepository orderRepository;
+	private OrderCommandRepository orderCommandRepository;
 
 	@Autowired
-	private OrderSnapshotRepository orderSnapshotRepository;
+	private OrderSnapshotCommandRepository orderSnapshotCommandRepository;
 
 	@Autowired
 	private OrderSnapshotQueryRepository orderSnapshotQueryRepository;
 
 	private final UUID squidId = UUID.randomUUID();
+	private final UUID kelpId = UUID.randomUUID();
 	private final UUID userId = UUID.randomUUID();
 
 	private Order order;
@@ -51,58 +52,55 @@ class OrderSnapshotCrudTest {
 		order = Order.builder()
 				.supplierCompanyId(UUID.randomUUID())
 				.receiverCompanyId(UUID.randomUUID())
-				.originHubId(UUID.randomUUID())
-				.destHubId(UUID.randomUUID())
-				.requesterUserId(userId)
+				.receiverUserId(userId)
 				.build();
-		order.addItem(item(squidId, "마른 오징어", 50, "1000.00"));
-		order.addItem(item(UUID.randomUUID(), "건조 다시마", 20, "500.00"));
-		orderRepository.save(order);
+		order.addItem(item(squidId, 50));
+		order.addItem(item(kelpId, 20));
+		orderCommandRepository.save(order);
 	}
 
-	private OrderItem item(UUID productId, String productName, int quantity, String unitPrice) {
+	private OrderItem item(UUID productId, int quantity) {
 		return OrderItem.builder()
 				.productId(productId)
-				.productName(productName)
 				.quantity(quantity)
-				.unitPrice(new BigDecimal(unitPrice))
+				.inventoryId(UUID.randomUUID())
 				.build();
 	}
 
-	private OrderSnapshot capture(EventType eventType, String note) {
-		int nextSequence = orderSnapshotRepository.findMaxSequenceByOrderId(order.getId()).orElse(0) + 1;
-		return orderSnapshotRepository.save(
-				OrderSnapshot.capture(order, nextSequence, eventType, note, userId));
+	private OrderSnapshot capture(EventType eventType) {
+		int nextSequence = orderSnapshotCommandRepository.findMaxSequenceByOrderId(order.getId()).orElse(0) + 1;
+		return orderSnapshotCommandRepository.save(
+				OrderSnapshot.capture(order, nextSequence, eventType, userId));
 	}
 
 	@Test
 	@DisplayName("스냅샷은 주문의 모든 상품 줄을 복사해 담는다")
 	void create() {
 		// given & when
-		OrderSnapshot snapshot = capture(EventType.ORDER_CREATED, null);
+		OrderSnapshot snapshot = capture(EventType.ORDER_CREATED);
 
 		// then
 		assertThat(snapshot.getSequence()).isEqualTo(1);
 		assertThat(snapshot.getOrderId()).isEqualTo(order.getId());
-		assertThat(snapshot.getTotalPrice()).isEqualByComparingTo("60000.00");
+		assertThat(snapshot.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
 		assertThat(snapshot.getItems()).hasSize(2)
-				.extracting(OrderItemSnapshot::getProductName)
-				.containsExactly("마른 오징어", "건조 다시마");
-		assertThat(snapshot.getItems()).extracting(OrderItemSnapshot::getLineNo)
-				.containsExactly(1, 2);
+				.extracting(OrderItemSnapshot::getProductId)
+				.containsExactly(squidId, kelpId);
+		assertThat(snapshot.getItems()).extracting(OrderItemSnapshot::getQuantity)
+				.containsExactly(50, 20);
 	}
 
 	@Test
 	@DisplayName("이력이 쌓이면 sequence 가 1부터 순서대로 붙고, 지난 이력은 그때 구성을 그대로 유지한다")
 	void read() {
 		// given
-		capture(EventType.ORDER_CREATED, null);
+		capture(EventType.ORDER_CREATED);
 
-		order.replaceItems(List.of(item(squidId, "마른 오징어", 10, "1000.00")));
-		capture(EventType.ORDER_MODIFIED, "수량 변경");
+		order.replaceItems(List.of(item(squidId, 10)));
+		capture(EventType.ORDER_MODIFIED);
 
-		order.cancel("고객 요청");
-		capture(EventType.ORDER_CANCELED, "고객 요청");
+		order.cancel();
+		capture(EventType.ORDER_CANCELED);
 
 		// when
 		Page<OrderSnapshot> timeline = orderSnapshotQueryRepository.findByOrderId(
@@ -114,20 +112,19 @@ class OrderSnapshotCrudTest {
 		assertThat(timeline.getContent()).extracting(OrderSnapshot::getEventType)
 				.containsExactly(EventType.ORDER_CREATED, EventType.ORDER_MODIFIED, EventType.ORDER_CANCELED);
 
-		// 1번 이력은 수정 전 구성(2줄, 60,000원)을 그대로 들고 있다
+		// 1번 이력은 수정 전 구성(2줄)을 그대로 들고 있다
 		assertThat(timeline.getContent().get(0).getItems()).hasSize(2);
-		assertThat(timeline.getContent().get(0).getTotalPrice()).isEqualByComparingTo("60000.00");
 		assertThat(timeline.getContent().get(1).getItems()).hasSize(1);
-		assertThat(timeline.getContent().get(1).getTotalPrice()).isEqualByComparingTo("10000.00");
+		assertThat(timeline.getContent().get(2).getOrderStatus()).isEqualTo(OrderStatus.CANCELED);
 	}
 
 	@Test
 	@DisplayName("이벤트 종류로 이력을 걸러 볼 수 있다")
 	void readByEventType() {
 		// given
-		capture(EventType.ORDER_CREATED, null);
-		capture(EventType.ORDER_MODIFIED, "1차 변경");
-		capture(EventType.ORDER_MODIFIED, "2차 변경");
+		capture(EventType.ORDER_CREATED);
+		capture(EventType.ORDER_MODIFIED);
+		capture(EventType.ORDER_MODIFIED);
 
 		// when
 		Page<OrderSnapshot> modified = orderSnapshotQueryRepository.findByOrderId(
@@ -135,23 +132,23 @@ class OrderSnapshotCrudTest {
 
 		// then
 		assertThat(modified.getTotalElements()).isEqualTo(2);
-		assertThat(modified.getContent()).extracting(OrderSnapshot::getNote)
-				.containsExactlyInAnyOrder("1차 변경", "2차 변경");
+		assertThat(modified.getContent()).extracting(OrderSnapshot::getSequence)
+				.containsExactlyInAnyOrder(2, 3);
 	}
 
 	@Test
 	@DisplayName("논리 삭제된 이력은 조회에서 빠진다")
 	void delete() {
 		// given
-		OrderSnapshot first = capture(EventType.ORDER_CREATED, null);
-		capture(EventType.ORDER_MODIFIED, "수량 변경");
+		OrderSnapshot first = capture(EventType.ORDER_CREATED);
+		capture(EventType.ORDER_MODIFIED);
 
 		// when
 		first.softDelete(userId);
 
 		// then
 		assertThat(orderSnapshotQueryRepository.findDetailById(first.getId())).isEmpty();
-		assertThat(orderSnapshotRepository.findAllByOrderId(order.getId())).hasSize(1);
+		assertThat(orderSnapshotCommandRepository.findAllByOrderId(order.getId())).hasSize(1);
 		assertThat(orderSnapshotQueryRepository
 				.findByOrderId(order.getId(), null, PageRequest.of(0, 10)).getTotalElements()).isEqualTo(1);
 	}
