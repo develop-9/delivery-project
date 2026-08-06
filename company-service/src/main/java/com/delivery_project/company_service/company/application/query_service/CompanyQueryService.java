@@ -1,8 +1,8 @@
 package com.delivery_project.company_service.company.application.query_service;
 
-import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
-import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
+import com.delivery_project.company_service.company.application.query.CompanySearchQuery;
+import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
+import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
@@ -28,10 +28,10 @@ public class CompanyQueryService {
 
     // [외부] 업체 단건 조회 비즈니스 로직
     @Transactional(readOnly = true)
-    public CompanyGetResult getCompany(CompanyGetCommand companyGetCommand) {
+    public CompanyGetResult getCompany(CompanyGetQuery companyGetQuery) {
 
         // Validation Check - 업체 존재 여부 판단
-        Company company = companyQueryRepository.findById(companyGetCommand.companyId())
+        Company company = companyQueryRepository.findById(companyGetQuery.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         return CompanyGetResult.from(company);
@@ -39,18 +39,18 @@ public class CompanyQueryService {
 
     // [외부] 업체 검색 비즈니스 로직
     @Transactional(readOnly = true)
-    public CompanyGetAllResult getAllCompany(CompanyGetAllCommand companyGetAllCommand) {
-        int page = pageValidator.validatePage(companyGetAllCommand.page());
-        int size = pageValidator.normalizeSize(companyGetAllCommand.size());
-        Sort sort = pageValidator.normalizeSort(companyGetAllCommand.sort());
+    public CompanyGetAllResult getAllCompany(CompanySearchQuery companySearchQuery) {
+        int page = pageValidator.validatePage(companySearchQuery.page());
+        int size = pageValidator.normalizeSize(companySearchQuery.size());
+        Sort sort = pageValidator.normalizeSort(companySearchQuery.sort());
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<Company> companyPage =
                 companyQueryRepository.search(
-                        companyGetAllCommand.name(),
-                        companyGetAllCommand.type(),
-                        companyGetAllCommand.hubId(),
+                        companySearchQuery.name(),
+                        companySearchQuery.type(),
+                        companySearchQuery.hubId(),
                         pageable
                 );
 
@@ -59,10 +59,10 @@ public class CompanyQueryService {
 
     // [내부] 업체 단건 조회 비즈니스 로직
     @Transactional(readOnly = true)
-    public InternalCompanyGetResult getCompanyForInternal(InternalCompanyGetCommand internalCompanyGetCommand) {
+    public InternalCompanyGetResult getCompanyForInternal(InternalCompanyGetQuery internalCompanyGetQuery) {
 
         // Validation Check - 업체 존재 여부 판단
-        Company company = companyQueryRepository.findById(internalCompanyGetCommand.companyId())
+        Company company = companyQueryRepository.findById(internalCompanyGetQuery.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         return InternalCompanyGetResult.from(company);

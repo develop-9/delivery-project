@@ -1,6 +1,6 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
-import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
+import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.presentation.request.InternalCompanyGetRequest;
@@ -28,8 +28,8 @@ public class CompanyInternalController implements CompanyInternal {
     public ResponseEntity<SuccessResponse<InternalCompanyGetResponse>> getCompany(
             @PathVariable UUID companyId
     ) {
-        InternalCompanyGetCommand internalCompanyGetCommand = new InternalCompanyGetRequest().toCommand(companyId);
-        InternalCompanyGetResult internalCompanyGetResult = companyQueryService.getCompanyForInternal(internalCompanyGetCommand);
+        InternalCompanyGetQuery internalCompanyGetQuery = new InternalCompanyGetRequest().toCommand(companyId);
+        InternalCompanyGetResult internalCompanyGetResult = companyQueryService.getCompanyForInternal(internalCompanyGetQuery);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(

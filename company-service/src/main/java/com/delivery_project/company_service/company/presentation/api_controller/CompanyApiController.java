@@ -2,6 +2,8 @@ package com.delivery_project.company_service.company.presentation.api_controller
 
 import com.delivery_project.company_service.company.application.command.*;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
+import com.delivery_project.company_service.company.application.query.CompanySearchQuery;
+import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
@@ -82,8 +84,8 @@ public class CompanyApiController implements CompanyApi {
     public ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
             @PathVariable UUID companyId
     ) {
-        CompanyGetCommand companyGetCommand = new CompanyGetRequest().toCommand(companyId);
-        CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetCommand);
+        CompanyGetQuery companyGetQuery = new CompanyGetRequest().toCommand(companyId);
+        CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetQuery);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
@@ -104,7 +106,7 @@ public class CompanyApiController implements CompanyApi {
             @RequestParam(required = false) CompanyType companyType,
             @RequestParam(required = false) UUID hubId
     ) {
-        CompanyGetAllCommand companyGetAllCommand =
+        CompanySearchQuery companySearchQuery =
                 new CompanyGetAllRequest().toCommand(
                         page,
                         size,
@@ -114,7 +116,7 @@ public class CompanyApiController implements CompanyApi {
                         hubId
                 );
 
-        CompanyGetAllResult companyGetAllResult = companyQueryService.getAllCompany(companyGetAllCommand);
+        CompanyGetAllResult companyGetAllResult = companyQueryService.getAllCompany(companySearchQuery);
 
         PageResponse<CompanyGetAllDataResponse> pageResponse =
                 PageResponse.of(

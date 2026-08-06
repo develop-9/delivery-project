@@ -1,13 +1,12 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
-import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
+import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -55,7 +54,7 @@ class CompanyInternalControllerTest {
                     );
 
             given(companyQueryService.getCompanyForInternal(
-                    new InternalCompanyGetCommand(companyId)
+                    new InternalCompanyGetQuery(companyId)
             )).willReturn(result);
 
             // when
@@ -74,7 +73,7 @@ class CompanyInternalControllerTest {
 
             then(companyQueryService)
                     .should()
-                    .getCompanyForInternal(new InternalCompanyGetCommand(companyId));
+                    .getCompanyForInternal(new InternalCompanyGetQuery(companyId));
         }
 
         @Test
@@ -84,7 +83,7 @@ class CompanyInternalControllerTest {
             UUID companyId = UUID.randomUUID();
 
             given(companyQueryService.getCompanyForInternal(
-                    new InternalCompanyGetCommand(companyId)
+                    new InternalCompanyGetQuery(companyId)
             )).willThrow(
                     new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
             );
@@ -101,7 +100,7 @@ class CompanyInternalControllerTest {
 
             then(companyQueryService)
                     .should()
-                    .getCompanyForInternal(new InternalCompanyGetCommand(companyId));
+                    .getCompanyForInternal(new InternalCompanyGetQuery(companyId));
         }
     }
 }

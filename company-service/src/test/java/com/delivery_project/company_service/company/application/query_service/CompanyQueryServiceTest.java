@@ -1,8 +1,8 @@
 package com.delivery_project.company_service.company.application.query_service;
 
-import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
-import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
+import com.delivery_project.company_service.company.application.query.CompanySearchQuery;
+import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
+import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
@@ -53,8 +53,8 @@ class CompanyQueryServiceTest {
             // Given
             UUID companyId = UUID.randomUUID();
 
-            CompanyGetCommand command =
-                    new CompanyGetCommand(companyId);
+            CompanyGetQuery command =
+                    new CompanyGetQuery(companyId);
 
             Company company = Company.builder()
                     .hubId(UUID.randomUUID())
@@ -104,8 +104,8 @@ class CompanyQueryServiceTest {
             // Given
             UUID companyId = UUID.randomUUID();
 
-            CompanyGetCommand command =
-                    new CompanyGetCommand(companyId);
+            CompanyGetQuery command =
+                    new CompanyGetQuery(companyId);
 
             when(companyQueryRepository.findById(companyId))
                     .thenReturn(Optional.empty());
@@ -145,7 +145,7 @@ class CompanyQueryServiceTest {
 
             UUID hubId = UUID.randomUUID();
 
-            CompanyGetAllCommand command = new CompanyGetAllCommand(
+            CompanySearchQuery command = new CompanySearchQuery(
                     page,
                     size,
                     "createdAt,desc",
@@ -222,7 +222,7 @@ class CompanyQueryServiceTest {
             // Given
             Integer page = -1;
 
-            CompanyGetAllCommand command = new CompanyGetAllCommand(
+            CompanySearchQuery command = new CompanySearchQuery(
                     page,
                     10,
                     "createdAt,desc",
@@ -270,8 +270,8 @@ class CompanyQueryServiceTest {
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
-            InternalCompanyGetCommand command =
-                    new InternalCompanyGetCommand(companyId);
+            InternalCompanyGetQuery command =
+                    new InternalCompanyGetQuery(companyId);
 
             Company company = new Company(
                     companyId,
@@ -305,8 +305,8 @@ class CompanyQueryServiceTest {
             // given
             UUID companyId = UUID.randomUUID();
 
-            InternalCompanyGetCommand command =
-                    new InternalCompanyGetCommand(companyId);
+            InternalCompanyGetQuery command =
+                    new InternalCompanyGetQuery(companyId);
 
             given(companyQueryRepository.findById(companyId))
                     .willReturn(Optional.empty());
