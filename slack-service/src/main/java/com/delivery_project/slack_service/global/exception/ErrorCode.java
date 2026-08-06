@@ -44,6 +44,12 @@ public enum ErrorCode {
             "AI_HISTORY_NOT_FOUND"
     ),
 
+    DELIVERY_ROUTE_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "배송 경로를 찾을 수 없습니다.",
+            "DELIVERY_ROUTE_NOT_FOUND"
+    ),
+
     // 409
     INVALID_STATE(
             HttpStatus.CONFLICT,
