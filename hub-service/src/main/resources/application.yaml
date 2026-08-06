@@ -53,6 +53,13 @@ system:
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
 
+# 내부 다건 조회(03_internal.md 13번)가 한 번에 받아줄 hubIds 개수 상한.
+# 허브 개수가 아니라 IN 절 크기를 제한하는 API 계약이라 허브가 늘어도 그대로 둔다.
+# 바꾸면 03_internal.md 의 제약도 함께 고친다.
+hub:
+  internal:
+    batch-max-size: ${HUB_INTERNAL_BATCH_MAX_SIZE:100}
+
 # 이동정보의 거리·시간 자동 산출(D8)은 아직 연동하지 않았다. 값은 요청으로 직접 받는다.
 # 연동을 넣을 때 map.naver 설정과 환경변수(.env.example)를 함께 되살린다.
 

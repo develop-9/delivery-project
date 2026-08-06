@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +29,6 @@ import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubSearchCondition;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -36,14 +36,29 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class HubQueryService {
 
-	/** 내부 다건 조회 상한. 허브는 총 17개라 그보다 많이 요청하면 잘못된 호출이다 (D4). */
-	private static final int MAX_BATCH_SIZE = 17;
-
 	private final HubQueryRepository hubQueryRepository;
+
+	/**
+	 * 내부 다건 조회 요청 상한 (03_internal.md 13번).
+	 *
+	 * <p><b>허브 개수가 아니라 한 번에 받아줄 요청 크기다.</b> IN 절이 무한정 커지는 것을 막는 API 계약이라
+	 * 허브가 늘거나 줄어도 따라 바뀌지 않는다. 허브 수에 연동시키면 명세에 적힌 상한과 코드가 조용히 갈라지고,
+	 * 이 API 를 부르는 Order · Delivery · Slack 이 명세를 보고 잘못 만들게 된다.
+	 *
+	 * <p>값을 바꾸면 {@code 03_internal.md} 의 제약도 함께 고친다.
+	 */
+	private final int batchMaxSize;
+
+	public HubQueryService(
+			HubQueryRepository hubQueryRepository,
+			@Value("${hub.internal.batch-max-size:100}") int batchMaxSize
+	) {
+		this.hubQueryRepository = hubQueryRepository;
+		this.batchMaxSize = batchMaxSize;
+	}
 
 	/**
 	 * 캐시 {@code hub:{hubId}} (TTL 24h). 허브는 17개로 고정이고 수정이 거의 없어 적중률이 높다.
@@ -112,7 +127,7 @@ public class HubQueryService {
 	}
 
 	private void validateBatchSize(Collection<UUID> hubIds) {
-		if (hubIds == null || hubIds.isEmpty() || hubIds.size() > MAX_BATCH_SIZE) {
+		if (hubIds == null || hubIds.isEmpty() || hubIds.size() > batchMaxSize) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
 		}
 	}
