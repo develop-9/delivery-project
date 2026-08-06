@@ -2,7 +2,6 @@ package com.delivery_project.slack_service.slack.infrastructure.persistence;
 
 import com.delivery_project.slack_service.global.common.PageData;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
-import com.delivery_project.slack_service.slack.domain.repository.SlackMessageCommandRepository;
 import com.delivery_project.slack_service.slack.domain.repository.SlackMessageQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,16 +14,10 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class SlackMessageRepositoryImpl
-        implements SlackMessageCommandRepository,
-        SlackMessageQueryRepository {
+public class SlackMessageQueryRepositoryImpl
+        implements SlackMessageQueryRepository {
 
     private final SpringDataSlackMessageRepository springDataSlackMessageRepository;
-
-    @Override
-    public SlackMessage save(SlackMessage slackMessage) {
-        return springDataSlackMessageRepository.save(slackMessage);
-    }
 
     @Override
     public Optional<SlackMessage> findById(UUID slackMessageId) {

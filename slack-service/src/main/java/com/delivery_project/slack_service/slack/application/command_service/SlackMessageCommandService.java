@@ -1,5 +1,6 @@
 package com.delivery_project.slack_service.slack.application.command_service;
 
+import com.delivery_project.slack_service.slack.domain.repository.SlackMessageQueryRepository;
 import com.delivery_project.slack_service.slack.application.command.SlackMessageCreateCommand;
 import com.delivery_project.slack_service.slack.application.command.SlackMessageUpdateCommand;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageCreateResult;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class SlackMessageCommandService {
 
     private final SlackMessageCommandRepository slackMessageCommandRepository;
+    private final SlackMessageQueryRepository slackMessageQueryRepository;
 
     public SlackMessageCreateResult create(
             SlackMessageCreateCommand command
@@ -66,7 +68,7 @@ public class SlackMessageCommandService {
     }
 
     private SlackMessage findSlackMessage(UUID slackMessageId) {
-        return slackMessageCommandRepository
+        return slackMessageQueryRepository
                 .findById(slackMessageId)
                 .orElseThrow(() ->
                         new NoSuchElementException(
