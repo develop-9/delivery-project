@@ -21,6 +21,7 @@ import com.delivery_project.user_service.user.application.command.UserApproveCom
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
+import com.delivery_project.user_service.user.application.port.DeliveryManagerPort;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
@@ -31,9 +32,6 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
-import com.delivery_project.user_service.user.infrastructure.client.delivery.DeliveryManagerClient;
-
-import feign.FeignException;
 
 @ExtendWith(MockitoExtension.class)
 class UserCommandServiceTest {
@@ -45,7 +43,7 @@ class UserCommandServiceTest {
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Mock
-	private DeliveryManagerClient deliveryManagerClient;
+	private DeliveryManagerPort deliveryManagerPort;
 
 	@Mock
 	private CallerResolver callerResolver;
@@ -159,22 +157,21 @@ class UserCommandServiceTest {
 		userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
 
 		// then
-		org.mockito.Mockito.verify(deliveryManagerClient).deleteByUserId(target.getId());
+		org.mockito.Mockito.verify(deliveryManagerPort).deleteByUserId(target.getId());
 	}
 
+	/**
+	 * 존재하지 않는 레코드를 멱등 성공으로 처리하는 건 DeliveryManagerFeignAdapter의 책임이라
+	 * (DeliveryManagerFeignAdapterTest 참고), 여기서는 Port가 정상 반환(예외 없음)하는 경우
+	 * 사용자 삭제가 그대로 진행되는지만 확인한다.
+	 */
 	@Test
-	void DELIVERY_MANAGER_레코드가_Delivery_Service에_없어도_사용자_삭제는_그대로_진행된다() {
+	void Delivery_Service_연동이_성공하면_사용자_삭제가_그대로_진행된다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-
-		feign.Request request = feign.Request.create(
-				"DELETE", "/internal/v1/delivery-managers/users/" + target.getId(),
-				java.util.Collections.emptyMap(), null, (java.nio.charset.Charset) null);
-		org.mockito.Mockito.doThrow(new FeignException.NotFound("Not Found", request, null, java.util.Collections.emptyMap()))
-				.when(deliveryManagerClient).deleteByUserId(target.getId());
 
 		// when
 		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
@@ -185,19 +182,15 @@ class UserCommandServiceTest {
 	}
 
 	@Test
-	void Delivery_Service_연동이_404가_아닌_이유로_실패하면_사용자_삭제_자체가_막힌다() {
+	void Delivery_Service_연동이_실패하면_사용자_삭제_자체가_막힌다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
-		feign.Request request = feign.Request.create(
-				"DELETE", "/internal/v1/delivery-managers/users/" + target.getId(),
-				java.util.Collections.emptyMap(), null, (java.nio.charset.Charset) null);
-		org.mockito.Mockito.doThrow(new feign.RetryableException(
-						503, "Read timed out", feign.Request.HttpMethod.DELETE, (Long) null, request))
-				.when(deliveryManagerClient).deleteByUserId(target.getId());
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE))
+				.when(deliveryManagerPort).deleteByUserId(target.getId());
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId())))

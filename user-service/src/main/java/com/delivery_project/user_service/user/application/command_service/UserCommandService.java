@@ -12,6 +12,7 @@ import com.delivery_project.user_service.user.application.command.UserApproveCom
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
+import com.delivery_project.user_service.user.application.port.DeliveryManagerPort;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
@@ -22,9 +23,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
-import com.delivery_project.user_service.user.infrastructure.client.delivery.DeliveryManagerClient;
 
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,7 +35,7 @@ public class UserCommandService {
 
 	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
-	private final DeliveryManagerClient deliveryManagerClient;
+	private final DeliveryManagerPort deliveryManagerPort;
 	private final CallerResolver callerResolver;
 
 	public UserUpdateMeResult updateMe(UUID callerId, UserUpdateMeCommand command) {
@@ -126,24 +125,18 @@ public class UserCommandService {
 	}
 
 	/**
-	 * Delivery Service 연동이 (레코드가 원래 없는 404 제외하고) 실패하면 사용자 삭제 자체를 막는다.
+	 * Delivery Service 연동이 (레코드가 원래 없는 경우 제외하고) 실패하면 사용자 삭제 자체를 막는다.
 	 * 정리가 안 된 배송담당자 레코드를 Delivery Service 쪽에 활성 상태로 남겨두면, User Service에서는
 	 * 이미 삭제되어 로그인도 안 되는 사람에게 라운드로빈으로 새 배송이 배정될 수 있어 "최선 노력"보다
 	 * 안전한 실패(차단) 쪽을 택함. 재시도 장치가 없어 한 번 어긋나면 계속 그 상태로 남는 것도 이유.
+	 * DeliveryManagerPort가 존재하지 않는 레코드는 이미 멱등 성공으로 처리하므로, 여기서는
+	 * BusinessException이 올라오면 그대로 전파하기만 하면 된다.
 	 *
 	 * TODO: Delivery Service의 내부 삭제 API가 "진행 중인 배송 배정 여부"를 검증하게 되면
 	 * (Delivery/DeliveryRoute 구현 후), 그 결과를 여기서 전용 ErrorCode로 구분해 반영해야 한다.
 	 */
 	private void syncDeleteDeliveryManager(UUID userId) {
-		try {
-			deliveryManagerClient.deleteByUserId(userId);
-		} catch (FeignException.NotFound e) {
-			// 배송담당자 레코드가 없거나 이미 삭제됨 — User 삭제를 막을 이유가 아니므로 무시.
-			log.info("[User] 연동할 배송담당자 레코드 없음 userId={}", userId);
-		} catch (FeignException e) {
-			log.warn("[User] Delivery Service 연동 실패 userId={}", userId, e);
-			throw new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
-		}
+		deliveryManagerPort.deleteByUserId(userId);
 	}
 
 	private void validatePermission(User caller, User target, ErrorCode forbiddenCode) {
