@@ -93,11 +93,24 @@ public class User extends BaseDeletableEntity {
 		this.approvalStatus = ApprovalStatus.REJECTED;
 	}
 
+	public void updateProfile(String name, String slackId) {
+		if (name != null) {
+			this.name = name;
+		}
+		if (slackId != null) {
+			this.slackId = slackId;
+		}
+	}
+
 	public boolean isMaster() {
 		return role == Role.MASTER;
 	}
 
 	public boolean isHubManagerOf(UUID hubId) {
 		return role == Role.HUB_MANAGER && hubId != null && hubId.equals(this.hubId);
+	}
+
+	public boolean isSelf(UUID userId) {
+		return this.id != null && this.id.equals(userId);
 	}
 }

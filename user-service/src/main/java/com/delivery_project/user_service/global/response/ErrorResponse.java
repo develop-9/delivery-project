@@ -19,4 +19,8 @@ public record ErrorResponse(
 	public static ErrorResponse from(ErrorCode errorCode, List<FieldErrorDto> fieldErrors) {
 		return new ErrorResponse(false, ErrorDto.from(errorCode, fieldErrors), Instant.now());
 	}
+
+	public static ErrorResponse from(ErrorCode errorCode, String message) {
+		return new ErrorResponse(false, ErrorDto.from(errorCode, message), Instant.now());
+	}
 }
