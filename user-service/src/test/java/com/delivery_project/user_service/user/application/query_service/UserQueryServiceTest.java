@@ -111,18 +111,18 @@ class UserQueryServiceTest {
 	}
 
 	@Test
-	void 본인이_아닌_사용자를_MASTER가_아닌_역할이_조회하면_READ_USER_FORBIDDEN_예외가_발생한다() {
+	void 본인이_아닌_사용자를_MASTER가_아닌_역할이_조회하면_대상_존재_여부와_무관하게_조회_전에_READ_USER_FORBIDDEN_예외가_발생한다() {
 		// given
 		User companyManager = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
-		User other = createUser(Role.COMPANY_MANAGER, UUID.randomUUID());
+		UUID otherId = UUID.randomUUID();
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
-		when(userQueryRepository.findById(other.getId())).thenReturn(Optional.of(other));
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getById(companyManager.getId(), other.getId()))
+		assertThatThrownBy(() -> userQueryService.getById(companyManager.getId(), otherId))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
+		org.mockito.Mockito.verify(userQueryRepository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.any());
 	}
 
 	@Test

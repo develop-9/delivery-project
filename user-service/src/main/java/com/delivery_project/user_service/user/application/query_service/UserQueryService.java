@@ -46,14 +46,19 @@ public class UserQueryService {
 		return userQueryRepository.search(condition, pageable).map(UserListResult::from);
 	}
 
+	/**
+	 * 권한 체크를 조회보다 먼저 한다(delete()와 동일 순서). targetUserId만으로 본인 여부를
+	 * 판단할 수 있어 대상을 먼저 불러올 필요가 없고, 순서를 바꾸면 권한 없는 호출자가 404/403
+	 * 상태코드 차이로 대상 존재 여부를 알아낼 수 있는 정보 노출도 같이 막힌다.
+	 */
 	public UserDetailResult getById(UUID callerId, UUID targetUserId) {
 		User caller = callerResolver.resolve(callerId);
-		User target = userQueryRepository.findById(targetUserId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-		if (!caller.isMaster() && !caller.isSelf(target.getId())) {
+		if (!caller.isMaster() && !caller.isSelf(targetUserId)) {
 			throw new BusinessException(ErrorCode.READ_USER_FORBIDDEN, "사용자 조회 권한이 없습니다.");
 		}
+
+		User target = userQueryRepository.findById(targetUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		return UserDetailResult.from(target);
 	}
