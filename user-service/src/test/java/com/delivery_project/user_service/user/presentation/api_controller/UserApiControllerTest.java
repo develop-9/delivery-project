@@ -101,6 +101,19 @@ class UserApiControllerTest {
 	}
 
 	@Test
+	void 허용되지_않은_size로_승인대기_목록을_조회하면_기본값_10으로_보정된다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master6", "U7000000015", Role.MASTER, null, null);
+
+		// when & then
+		assertThat(mvc.get().uri("/api/v1/users/pending?size=25")
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(200)
+				.bodyJson()
+				.extractingPath("$.data.size").isEqualTo(10);
+	}
+
+	@Test
 	void MASTER가_승인하면_200과_APPROVED_상태를_반환한다() {
 		// given
 		String masterToken = signupApprovedUserAndLogin("master2", "U7000000007", Role.MASTER, null, null);

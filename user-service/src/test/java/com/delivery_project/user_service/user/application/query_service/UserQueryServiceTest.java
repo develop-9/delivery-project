@@ -34,6 +34,7 @@ import com.delivery_project.user_service.user.application.result.UserDetailResul
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
+import com.delivery_project.user_service.user.application.support.pagination.PageValidator;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserQueryRepository;
@@ -47,6 +48,9 @@ class UserQueryServiceTest {
 
 	@Mock
 	private CallerResolver callerResolver;
+
+	@Mock
+	private PageValidator pageValidator;
 
 	@InjectMocks
 	private UserQueryService userQueryService;
@@ -77,6 +81,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(target), pageable, 1);
 
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 		when(userQueryRepository.search(condition, pageable)).thenReturn(page);
 
 		// when
@@ -85,6 +90,26 @@ class UserQueryServiceTest {
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(1);
 		assertThat(result.getContent().get(0).userId()).isEqualTo(target.getId());
+	}
+
+	@Test
+	void 목록_조회에서_허용되지_않은_size는_조회_전에_기본값_10으로_보정된다() {
+		// given
+		User master = createUser(Role.MASTER, null);
+		Pageable requestedPageable = PageRequest.of(0, 25);
+		Pageable normalizedPageable = PageRequest.of(0, 10);
+		UserSearchCondition condition = new UserSearchCondition(null, null, null, null);
+		Page<User> page = new PageImpl<>(List.of(), normalizedPageable, 0);
+
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(pageValidator.normalizeSize(requestedPageable)).thenReturn(normalizedPageable);
+		when(userQueryRepository.search(condition, normalizedPageable)).thenReturn(page);
+
+		// when
+		userQueryService.list(master.getId(), new UserListCommand(condition, requestedPageable));
+
+		// then
+		org.mockito.Mockito.verify(userQueryRepository).search(condition, normalizedPageable);
 	}
 
 	@Test
@@ -170,6 +195,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(pending), pageable, 1);
 
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 		when(userQueryRepository.findAllPending(pageable)).thenReturn(page);
 
 		// when
@@ -189,6 +215,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 		when(userQueryRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
 
 		// when
@@ -208,6 +235,7 @@ class UserQueryServiceTest {
 		Page<User> page = new PageImpl<>(List.of(), pageable, 0);
 
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 		when(userQueryRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
 
 		// when
@@ -223,6 +251,7 @@ class UserQueryServiceTest {
 		User companyManager = createUser(Role.COMPANY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 
 		// when & then
 		assertThatThrownBy(() -> userQueryService.getPendingUsers(companyManager.getId(), new UserPendingCommand(null, pageable)))
@@ -237,6 +266,7 @@ class UserQueryServiceTest {
 		User deliveryManager = createUser(Role.DELIVERY_MANAGER, null);
 		Pageable pageable = PageRequest.of(0, 10);
 		when(callerResolver.resolve(deliveryManager.getId())).thenReturn(deliveryManager);
+		when(pageValidator.normalizeSize(pageable)).thenReturn(pageable);
 
 		// when & then
 		assertThatThrownBy(() -> userQueryService.getPendingUsers(deliveryManager.getId(), new UserPendingCommand(null, pageable)))
