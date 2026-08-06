@@ -4,6 +4,7 @@ import com.delivery_project.slack_service.ai_history.application.port.DeliveryRo
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +23,21 @@ public class DeliveryRouteClientImpl
     public DeliveryRouteResult getRoutesByOrderId(
             UUID orderId
     ) {
-        DeliveryRouteFeignClient.DeliveryRouteApiResponse response =
-                deliveryRouteFeignClient.getRoutesByOrderId(
-                        orderId
-                );
+        DeliveryRouteFeignClient.DeliveryRouteApiResponse response;
+
+        try {
+            response = deliveryRouteFeignClient.getRoutesByOrderId(
+                    orderId
+            );
+        } catch (FeignException.NotFound exception) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+            );
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
+            );
+        }
 
         if (
                 response == null

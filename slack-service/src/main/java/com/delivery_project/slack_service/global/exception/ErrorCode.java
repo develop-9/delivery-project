@@ -56,6 +56,12 @@ public enum ErrorCode {
             "DELIVERY_ROUTE_NOT_FOUND"
     ),
 
+    ORDER_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "주문이 존재하지 않습니다.",
+            "ORDER_NOT_FOUND"
+    ),
+
     // 409
     INVALID_STATE(
             HttpStatus.CONFLICT,
@@ -75,6 +81,7 @@ public enum ErrorCode {
             "연관 서비스를 사용할 수 없습니다.",
             "DEPENDENCY_SERVICE_UNAVAILABLE"
     ),
+
     AI_REQUEST_FAILED(
             HttpStatus.BAD_GATEWAY,
             "AI 요청에 실패했습니다.",

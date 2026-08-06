@@ -4,6 +4,7 @@ import com.delivery_project.slack_service.ai_history.application.port.OrderSumma
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,11 +24,22 @@ public class OrderSummaryClientImpl
     public OrderSummaryResult getOrderSummary(
             UUID orderId
     ) {
-        OrderSummaryFeignClient.OrderSummaryApiResponse response =
-                orderSummaryFeignClient.getOrderSummary(
-                        orderId,
-                        INCLUDE_OPTIONS
-                );
+        OrderSummaryFeignClient.OrderSummaryApiResponse response;
+
+        try {
+            response = orderSummaryFeignClient.getOrderSummary(
+                    orderId,
+                    INCLUDE_OPTIONS
+            );
+        } catch (FeignException.NotFound exception) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_NOT_FOUND
+            );
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
+            );
+        }
 
         if (
                 response == null
