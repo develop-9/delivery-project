@@ -45,8 +45,9 @@ public class CompanyCommandService {
         Company savedCompany = companyCommandRepository.save(company);
 
         log.info(
-                "업체 생성 완료. companyId={}",
-                savedCompany.getId()
+                "업체 생성 완료. companyId={}, createdBy={}",
+                savedCompany.getId(),
+                savedCompany.getCreatedBy()
         );
 
         return CompanyCreateResult.from(savedCompany.getId());
@@ -75,8 +76,9 @@ public class CompanyCommandService {
         );
 
         log.info(
-                "업체 수정 완료. companyId={}",
-                company.getId()
+                "업체 수정 완료. companyId={}, updatedBy={}",
+                company.getId(),
+                company.getUpdatedBy()
         );
 
         return CompanyUpdateResult.from(company.getId());
@@ -96,10 +98,17 @@ public class CompanyCommandService {
          */
 
         /*
-        * TODO:
-        *  권한이 통과된 사용자의 UUID 기입
-        *  현재는 임의로 생성된 UUID를 작성
-        */
+         * TODO:
+         *  권한이 통과된 사용자의 UUID 기입
+         *  현재는 임의로 생성된 UUID를 작성
+         */
+
+        /*
+         * TODO:
+         *  업체가 가지고 있는 상품들 삭제
+         *  허브에 존재하는 상품들 삭제
+         */
+
         company.delete(UUID.fromString("12345678-1234-5678-1234-123456789123"));
 
         log.info(
