@@ -31,7 +31,7 @@ public class DeliveryManagerCommandService {
     private final DeliveryManagerCommandRepository
             deliveryManagerCommandRepository;
     @Value("${system.id}")
-    private String systemId;
+    private UUID systemId;
 
     public DeliveryManagerCreateResult create(
             DeliveryManagerCreateCommand command
@@ -207,14 +207,14 @@ public class DeliveryManagerCommandService {
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                                 )
                         );
-        UUID deletedBy = UUID.fromString(systemId);
+
         /*
          * TODO:
          * Delivery / DeliveryRoute 구현 후
          * 진행 중인 배송 배정 여부 검증
          */
 
-        deliveryManager.deleteManager(deletedBy);
+        deliveryManager.deleteManager(systemId);
 
         return DeliveryManagerInternalDeleteResult.from(
                 deliveryManager

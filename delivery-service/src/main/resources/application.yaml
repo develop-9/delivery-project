@@ -37,6 +37,5 @@ management:
       zipkin:
         endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans
 
-# 내부 api 검증을 위한 id 고정 처리
 system:
-  id: 00000000-0000-0000-0000-000000000001
+  id: ${SYSTEM_ID}
