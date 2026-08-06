@@ -13,7 +13,4 @@ public record CompanyGetAllCommand(
         CompanyType type,
         UUID hubId
 ) {
-    public static CompanyGetAllCommand from(Integer page, Integer size, String sort, String name, CompanyType type, UUID hubId) {
-        return new CompanyGetAllCommand(page, size, sort, name, type, hubId);
-    }
 }

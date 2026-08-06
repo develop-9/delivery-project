@@ -1,6 +1,6 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
-import com.delivery_project.company_service.company.presentation.response.CompanyGetForInternalResponse;
+import com.delivery_project.company_service.company.presentation.response.InternalCompanyGetResponse;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,7 +40,7 @@ public interface CompanyInternal {
                     )
             )
     })
-    ResponseEntity<SuccessResponse<CompanyGetForInternalResponse>> getCompany(
+    ResponseEntity<SuccessResponse<InternalCompanyGetResponse>> getCompany(
             @Parameter(
                     description = "조회할 업체 ID",
                     required = true

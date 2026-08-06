@@ -2,8 +2,9 @@ package com.delivery_project.company_service.company.application.query_service;
 
 import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
-import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
+import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.domain.entity.Company;
@@ -269,8 +270,8 @@ class CompanyQueryServiceTest {
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
-            CompanyGetCommand command =
-                    new CompanyGetCommand(companyId);
+            InternalCompanyGetCommand command =
+                    new InternalCompanyGetCommand(companyId);
 
             Company company = new Company(
                     companyId,
@@ -284,7 +285,7 @@ class CompanyQueryServiceTest {
                     .willReturn(Optional.of(company));
 
             // when
-            CompanyGetForInternalResult result =
+            InternalCompanyGetResult result =
                     companyQueryService.getCompanyForInternal(command);
 
             // then
@@ -304,8 +305,8 @@ class CompanyQueryServiceTest {
             // given
             UUID companyId = UUID.randomUUID();
 
-            CompanyGetCommand command =
-                    new CompanyGetCommand(companyId);
+            InternalCompanyGetCommand command =
+                    new InternalCompanyGetCommand(companyId);
 
             given(companyQueryRepository.findById(companyId))
                     .willReturn(Optional.empty());

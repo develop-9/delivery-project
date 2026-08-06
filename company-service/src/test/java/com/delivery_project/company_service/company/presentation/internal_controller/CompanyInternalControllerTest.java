@@ -1,8 +1,8 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
-import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
+import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
@@ -34,9 +34,6 @@ class CompanyInternalControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockitoBean
     private CompanyQueryService companyQueryService;
 
@@ -50,15 +47,15 @@ class CompanyInternalControllerTest {
             // given
             UUID companyId = UUID.randomUUID();
 
-            CompanyGetForInternalResult result =
-                    new CompanyGetForInternalResult(
+            InternalCompanyGetResult result =
+                    new InternalCompanyGetResult(
                             companyId,
                             "테스트 업체",
                             CompanyType.PRODUCER
                     );
 
             given(companyQueryService.getCompanyForInternal(
-                    new CompanyGetCommand(companyId)
+                    new InternalCompanyGetCommand(companyId)
             )).willReturn(result);
 
             // when
@@ -77,7 +74,7 @@ class CompanyInternalControllerTest {
 
             then(companyQueryService)
                     .should()
-                    .getCompanyForInternal(new CompanyGetCommand(companyId));
+                    .getCompanyForInternal(new InternalCompanyGetCommand(companyId));
         }
 
         @Test
@@ -87,7 +84,7 @@ class CompanyInternalControllerTest {
             UUID companyId = UUID.randomUUID();
 
             given(companyQueryService.getCompanyForInternal(
-                    new CompanyGetCommand(companyId)
+                    new InternalCompanyGetCommand(companyId)
             )).willThrow(
                     new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
             );
@@ -104,7 +101,7 @@ class CompanyInternalControllerTest {
 
             then(companyQueryService)
                     .should()
-                    .getCompanyForInternal(new CompanyGetCommand(companyId));
+                    .getCompanyForInternal(new InternalCompanyGetCommand(companyId));
         }
     }
 }

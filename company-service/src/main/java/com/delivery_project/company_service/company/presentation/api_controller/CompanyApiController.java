@@ -5,8 +5,7 @@ import com.delivery_project.company_service.company.application.command_service.
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
-import com.delivery_project.company_service.company.presentation.request.CompanyCreateRequest;
-import com.delivery_project.company_service.company.presentation.request.CompanyUpdateRequest;
+import com.delivery_project.company_service.company.presentation.request.*;
 import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
@@ -31,7 +30,7 @@ public class CompanyApiController implements CompanyApi {
     public ResponseEntity<SuccessResponse<CompanyCreateResponse>> createCompany(
             @RequestBody @Valid CompanyCreateRequest companyCreateRequest
     ) {
-        CompanyCreateCommand companyCreateCommand = CompanyCreateCommand.from(companyCreateRequest);
+        CompanyCreateCommand companyCreateCommand = companyCreateRequest.toCommand();
         CompanyCreateResult companyCreateResult = companyCommandService.createCompany(companyCreateCommand);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -49,7 +48,7 @@ public class CompanyApiController implements CompanyApi {
             @PathVariable UUID companyId,
             @RequestBody @Valid CompanyUpdateRequest companyUpdateRequest
     ) {
-        CompanyUpdateCommand companyUpdateCommand = CompanyUpdateCommand.from(companyId, companyUpdateRequest);
+        CompanyUpdateCommand companyUpdateCommand = companyUpdateRequest.toCommand(companyId);
         CompanyUpdateResult companyUpdateResult = companyCommandService.updateCompany(companyUpdateCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -66,7 +65,7 @@ public class CompanyApiController implements CompanyApi {
     public ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
             @PathVariable UUID companyId
     ) {
-        CompanyDeleteCommand companyDeleteCommand = CompanyDeleteCommand.from(companyId);
+        CompanyDeleteCommand companyDeleteCommand = new CompanyDeleteRequest().toCommand(companyId);
         CompanyDeleteResult companyDeleteResult = companyCommandService.deleteCompany(companyDeleteCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -83,7 +82,7 @@ public class CompanyApiController implements CompanyApi {
     public ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
             @PathVariable UUID companyId
     ) {
-        CompanyGetCommand companyGetCommand = CompanyGetCommand.from(companyId);
+        CompanyGetCommand companyGetCommand = new CompanyGetRequest().toCommand(companyId);
         CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -106,7 +105,7 @@ public class CompanyApiController implements CompanyApi {
             @RequestParam(required = false) UUID hubId
     ) {
         CompanyGetAllCommand companyGetAllCommand =
-                CompanyGetAllCommand.from(
+                new CompanyGetAllRequest().toCommand(
                         page,
                         size,
                         sort,

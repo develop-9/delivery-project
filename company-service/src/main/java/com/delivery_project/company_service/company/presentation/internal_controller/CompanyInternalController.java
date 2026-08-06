@@ -1,9 +1,11 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
-import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
-import com.delivery_project.company_service.company.presentation.response.CompanyGetForInternalResponse;
+import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
+import com.delivery_project.company_service.company.presentation.request.InternalCompanyGetRequest;
+import com.delivery_project.company_service.company.presentation.response.InternalCompanyGetResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,16 +26,16 @@ public class CompanyInternalController implements CompanyInternal {
 
     @GetMapping("/{companyId}")
     @Override
-    public ResponseEntity<SuccessResponse<CompanyGetForInternalResponse>> getCompany(
+    public ResponseEntity<SuccessResponse<InternalCompanyGetResponse>> getCompany(
             @PathVariable UUID companyId
     ) {
-        CompanyGetCommand companyGetCommand = new CompanyGetCommand(companyId);
-        CompanyGetForInternalResult companyGetForInternalResult = companyQueryService.getCompanyForInternal(companyGetCommand);
+        InternalCompanyGetCommand internalCompanyGetCommand = new InternalCompanyGetRequest().toCommand(companyId);
+        InternalCompanyGetResult internalCompanyGetResult = companyQueryService.getCompanyForInternal(internalCompanyGetCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
                         SuccessResponse.success(
-                                CompanyGetForInternalResponse.from(companyGetForInternalResult)
+                                InternalCompanyGetResponse.from(internalCompanyGetResult)
                         )
                 );
     }

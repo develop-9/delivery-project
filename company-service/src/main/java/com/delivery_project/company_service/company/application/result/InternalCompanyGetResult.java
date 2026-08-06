@@ -5,14 +5,14 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 
 import java.util.UUID;
 
-public record CompanyGetForInternalResult(
+public record InternalCompanyGetResult(
 
         UUID companyId,
         String name,
         CompanyType type
 ) {
-    public static CompanyGetForInternalResult from(Company company) {
-        return new CompanyGetForInternalResult(
+    public static InternalCompanyGetResult from(Company company) {
+        return new InternalCompanyGetResult(
                 company.getId(),
                 company.getName(),
                 company.getType()

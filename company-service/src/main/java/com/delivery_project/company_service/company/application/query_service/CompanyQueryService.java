@@ -2,7 +2,8 @@ package com.delivery_project.company_service.company.application.query_service;
 
 import com.delivery_project.company_service.company.application.command.CompanyGetAllCommand;
 import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
-import com.delivery_project.company_service.company.application.result.CompanyGetForInternalResult;
+import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
+import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
@@ -58,12 +59,12 @@ public class CompanyQueryService {
 
     // [내부] 업체 단건 조회 비즈니스 로직
     @Transactional(readOnly = true)
-    public CompanyGetForInternalResult getCompanyForInternal(CompanyGetCommand companyGetCommand) {
+    public InternalCompanyGetResult getCompanyForInternal(InternalCompanyGetCommand internalCompanyGetCommand) {
 
         // Validation Check - 업체 존재 여부 판단
-        Company company = companyQueryRepository.findById(companyGetCommand.companyId())
+        Company company = companyQueryRepository.findById(internalCompanyGetCommand.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        return CompanyGetForInternalResult.from(company);
+        return InternalCompanyGetResult.from(company);
     }
 }
