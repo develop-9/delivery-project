@@ -1,10 +1,11 @@
-package com.delivery_project.hub_service.hub.presentation.response;
+package com.delivery_project.hub_service.hub.presentation.response.internal;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
+import com.delivery_project.hub_service.hub.presentation.response.HubPathSegmentResponse;
 
 /**
  * 내부 배송 경로 조회 응답 (03_internal.md 14번).

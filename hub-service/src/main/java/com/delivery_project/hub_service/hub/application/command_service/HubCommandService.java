@@ -9,13 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
-import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubUpdateResult;
+import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
@@ -39,7 +39,7 @@ public class HubCommandService {
 
 	private final HubRepository hubRepository;
 	private final HubRouteRepository hubRouteRepository;
-	private final CacheEvictor cacheEvictor;
+	private final HubCacheEvictor cacheEvictor;
 
 	@PreAuthorize("hasRole('MASTER')")
 	public HubCreateResult create(UUID callerId, HubCreateCommand command) {

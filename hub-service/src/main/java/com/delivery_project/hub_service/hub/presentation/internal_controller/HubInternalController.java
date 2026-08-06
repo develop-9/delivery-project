@@ -16,8 +16,8 @@ import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
-import com.delivery_project.hub_service.hub.presentation.response.HubBatchResponse;
-import com.delivery_project.hub_service.hub.presentation.response.HubSummaryResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubBatchResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubSummaryResponse;
 
 import lombok.RequiredArgsConstructor;
 

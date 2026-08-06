@@ -21,10 +21,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.delivery_project.hub_service.global.security.Role;
-import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
+import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
@@ -56,7 +56,7 @@ class HubCommandServiceAuthorizationTest {
 	private HubRouteRepository hubRouteRepository;
 
 	@MockitoBean
-	private CacheEvictor cacheEvictor;
+	private HubCacheEvictor HubCacheEvictor;
 
 	@AfterEach
 	void clearSecurityContext() {

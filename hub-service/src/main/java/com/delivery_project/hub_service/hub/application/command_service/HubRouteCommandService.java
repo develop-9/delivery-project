@@ -8,13 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
-import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubRouteCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateResult;
+import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
@@ -41,7 +41,7 @@ public class HubRouteCommandService {
 
 	private final HubRouteRepository hubRouteRepository;
 	private final HubRepository hubRepository;
-	private final CacheEvictor cacheEvictor;
+	private final HubCacheEvictor HubCacheEvictor;
 
 	@PreAuthorize("hasRole('MASTER')")
 	public HubRouteCreateResult create(UUID callerId, HubRouteCreateCommand command) {
@@ -59,7 +59,7 @@ public class HubRouteCommandService {
 		HubRoute saved = hubRouteRepository.save(HubRoute.create(
 				departure.getId(), arrival.getId(), command.distanceKm(), command.durationMin()));
 
-		cacheEvictor.evictAllHubPaths();
+		HubCacheEvictor.evictAllHubPaths();
 
 		log.info("[HubRoute] 이동정보 생성 완료 hubRouteId={}", saved.getId());
 
@@ -86,7 +86,7 @@ public class HubRouteCommandService {
 				command.distanceKm() != null ? command.distanceKm() : hubRoute.getDistanceKm(),
 				command.durationMin() != null ? command.durationMin() : hubRoute.getDurationMin());
 
-		cacheEvictor.evictAllHubPaths();
+		HubCacheEvictor.evictAllHubPaths();
 
 		log.info("[HubRoute] 이동정보 수정 완료 hubRouteId={}", hubRouteId);
 
@@ -110,7 +110,7 @@ public class HubRouteCommandService {
 		int affectedHubPairCount = countAffectedHubPairs(departure, arrival);
 		hubRoute.delete(callerId);
 
-		cacheEvictor.evictAllHubPaths();
+		HubCacheEvictor.evictAllHubPaths();
 
 		log.info("[HubRoute] 이동정보 삭제 완료 hubRouteId={} affectedHubPairCount={}",
 				hubRouteId, affectedHubPairCount);

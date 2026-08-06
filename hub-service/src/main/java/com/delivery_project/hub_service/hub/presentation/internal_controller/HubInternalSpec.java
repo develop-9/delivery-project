@@ -6,8 +6,8 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 
 import com.delivery_project.hub_service.global.response.SuccessResponse;
-import com.delivery_project.hub_service.hub.presentation.response.HubBatchResponse;
-import com.delivery_project.hub_service.hub.presentation.response.HubSummaryResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubBatchResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubSummaryResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

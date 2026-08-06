@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 
 import com.delivery_project.hub_service.global.response.SuccessResponse;
-import com.delivery_project.hub_service.hub.presentation.response.HubPathInternalResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubPathInternalResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

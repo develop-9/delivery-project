@@ -21,13 +21,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
-import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubRouteCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubRouteUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateResult;
+import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
@@ -55,7 +55,7 @@ class HubRouteCommandServiceTest {
 	private HubRepository hubRepository;
 
 	@Mock
-	private CacheEvictor cacheEvictor;
+	private HubCacheEvictor HubCacheEvictor;
 
 	@InjectMocks
 	private HubRouteCommandService hubRouteCommandService;
@@ -85,7 +85,7 @@ class HubRouteCommandServiceTest {
 			assertThat(result.arrivalHubName()).isEqualTo("경기 남부 센터");
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
 			assertThat(result.durationMin()).isEqualTo(70);
-			verify(cacheEvictor).evictAllHubPaths();
+			verify(HubCacheEvictor).evictAllHubPaths();
 		}
 
 		@Test
@@ -193,7 +193,7 @@ class HubRouteCommandServiceTest {
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
 			assertThat(result.durationMin()).isEqualTo(90);
 			assertThat(hubRoute.getDistanceKm()).isEqualByComparingTo("52.30");
-			verify(cacheEvictor).evictAllHubPaths();
+			verify(HubCacheEvictor).evictAllHubPaths();
 		}
 
 		@Test
@@ -253,7 +253,7 @@ class HubRouteCommandServiceTest {
 			// then
 			assertThat(result.affectedHubPairCount()).isEqualTo(25);
 			assertThat(hubRoute.isDeleted()).isTrue();
-			verify(cacheEvictor).evictAllHubPaths();
+			verify(HubCacheEvictor).evictAllHubPaths();
 		}
 
 		@Test

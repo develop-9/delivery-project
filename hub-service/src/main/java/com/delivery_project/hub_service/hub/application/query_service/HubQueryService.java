@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.delivery_project.hub_service.global.config.CacheConfig;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.hub.application.query.HubBatchQuery;
@@ -25,6 +24,7 @@ import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
 import com.delivery_project.hub_service.hub.application.result.HubDetailResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
+import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubSearchCondition;
@@ -66,7 +66,7 @@ public class HubQueryService {
 	 * <p>내부 API 의 {@code getHubSummary} 는 캐시하지 않는다 — 응답 형태가 달라 같은 키를 쓸 수 없고,
 	 * 별도 키를 두면 무효화 지점이 하나 더 늘어난다.
 	 */
-	@Cacheable(cacheNames = CacheConfig.HUB_CACHE, key = "#query.hubId().toString()")
+	@Cacheable(cacheNames = HubCacheNames.HUB, key = "#query.hubId().toString()")
 	public HubDetailResult getHub(HubGetQuery query) {
 		Hub hub = loadHub(query.hubId());
 

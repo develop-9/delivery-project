@@ -29,16 +29,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-import com.delivery_project.hub_service.global.config.CacheConfig;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
 import com.delivery_project.hub_service.hub.application.query.HubRouteGetQuery;
 import com.delivery_project.hub_service.hub.application.query.HubRouteSearchQuery;
-import com.delivery_project.hub_service.hub.application.support.HubPathCalculator;
+import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteSearchCondition;
+import com.delivery_project.hub_service.hub.domain.service.HubPathCalculator;
 
 /**
  * 이동정보 조회 단위 테스트.
@@ -266,7 +266,7 @@ class HubRouteQueryServiceTest {
 					.getValue(context, String.class);
 
 			// then
-			assertThat(cacheable.cacheNames()).containsExactly(CacheConfig.HUB_PATH_CACHE);
+			assertThat(cacheable.cacheNames()).containsExactly(HubCacheNames.HUB_PATH);
 			assertThat(key).isEqualTo(departureHubId + ":" + arrivalHubId);
 		}
 	}

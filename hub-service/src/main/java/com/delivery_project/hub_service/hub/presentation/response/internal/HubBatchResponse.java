@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.hub.presentation.response;
+package com.delivery_project.hub_service.hub.presentation.response.internal;
 
 import java.util.List;
 import java.util.UUID;

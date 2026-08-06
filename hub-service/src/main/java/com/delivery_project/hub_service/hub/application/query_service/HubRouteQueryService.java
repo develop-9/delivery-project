@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.delivery_project.hub_service.global.config.CacheConfig;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
@@ -24,13 +23,14 @@ import com.delivery_project.hub_service.hub.application.query.HubRouteSearchQuer
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
 import com.delivery_project.hub_service.hub.application.result.HubPathSegmentResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDetailResult;
-import com.delivery_project.hub_service.hub.application.support.HubPathCalculator;
-import com.delivery_project.hub_service.hub.application.support.HubSegmentPair;
+import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteSearchCondition;
+import com.delivery_project.hub_service.hub.domain.service.HubPathCalculator;
+import com.delivery_project.hub_service.hub.domain.service.HubSegmentPair;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -82,7 +82,7 @@ public class HubRouteQueryService {
 	 * <p>캐시 키는 규약이 정한 {@code hubPath:{depId}:{arrId}} 그대로다. 파라미터를 Query 로 묶은 뒤에도
 	 * <b>만들어지는 문자열이 달라지면 안 되므로</b> 키 표현식만 {@code #query.xxx()} 로 바꿨다.
 	 */
-	@Cacheable(cacheNames = CacheConfig.HUB_PATH_CACHE,
+	@Cacheable(cacheNames = HubCacheNames.HUB_PATH,
 			key = "#query.departureHubId().toString() + ':' + #query.arrivalHubId().toString()")
 	public HubPathResult findPath(HubPathQuery query) {
 		if (query.departureHubId().equals(query.arrivalHubId())) {

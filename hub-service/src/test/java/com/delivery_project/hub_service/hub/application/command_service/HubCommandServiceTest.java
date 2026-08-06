@@ -22,12 +22,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
-import com.delivery_project.hub_service.global.util.CacheEvictor;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
+import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
@@ -49,7 +49,7 @@ class HubCommandServiceTest {
 	private HubRouteRepository hubRouteRepository;
 
 	@Mock
-	private CacheEvictor cacheEvictor;
+	private HubCacheEvictor HubCacheEvictor;
 
 	@InjectMocks
 	private HubCommandService hubCommandService;
@@ -226,8 +226,8 @@ class HubCommandServiceTest {
 			assertThat(outbound.isDeleted()).isTrue();
 			assertThat(inbound.isDeleted()).isTrue();
 
-			verify(cacheEvictor).evictHub(sub.getId());
-			verify(cacheEvictor).evictAllHubPaths();
+			verify(HubCacheEvictor).evictHub(sub.getId());
+			verify(HubCacheEvictor).evictAllHubPaths();
 		}
 
 		@Test

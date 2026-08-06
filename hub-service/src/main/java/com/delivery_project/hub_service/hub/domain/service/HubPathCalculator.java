@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.hub.application.support;
+package com.delivery_project.hub_service.hub.domain.service;
 
 import java.util.ArrayList;
 import java.util.List;

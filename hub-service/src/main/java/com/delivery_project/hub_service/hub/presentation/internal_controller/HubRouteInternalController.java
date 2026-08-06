@@ -12,7 +12,7 @@ import com.delivery_project.hub_service.global.response.SuccessResponse;
 import com.delivery_project.hub_service.hub.application.query.HubPathQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubRouteQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubPathResult;
-import com.delivery_project.hub_service.hub.presentation.response.HubPathInternalResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubPathInternalResponse;
 
 import lombok.RequiredArgsConstructor;
 
