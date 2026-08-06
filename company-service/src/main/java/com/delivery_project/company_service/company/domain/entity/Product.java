@@ -41,22 +41,48 @@ public class Product extends BaseDeletableEntity {
 
     public static Product create(UUID companyId, String name, Integer price) {
 
-        // Validation Check - 올바른 금액 기입 여부 판별
-        if (price == null || price <= 0) {
-            throw new BusinessException(ErrorCode.PRODUCT_PRICE_INVALID);
-        }
-
-        // Validation Check - 올바른 상품명 기입 여부 판멸
-        if (name == null
-                || name.isBlank()
-                || name.codePointCount(0, name.length()) > MAX_NAME_LENGTH) {
-            throw new BusinessException(ErrorCode.PRODUCT_NAME_INVALID);
-        }
+        validateCompanyId(companyId);
+        validateName(name);
+        validatePrice(price);
 
         return Product.builder()
                 .companyId(companyId)
                 .name(name)
                 .price(price)
                 .build();
+    }
+
+    public void update(UUID companyId, String name, Integer price) {
+
+        validateCompanyId(companyId);
+        validateName(name);
+        validatePrice(price);
+
+        this.companyId = companyId;
+        this.name = name;
+        this.price = price;
+    }
+
+    // Validation Check - 올바른 업체 ID 기입 여부 판별
+    private static void validateCompanyId(UUID companyId) {
+        if (companyId == null) {
+            throw new BusinessException(ErrorCode.PRODUCT_COMPANY_ID_INVALID);
+        }
+    }
+
+    // Validation Check - 올바른 상품명 기입 여부 판멸
+    private static void validateName(String name) {
+        if (name == null
+                || name.isBlank()
+                || name.codePointCount(0, name.length()) > MAX_NAME_LENGTH) {
+            throw new BusinessException(ErrorCode.PRODUCT_NAME_INVALID);
+        }
+    }
+
+    // Validation Check - 올바른 금액 기입 여부 판별
+    private static void validatePrice(Integer price) {
+        if (price == null || price <= 0) {
+            throw new BusinessException(ErrorCode.PRODUCT_PRICE_INVALID);
+        }
     }
 }
