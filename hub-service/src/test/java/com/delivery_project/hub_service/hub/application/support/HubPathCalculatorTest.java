@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.hub.application;
+package com.delivery_project.hub_service.hub.application.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
