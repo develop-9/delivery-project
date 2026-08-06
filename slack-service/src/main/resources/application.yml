@@ -16,7 +16,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        default_schema: slack_db
+        default_schema: slack_schema
         format_sql: true
     open-in-view: false
 
@@ -24,6 +24,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+# 인증된 사용자가 없는 시스템 작업의 감사 필드에 사용하는 공통 시스템 ID
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
 eureka:
   client:
