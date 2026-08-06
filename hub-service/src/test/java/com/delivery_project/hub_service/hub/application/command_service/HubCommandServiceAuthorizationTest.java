@@ -26,8 +26,8 @@ import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 /**
  * 쓰기 API 의 {@code MASTER} 전용 판정 검증 ({@code @PreAuthorize}).
@@ -50,10 +50,10 @@ class HubCommandServiceAuthorizationTest {
 	private HubCommandService hubCommandService;
 
 	@MockitoBean
-	private HubRepository hubRepository;
+	private HubCommandRepository hubCommandRepository;
 
 	@MockitoBean
-	private HubRouteRepository hubRouteRepository;
+	private HubRouteCommandRepository hubRouteCommandRepository;
 
 	@MockitoBean
 	private HubCacheEvictor HubCacheEvictor;

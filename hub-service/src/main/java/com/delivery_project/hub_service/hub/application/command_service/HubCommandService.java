@@ -19,8 +19,8 @@ import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class HubCommandService {
 
-	private final HubRepository hubRepository;
-	private final HubRouteRepository hubRouteRepository;
+	private final HubCommandRepository hubCommandRepository;
+	private final HubRouteCommandRepository hubRouteCommandRepository;
 	private final HubCacheEvictor cacheEvictor;
 
 	@PreAuthorize("hasRole('MASTER')")
@@ -52,7 +52,7 @@ public class HubCommandService {
 				? createMain(command)
 				: createSub(command);
 
-		Hub saved = hubRepository.save(hub);
+		Hub saved = hubCommandRepository.save(hub);
 		log.info("[Hub] 허브 생성 완료 hubId={}", saved.getId());
 
 		return HubCreateResult.from(saved, resolveParentHubName(saved));
@@ -96,7 +96,7 @@ public class HubCommandService {
 
 		hub.delete(callerId);
 
-		List<HubRoute> relatedRoutes = hubRouteRepository.findAllByHubId(hubId);
+		List<HubRoute> relatedRoutes = hubRouteCommandRepository.findAllByHubId(hubId);
 		relatedRoutes.forEach(route -> route.delete(callerId));
 
 		cacheEvictor.evictHub(hubId);
@@ -173,7 +173,7 @@ public class HubCommandService {
 	}
 
 	private void validateParentIsMain(UUID parentHubId) {
-		Hub parent = hubRepository.findById(parentHubId)
+		Hub parent = hubCommandRepository.findById(parentHubId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.PARENT_HUB_NOT_FOUND));
 
 		if (!parent.isMain()) {
@@ -182,14 +182,14 @@ public class HubCommandService {
 	}
 
 	private void validateNameNotDuplicated(String name) {
-		if (hubRepository.existsByName(name)) {
+		if (hubCommandRepository.existsByName(name)) {
 			throw new BusinessException(ErrorCode.DUPLICATE_HUB_NAME);
 		}
 	}
 
 	/** {@code countChildren} 이 자기 자신을 세지 않는다 — 빼지 않으면 D1 때문에 중앙 허브는 영원히 못 지운다. */
 	private void validateNoChildren(UUID hubId) {
-		long childCount = hubRepository.countChildren(hubId);
+		long childCount = hubCommandRepository.countChildren(hubId);
 
 		if (childCount > 0) {
 			log.warn("[Hub] 하위 허브가 남아 있어 처리할 수 없다 hubId={} childHubCount={}", hubId, childCount);
@@ -198,7 +198,7 @@ public class HubCommandService {
 	}
 
 	private Hub loadHub(UUID hubId) {
-		return hubRepository.findById(hubId)
+		return hubCommandRepository.findById(hubId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
 	}
 
@@ -208,7 +208,7 @@ public class HubCommandService {
 			return hub.getName();
 		}
 
-		return hubRepository.findById(hub.getParentHubId())
+		return hubCommandRepository.findById(hub.getParentHubId())
 				.map(Hub::getName)
 				.orElse(null);
 	}

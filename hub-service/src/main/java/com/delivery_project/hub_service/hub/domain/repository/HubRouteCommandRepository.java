@@ -11,7 +11,7 @@ import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
  *
  * <p>모든 메서드는 {@code deleted_at IS NULL} 인 행만 본다 ({@code @SQLRestriction}).
  */
-public interface HubRouteRepository {
+public interface HubRouteCommandRepository {
 
 	HubRoute save(HubRoute hubRoute);
 

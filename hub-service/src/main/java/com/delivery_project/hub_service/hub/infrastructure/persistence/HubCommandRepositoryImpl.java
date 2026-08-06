@@ -6,13 +6,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class HubRepositoryImpl implements HubRepository {
+public class HubCommandRepositoryImpl implements HubCommandRepository {
 
 	private final SpringDataHubRepository springDataHubRepository;
 

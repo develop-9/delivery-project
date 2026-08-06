@@ -14,7 +14,7 @@ import com.delivery_project.hub_service.hub.domain.entity.Hub;
  * <p>모든 메서드는 {@code deleted_at IS NULL} 인 행만 본다. 엔티티의
  * {@code @SQLRestriction} 이 붙여주므로 구현체가 조건을 따로 쓰지 않는다.
  */
-public interface HubRepository {
+public interface HubCommandRepository {
 
 	Hub save(Hub hub);
 

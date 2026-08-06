@@ -30,8 +30,8 @@ import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateRes
 import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 /**
  * 이동정보 생성·수정·삭제 단위 테스트.
@@ -49,10 +49,10 @@ class HubRouteCommandServiceTest {
 	private static final UUID HUB_ROUTE_ID = UUID.randomUUID();
 
 	@Mock
-	private HubRouteRepository hubRouteRepository;
+	private HubRouteCommandRepository hubRouteCommandRepository;
 
 	@Mock
-	private HubRepository hubRepository;
+	private HubCommandRepository hubCommandRepository;
 
 	@Mock
 	private HubCacheEvictor HubCacheEvictor;
@@ -162,7 +162,7 @@ class HubRouteCommandServiceTest {
 			Hub main = createMain("경기 남부 센터");
 			Hub sub = createSub("서울특별시 센터", main.getId());
 			stubHubs(sub, main);
-			when(hubRouteRepository.existsByDepartureHubIdAndArrivalHubId(sub.getId(), main.getId()))
+			when(hubRouteCommandRepository.existsByDepartureHubIdAndArrivalHubId(sub.getId(), main.getId()))
 					.thenReturn(true);
 
 			HubRouteCreateCommand command = new HubRouteCreateCommand(
@@ -216,7 +216,7 @@ class HubRouteCommandServiceTest {
 		@DisplayName("없는 이동정보를 수정하면 HUB_ROUTE_NOT_FOUND 다")
 		void rejectsUpdatingMissingHubRoute() {
 			// given
-			when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
+			when(hubRouteCommandRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
 
 			HubRouteUpdateCommand command = new HubRouteUpdateCommand(
 					HUB_ROUTE_ID, BigDecimal.valueOf(10.00), 15);
@@ -240,11 +240,11 @@ class HubRouteCommandServiceTest {
 			HubRoute hubRoute = HubRoute.create(
 					gyeonggi.getId(), daegu.getId(), BigDecimal.valueOf(235.80), 190);
 
-			when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.of(hubRoute));
-			when(hubRepository.findById(gyeonggi.getId())).thenReturn(Optional.of(gyeonggi));
-			when(hubRepository.findById(daegu.getId())).thenReturn(Optional.of(daegu));
-			when(hubRepository.countChildren(gyeonggi.getId())).thenReturn(4L);
-			when(hubRepository.countChildren(daegu.getId())).thenReturn(4L);
+			when(hubRouteCommandRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.of(hubRoute));
+			when(hubCommandRepository.findById(gyeonggi.getId())).thenReturn(Optional.of(gyeonggi));
+			when(hubCommandRepository.findById(daegu.getId())).thenReturn(Optional.of(daegu));
+			when(hubCommandRepository.countChildren(gyeonggi.getId())).thenReturn(4L);
+			when(hubCommandRepository.countChildren(daegu.getId())).thenReturn(4L);
 
 			// when
 			HubRouteDeleteResult result = hubRouteCommandService.delete(
@@ -260,7 +260,7 @@ class HubRouteCommandServiceTest {
 		@DisplayName("없는 이동정보를 지우면 HUB_ROUTE_NOT_FOUND 다")
 		void rejectsDeletingMissingHubRoute() {
 			// given
-			when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
+			when(hubRouteCommandRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.empty());
 
 			// when & then
 			assertThatErrorCode(() -> hubRouteCommandService.delete(
@@ -274,25 +274,25 @@ class HubRouteCommandServiceTest {
 		Hub sub = createSub("서울특별시 센터", main.getId());
 		HubRoute hubRoute = HubRoute.create(sub.getId(), main.getId(), BigDecimal.valueOf(52.30), 70);
 
-		when(hubRouteRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.of(hubRoute));
-		when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
-		when(hubRepository.findById(main.getId())).thenReturn(Optional.of(main));
+		when(hubRouteCommandRepository.findById(HUB_ROUTE_ID)).thenReturn(Optional.of(hubRoute));
+		when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+		when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
 
 		return hubRoute;
 	}
 
 	private void stubHubs(Hub departure, Hub arrival) {
-		when(hubRepository.findById(departure.getId())).thenReturn(Optional.of(departure));
-		when(hubRepository.findById(arrival.getId())).thenReturn(Optional.of(arrival));
+		when(hubCommandRepository.findById(departure.getId())).thenReturn(Optional.of(departure));
+		when(hubCommandRepository.findById(arrival.getId())).thenReturn(Optional.of(arrival));
 	}
 
 	private void stubNotDuplicated(Hub departure, Hub arrival) {
-		when(hubRouteRepository.existsByDepartureHubIdAndArrivalHubId(departure.getId(), arrival.getId()))
+		when(hubRouteCommandRepository.existsByDepartureHubIdAndArrivalHubId(departure.getId(), arrival.getId()))
 				.thenReturn(false);
 	}
 
 	private void stubSaveReturnsArgument() {
-		when(hubRouteRepository.save(any(HubRoute.class)))
+		when(hubRouteCommandRepository.save(any(HubRoute.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 	}
 

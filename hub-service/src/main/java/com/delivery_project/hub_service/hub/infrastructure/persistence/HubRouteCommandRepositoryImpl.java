@@ -7,13 +7,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class HubRouteRepositoryImpl implements HubRouteRepository {
+public class HubRouteCommandRepositoryImpl implements HubRouteCommandRepository {
 
 	private final SpringDataHubRouteRepository springDataHubRouteRepository;
 

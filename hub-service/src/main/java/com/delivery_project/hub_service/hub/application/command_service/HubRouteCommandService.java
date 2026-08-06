@@ -17,8 +17,8 @@ import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateRes
 import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,8 +39,8 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class HubRouteCommandService {
 
-	private final HubRouteRepository hubRouteRepository;
-	private final HubRepository hubRepository;
+	private final HubRouteCommandRepository hubRouteCommandRepository;
+	private final HubCommandRepository hubCommandRepository;
 	private final HubCacheEvictor HubCacheEvictor;
 
 	@PreAuthorize("hasRole('MASTER')")
@@ -56,7 +56,7 @@ public class HubRouteCommandService {
 		validateSegment(departure, arrival);
 		validateNotDuplicated(departure.getId(), arrival.getId());
 
-		HubRoute saved = hubRouteRepository.save(HubRoute.create(
+		HubRoute saved = hubRouteCommandRepository.save(HubRoute.create(
 				departure.getId(), arrival.getId(), command.distanceKm(), command.durationMin()));
 
 		HubCacheEvictor.evictAllHubPaths();
@@ -132,13 +132,13 @@ public class HubRouteCommandService {
 	 */
 	private int countAffectedHubPairs(Hub departure, Hub arrival) {
 		if (departure.isMain() && arrival.isMain()) {
-			long departureGroupSize = hubRepository.countChildren(departure.getId()) + 1;
-			long arrivalGroupSize = hubRepository.countChildren(arrival.getId()) + 1;
+			long departureGroupSize = hubCommandRepository.countChildren(departure.getId()) + 1;
+			long arrivalGroupSize = hubCommandRepository.countChildren(arrival.getId()) + 1;
 
 			return Math.toIntExact(departureGroupSize * arrivalGroupSize);
 		}
 
-		return Math.toIntExact(Math.max(0, hubRepository.countAll() - 1));
+		return Math.toIntExact(Math.max(0, hubCommandRepository.countAll() - 1));
 	}
 
 	private void validateDifferentHubs(UUID departureHubId, UUID arrivalHubId) {
@@ -168,18 +168,18 @@ public class HubRouteCommandService {
 
 	/** 경로는 유향이라(D3) {@code (A,B)} 가 있어도 {@code (B,A)} 는 중복이 아니다. */
 	private void validateNotDuplicated(UUID departureHubId, UUID arrivalHubId) {
-		if (hubRouteRepository.existsByDepartureHubIdAndArrivalHubId(departureHubId, arrivalHubId)) {
+		if (hubRouteCommandRepository.existsByDepartureHubIdAndArrivalHubId(departureHubId, arrivalHubId)) {
 			throw new BusinessException(ErrorCode.DUPLICATE_HUB_ROUTE);
 		}
 	}
 
 	private Hub loadHub(UUID hubId) {
-		return hubRepository.findById(hubId)
+		return hubCommandRepository.findById(hubId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
 	}
 
 	private HubRoute loadHubRoute(UUID hubRouteId) {
-		return hubRouteRepository.findById(hubRouteId)
+		return hubRouteCommandRepository.findById(hubRouteId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.HUB_ROUTE_NOT_FOUND));
 	}
 }

@@ -31,8 +31,8 @@ import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
-import com.delivery_project.hub_service.hub.domain.repository.HubRepository;
-import com.delivery_project.hub_service.hub.domain.repository.HubRouteRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
+import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
 
 /** 허브 생성·수정·삭제 단위 테스트. 불변식(D1·D6·D7)이 지켜지는지를 본다. */
 @ExtendWith(MockitoExtension.class)
@@ -43,10 +43,10 @@ class HubCommandServiceTest {
 	private static final BigDecimal LONGITUDE = BigDecimal.valueOf(127.435);
 
 	@Mock
-	private HubRepository hubRepository;
+	private HubCommandRepository hubCommandRepository;
 
 	@Mock
-	private HubRouteRepository hubRouteRepository;
+	private HubRouteCommandRepository hubRouteCommandRepository;
 
 	@Mock
 	private HubCacheEvictor HubCacheEvictor;
@@ -62,8 +62,8 @@ class HubCommandServiceTest {
 		@DisplayName("MAIN 은 parentHubId 가 자기 자신으로 채워진다")
 		void mainHubReferencesItselfAsParent() {
 			// given
-			when(hubRepository.existsByName("경기 남부 센터")).thenReturn(false);
-			when(hubRepository.save(any(Hub.class))).thenAnswer(invocation -> invocation.getArgument(0));
+			when(hubCommandRepository.existsByName("경기 남부 센터")).thenReturn(false);
+			when(hubCommandRepository.save(any(Hub.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 			HubCreateCommand command = new HubCreateCommand(
 					"경기 남부 센터", "경기도 이천시", LATITUDE, LONGITUDE, HubType.MAIN, null);
@@ -80,7 +80,7 @@ class HubCommandServiceTest {
 		@DisplayName("MAIN 인데 parentHubId 를 보내면 PARENT_HUB_NOT_ALLOWED 다")
 		void mainHubRejectsExplicitParent() {
 			// given
-			when(hubRepository.existsByName(any())).thenReturn(false);
+			when(hubCommandRepository.existsByName(any())).thenReturn(false);
 
 			HubCreateCommand command = new HubCreateCommand(
 					"경기 남부 센터", "경기도 이천시", LATITUDE, LONGITUDE, HubType.MAIN, UUID.randomUUID());
@@ -94,7 +94,7 @@ class HubCommandServiceTest {
 		@DisplayName("SUB 인데 parentHubId 가 없으면 PARENT_HUB_REQUIRED 다")
 		void subHubRequiresParent() {
 			// given
-			when(hubRepository.existsByName(any())).thenReturn(false);
+			when(hubCommandRepository.existsByName(any())).thenReturn(false);
 
 			HubCreateCommand command = new HubCreateCommand(
 					"서울특별시 센터", "서울시 송파구", LATITUDE, LONGITUDE, HubType.SUB, null);
@@ -111,8 +111,8 @@ class HubCommandServiceTest {
 			Hub main = createMain("대구광역시 센터");
 			Hub sub = createSub("부산광역시 센터", main.getId());
 
-			when(hubRepository.existsByName(any())).thenReturn(false);
-			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.existsByName(any())).thenReturn(false);
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
 
 			HubCreateCommand command = new HubCreateCommand(
 					"울산광역시 센터", "울산시", LATITUDE, LONGITUDE, HubType.SUB, sub.getId());
@@ -126,7 +126,7 @@ class HubCommandServiceTest {
 		@DisplayName("허브명이 중복이면 DUPLICATE_HUB_NAME 이다")
 		void rejectsDuplicatedName() {
 			// given
-			when(hubRepository.existsByName("경기 남부 센터")).thenReturn(true);
+			when(hubCommandRepository.existsByName("경기 남부 센터")).thenReturn(true);
 
 			HubCreateCommand command = new HubCreateCommand(
 					"경기 남부 센터", "경기도 이천시", LATITUDE, LONGITUDE, HubType.MAIN, null);
@@ -148,7 +148,7 @@ class HubCommandServiceTest {
 			Hub main = createMain("대구광역시 센터");
 			Hub sub = createSub("부산광역시 센터", main.getId());
 
-			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
 
 			HubUpdateCommand command = new HubUpdateCommand(
 					sub.getId(), null, null, null, null, HubType.MAIN, null);
@@ -169,8 +169,8 @@ class HubCommandServiceTest {
 			Hub main = createMain("대구광역시 센터");
 			Hub otherMain = createMain("대전광역시 센터");
 
-			when(hubRepository.findById(main.getId())).thenReturn(Optional.of(main));
-			when(hubRepository.countChildren(main.getId())).thenReturn(1L);
+			when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
+			when(hubCommandRepository.countChildren(main.getId())).thenReturn(1L);
 
 			HubUpdateCommand command = new HubUpdateCommand(
 					main.getId(), null, null, null, null, HubType.SUB, otherMain.getId());
@@ -187,7 +187,7 @@ class HubCommandServiceTest {
 			Hub main = createMain("대구광역시 센터");
 			Hub sub = createSub("부산광역시 센터", main.getId());
 
-			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
 
 			HubUpdateCommand command = new HubUpdateCommand(
 					sub.getId(), null, null, null, null, HubType.SUB, sub.getId());
@@ -212,9 +212,9 @@ class HubCommandServiceTest {
 			HubRoute outbound = HubRoute.create(sub.getId(), main.getId(), BigDecimal.valueOf(52.30), 70);
 			HubRoute inbound = HubRoute.create(main.getId(), sub.getId(), BigDecimal.valueOf(52.30), 68);
 
-			when(hubRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
-			when(hubRepository.countChildren(sub.getId())).thenReturn(0L);
-			when(hubRouteRepository.findAllByHubId(sub.getId())).thenReturn(List.of(outbound, inbound));
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.countChildren(sub.getId())).thenReturn(0L);
+			when(hubRouteCommandRepository.findAllByHubId(sub.getId())).thenReturn(List.of(outbound, inbound));
 
 			// when
 			HubDeleteResult result = hubCommandService.delete(CALLER_ID, new HubDeleteCommand(sub.getId()));
@@ -236,8 +236,8 @@ class HubCommandServiceTest {
 			// given
 			Hub main = createMain("대구광역시 센터");
 
-			when(hubRepository.findById(main.getId())).thenReturn(Optional.of(main));
-			when(hubRepository.countChildren(main.getId())).thenReturn(4L);
+			when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
+			when(hubCommandRepository.countChildren(main.getId())).thenReturn(4L);
 
 			// when & then
 			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, new HubDeleteCommand(main.getId())))
@@ -249,7 +249,7 @@ class HubCommandServiceTest {
 		void rejectsDeletingMissingHub() {
 			// given
 			UUID missingHubId = UUID.randomUUID();
-			when(hubRepository.findById(missingHubId)).thenReturn(Optional.empty());
+			when(hubCommandRepository.findById(missingHubId)).thenReturn(Optional.empty());
 
 			// when & then
 			assertThatErrorCode(() -> hubCommandService.delete(CALLER_ID, new HubDeleteCommand(missingHubId)))
