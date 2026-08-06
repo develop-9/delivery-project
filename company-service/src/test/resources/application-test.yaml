@@ -1,17 +1,20 @@
 spring:
+  application:
+    name: company-service-test
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/delivery
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
 
     properties:
       hibernate:
-        default_schema: public
+        default_schema: company_schema
         format_sql: true
 
     show-sql: true
@@ -27,12 +30,16 @@ eureka:
 management:
   tracing:
     sampling:
-      probability: 0
-
-    export:
-      zipkin:
-        enabled: false
+      probability: 0.0
 
 logging:
   level:
-    root: INFO
+    root: WARN
+
+system:
+  id: 00000000-0000-0000-0000-000000000000
+
+jwt:
+  secret: local-test-only-secret-key-please-override
+  access-token-expiration: 3600000
+  refresh-token-expiration: 1209600000
