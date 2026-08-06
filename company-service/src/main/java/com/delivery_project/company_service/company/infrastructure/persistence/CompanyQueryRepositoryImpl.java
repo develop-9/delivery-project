@@ -6,12 +6,13 @@ import com.delivery_project.company_service.company.domain.entity.QCompany;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -72,16 +73,15 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        Long total = jpaQueryFactory
+        JPAQuery<Long> countQuery = jpaQueryFactory
                 .select(company.count())
                 .from(company)
-                .where(condition)
-                .fetchOne();
+                .where(condition);
 
-        return new PageImpl<>(
+        return PageableExecutionUtils.getPage(
                 content,
                 pageable,
-                total != null ? total : 0L
+                countQuery::fetchOne
         );
     }
 
