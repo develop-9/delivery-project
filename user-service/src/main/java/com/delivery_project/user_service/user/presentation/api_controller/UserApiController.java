@@ -36,7 +36,6 @@ import com.delivery_project.user_service.user.application.result.UserRejectResul
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
-import com.delivery_project.user_service.user.domain.repository.UserSearchCondition;
 import com.delivery_project.user_service.user.presentation.request.UserUpdateMeRequest;
 import com.delivery_project.user_service.user.presentation.response.UserApproveResponse;
 import com.delivery_project.user_service.user.presentation.response.UserDeleteResponse;
@@ -81,8 +80,8 @@ public class UserApiController {
 			@RequestParam(required = false) UUID companyId,
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		UserSearchCondition condition = new UserSearchCondition(approvalStatus, role, hubId, companyId);
-		Page<UserListResult> results = userQueryService.getUsers(callerId, new UserListQuery(condition, pageable));
+		UserListQuery query = new UserListQuery(approvalStatus, role, hubId, companyId, pageable);
+		Page<UserListResult> results = userQueryService.getUsers(callerId, query);
 		PageResponse<UserListResponse> response = PageResponse.from(results, UserListResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
