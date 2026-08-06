@@ -1,5 +1,6 @@
 package com.delivery_project.user_service.user.application.command_service;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +24,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ public class UserCommandService {
 
 	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final UserInvalidationRepository userInvalidationRepository;
 	private final DeliveryManagerPort deliveryManagerPort;
 	private final CallerResolver callerResolver;
 
@@ -119,6 +122,9 @@ public class UserCommandService {
 
 		target.delete(caller.getId());
 		refreshTokenRepository.deleteByUserId(target.getId());
+		// Refresh Token 삭제만으로는 이미 발급된 Access Token까지 막지 못하므로, 무효화 시각을
+		// 별도로 기록해서 Gateway가 만료 전 토큰도 차단할 수 있게 한다(Gateway JWT 인증 필터 참고).
+		userInvalidationRepository.invalidate(target.getId(), Instant.now());
 		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", command.targetUserId(), caller.getId());
 
 		return UserDeleteResult.from(target);

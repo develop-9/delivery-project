@@ -32,6 +32,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserCommandServiceTest {
@@ -41,6 +42,9 @@ class UserCommandServiceTest {
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
+	private UserInvalidationRepository userInvalidationRepository;
 
 	@Mock
 	private DeliveryManagerPort deliveryManagerPort;
@@ -143,6 +147,8 @@ class UserCommandServiceTest {
 		assertThat(result.userId()).isEqualTo(target.getId());
 		assertThat(target.isDeleted()).isTrue();
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
+		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
+				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}
 
 	@Test
@@ -199,6 +205,8 @@ class UserCommandServiceTest {
 				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
 		assertThat(target.isDeleted()).isFalse();
 		org.mockito.Mockito.verify(refreshTokenRepository, org.mockito.Mockito.never()).deleteByUserId(target.getId());
+		org.mockito.Mockito.verify(userInvalidationRepository, org.mockito.Mockito.never())
+				.invalidate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 	}
 
 	@Test
