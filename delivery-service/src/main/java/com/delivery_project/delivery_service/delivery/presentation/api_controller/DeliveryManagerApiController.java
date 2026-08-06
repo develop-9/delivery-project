@@ -1,9 +1,9 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetMyCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerListCommand;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerGetQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerGetMyQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerListQuery;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryManagerQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.*;
@@ -46,11 +46,11 @@ public class DeliveryManagerApiController {
     public SuccessResponse<DeliveryManagerDetailResponse> getDeliveryManager(
             @PathVariable UUID managerId
     ){
-        DeliveryManagerGetCommand command =
-                DeliveryManagerGetCommand.from(managerId);
+        DeliveryManagerGetQuery query =
+                DeliveryManagerGetQuery.from(managerId);
 
         DeliveryManagerDetailResult result =
-                deliveryManagerQueryService.getDeliveryManager(command);
+                deliveryManagerQueryService.getDeliveryManager(query);
 
         return SuccessResponse.success(DeliveryManagerDetailResponse.from(result));
     }
@@ -62,14 +62,14 @@ public class DeliveryManagerApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ){
-        DeliveryManagerListCommand command =
-                DeliveryManagerListCommand.of(
+        DeliveryManagerListQuery query =
+                DeliveryManagerListQuery.of(
                         page,
                         size
                 );
 
         Page<DeliveryManagerListResult> result =
-                deliveryManagerQueryService.getDeliveryManagers(command);
+                deliveryManagerQueryService.getDeliveryManagers(query);
 
         PageResponse<DeliveryManagerListResponse> response =
                 PageResponse.from(
@@ -85,11 +85,11 @@ public class DeliveryManagerApiController {
             @RequestHeader("X-User-Id") UUID userId
             // TODO: Spring Security 적용 후 @AuthenticationPrincipal 사용
     ){
-        DeliveryManagerGetMyCommand command =
-                DeliveryManagerGetMyCommand.from(userId);
+        DeliveryManagerGetMyQuery query =
+                DeliveryManagerGetMyQuery.from(userId);
 
         DeliveryManagerDetailResult result =
-                deliveryManagerQueryService.getMyDeliveryManager(command);
+                deliveryManagerQueryService.getMyDeliveryManager(query);
 
         return SuccessResponse.success(
                 DeliveryManagerDetailResponse.from(result));

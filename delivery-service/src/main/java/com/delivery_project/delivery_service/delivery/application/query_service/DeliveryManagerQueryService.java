@@ -1,8 +1,8 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerGetMyCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerListCommand;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerGetQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerGetMyQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryManagerListQuery;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerListResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
@@ -25,9 +25,9 @@ public class DeliveryManagerQueryService {
             deliveryManagerQueryRepository;
 
     public DeliveryManagerDetailResult getDeliveryManager(
-            DeliveryManagerGetCommand command
+            DeliveryManagerGetQuery query
     ) {
-        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findById(command.managerId())
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findById(query.managerId())
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));
@@ -35,14 +35,14 @@ public class DeliveryManagerQueryService {
     }
 
     public Page<DeliveryManagerListResult> getDeliveryManagers(
-            DeliveryManagerListCommand command
+            DeliveryManagerListQuery query
     ) {
-        validatePage(command.page());
+        validatePage(query.page());
 
-        int size = validateSize(command.size());
+        int size = validateSize(query.size());
 
         Pageable pageable = PageRequest.of(
-                command.page(),
+                query.page(),
                 size,
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
@@ -67,9 +67,9 @@ public class DeliveryManagerQueryService {
     }
 
     public DeliveryManagerDetailResult getMyDeliveryManager(
-            DeliveryManagerGetMyCommand command
+            DeliveryManagerGetMyQuery query
     ) {
-        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findByUserId(command.userId())
+        DeliveryManager deliveryManager = deliveryManagerQueryRepository.findByUserId(query.userId())
                 .orElseThrow(()-> new BusinessException(
                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                 ));
