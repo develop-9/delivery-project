@@ -1,6 +1,5 @@
 package com.delivery_project.company_service.company.presentation.internal_controller;
 
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
 import com.delivery_project.company_service.company.application.command.InternalCompanyGetCommand;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
