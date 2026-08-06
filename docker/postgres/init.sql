@@ -14,7 +14,6 @@
 --   user_schema / hub_schema / company_schema / order_schema / delivery_schema / slack_schema
 
 CREATE SCHEMA IF NOT EXISTS hub_schema;
-
+CREATE SCHEMA IF NOT EXISTS delivery_schema;
 CREATE SCHEMA IF NOT EXISTS user_schema;
-
 CREATE SCHEMA IF NOT EXISTS company_schema;
