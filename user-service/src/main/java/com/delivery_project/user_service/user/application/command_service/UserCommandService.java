@@ -8,6 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.command.UserApproveCommand;
+import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
@@ -61,9 +64,9 @@ public class UserCommandService {
 		return UserUpdateMeResult.from(caller);
 	}
 
-	public UserApproveResult approve(UUID callerId, UUID targetUserId) {
+	public UserApproveResult approve(UUID callerId, UserApproveCommand command) {
 		User caller = callerResolver.resolve(callerId);
-		User target = userCommandRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(command.targetUserId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		validatePermission(caller, target, ErrorCode.APPROVE_USER_FORBIDDEN);
@@ -73,14 +76,14 @@ public class UserCommandService {
 		}
 
 		target.approve(caller.getId());
-		log.info("[User] 회원가입 승인 완료 targetUserId={} approvedBy={}", targetUserId, caller.getId());
+		log.info("[User] 회원가입 승인 완료 targetUserId={} approvedBy={}", command.targetUserId(), caller.getId());
 
 		return UserApproveResult.from(target);
 	}
 
-	public UserRejectResult reject(UUID callerId, UUID targetUserId) {
+	public UserRejectResult reject(UUID callerId, UserRejectCommand command) {
 		User caller = callerResolver.resolve(callerId);
-		User target = userCommandRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(command.targetUserId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		validatePermission(caller, target, ErrorCode.REJECT_USER_FORBIDDEN);
@@ -90,18 +93,18 @@ public class UserCommandService {
 		}
 
 		target.reject();
-		log.info("[User] 회원가입 거절 완료 targetUserId={} rejectedBy={}", targetUserId, caller.getId());
+		log.info("[User] 회원가입 거절 완료 targetUserId={} rejectedBy={}", command.targetUserId(), caller.getId());
 
 		return UserRejectResult.from(target);
 	}
 
-	public UserDeleteResult delete(UUID callerId, UUID targetUserId) {
+	public UserDeleteResult delete(UUID callerId, UserDeleteCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
 			throw new BusinessException(ErrorCode.DELETE_USER_FORBIDDEN);
 		}
 
-		User target = userCommandRepository.findById(targetUserId)
+		User target = userCommandRepository.findById(command.targetUserId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		if (target.getRole() == Role.MASTER
@@ -117,7 +120,7 @@ public class UserCommandService {
 
 		target.delete(caller.getId());
 		refreshTokenRepository.deleteByUserId(target.getId());
-		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", targetUserId, caller.getId());
+		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", command.targetUserId(), caller.getId());
 
 		return UserDeleteResult.from(target);
 	}

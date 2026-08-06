@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.delivery_project.user_service.global.response.PageResponse;
 import com.delivery_project.user_service.global.response.SuccessResponse;
+import com.delivery_project.user_service.user.application.command.UserApproveCommand;
+import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserGetByIdCommand;
+import com.delivery_project.user_service.user.application.command.UserListCommand;
+import com.delivery_project.user_service.user.application.command.UserPendingCommand;
+import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command_service.UserCommandService;
 import com.delivery_project.user_service.user.application.query_service.UserQueryService;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
@@ -76,7 +82,7 @@ public class UserApiController {
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
 		UserSearchCondition condition = new UserSearchCondition(approvalStatus, role, hubId, companyId);
-		Page<UserListResult> results = userQueryService.list(callerId, condition, pageable);
+		Page<UserListResult> results = userQueryService.list(callerId, new UserListCommand(condition, pageable));
 		PageResponse<UserListResponse> response = PageResponse.from(results, UserListResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
@@ -87,7 +93,8 @@ public class UserApiController {
 			@RequestParam(required = false) UUID hubId,
 			@PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		Page<UserPendingResult> results = userQueryService.getPendingUsers(callerId, hubId, pageable);
+		Page<UserPendingResult> results =
+				userQueryService.getPendingUsers(callerId, new UserPendingCommand(hubId, pageable));
 		PageResponse<UserPendingResponse> response = PageResponse.from(results, UserPendingResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
@@ -97,7 +104,7 @@ public class UserApiController {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID userId
 	) {
-		UserDetailResult result = userQueryService.getById(callerId, userId);
+		UserDetailResult result = userQueryService.getById(callerId, new UserGetByIdCommand(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
 	}
 
@@ -106,7 +113,7 @@ public class UserApiController {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID userId
 	) {
-		UserDeleteResult result = userCommandService.delete(callerId, userId);
+		UserDeleteResult result = userCommandService.delete(callerId, new UserDeleteCommand(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserDeleteResponse.from(result)));
 	}
 
@@ -115,7 +122,7 @@ public class UserApiController {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID userId
 	) {
-		UserApproveResult result = userCommandService.approve(callerId, userId);
+		UserApproveResult result = userCommandService.approve(callerId, new UserApproveCommand(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserApproveResponse.from(result)));
 	}
 
@@ -124,7 +131,7 @@ public class UserApiController {
 			@AuthenticationPrincipal UUID callerId,
 			@PathVariable UUID userId
 	) {
-		UserRejectResult result = userCommandService.reject(callerId, userId);
+		UserRejectResult result = userCommandService.reject(callerId, new UserRejectCommand(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserRejectResponse.from(result)));
 	}
 }

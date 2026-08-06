@@ -17,6 +17,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.command.UserApproveCommand;
+import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserRejectCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
@@ -136,7 +139,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -153,7 +156,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		userCommandService.delete(master.getId(), target.getId());
+		userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
 
 		// then
 		org.mockito.Mockito.verify(deliveryManagerClient).deleteByUserId(target.getId());
@@ -174,7 +177,7 @@ class UserCommandServiceTest {
 				.when(deliveryManagerClient).deleteByUserId(target.getId());
 
 		// when
-		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -197,7 +200,7 @@ class UserCommandServiceTest {
 				.when(deliveryManagerClient).deleteByUserId(target.getId());
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.delete(master.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
@@ -213,7 +216,7 @@ class UserCommandServiceTest {
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.delete(hubManager.getId(), targetId))
+		assertThatThrownBy(() -> userCommandService.delete(hubManager.getId(), new UserDeleteCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.DELETE_USER_FORBIDDEN);
@@ -230,7 +233,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.delete(master.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.LAST_MASTER_DELETE_FORBIDDEN);
@@ -247,7 +250,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.countActiveMasters()).thenReturn(2L);
 
 		// when
-		UserDeleteResult result = userCommandService.delete(master.getId(), target.getId());
+		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -263,7 +266,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(pendingMaster.getId())).thenReturn(Optional.of(pendingMaster));
 
 		// when
-		UserDeleteResult result = userCommandService.delete(master.getId(), pendingMaster.getId());
+		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(pendingMaster.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(pendingMaster.getId());
@@ -278,7 +281,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.delete(master.getId(), targetId))
+		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -293,7 +296,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserApproveResult result = userCommandService.approve(master.getId(), target.getId());
+		UserApproveResult result = userCommandService.approve(master.getId(), new UserApproveCommand(target.getId()));
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
@@ -310,7 +313,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserApproveResult result = userCommandService.approve(hubManager.getId(), target.getId());
+		UserApproveResult result = userCommandService.approve(hubManager.getId(), new UserApproveCommand(target.getId()));
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
@@ -325,7 +328,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve(hubManager.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(hubManager.getId(), new UserApproveCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_PERMISSION_DENIED);
@@ -340,7 +343,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve(companyManager.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(companyManager.getId(), new UserApproveCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.APPROVE_USER_FORBIDDEN);
@@ -355,7 +358,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve(master.getId(), targetId))
+		assertThatThrownBy(() -> userCommandService.approve(master.getId(), new UserApproveCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -371,7 +374,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.approve(master.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.approve(master.getId(), new UserApproveCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
@@ -386,7 +389,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserRejectResult result = userCommandService.reject(master.getId(), target.getId());
+		UserRejectResult result = userCommandService.reject(master.getId(), new UserRejectCommand(target.getId()));
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.REJECTED);
@@ -401,7 +404,7 @@ class UserCommandServiceTest {
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when & then
-		assertThatThrownBy(() -> userCommandService.reject(companyManager.getId(), target.getId()))
+		assertThatThrownBy(() -> userCommandService.reject(companyManager.getId(), new UserRejectCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.REJECT_USER_FORBIDDEN);

@@ -21,6 +21,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.user.application.command.InternalUserBatchCommand;
+import com.delivery_project.user_service.user.application.command.InternalUserGetCommand;
+import com.delivery_project.user_service.user.application.command.InternalUserHubRoleCommand;
+import com.delivery_project.user_service.user.application.command.InternalUserSlackCommand;
+import com.delivery_project.user_service.user.application.command.UserGetByIdCommand;
+import com.delivery_project.user_service.user.application.command.UserListCommand;
+import com.delivery_project.user_service.user.application.command.UserPendingCommand;
 import com.delivery_project.user_service.user.application.result.InternalUserResult;
 import com.delivery_project.user_service.user.application.result.InternalUserSlackResult;
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
@@ -73,7 +80,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.search(condition, pageable)).thenReturn(page);
 
 		// when
-		Page<UserListResult> result = userQueryService.list(master.getId(), condition, pageable);
+		Page<UserListResult> result = userQueryService.list(master.getId(), new UserListCommand(condition, pageable));
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(1);
@@ -89,7 +96,7 @@ class UserQueryServiceTest {
 		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.list(hubManager.getId(), condition, pageable))
+		assertThatThrownBy(() -> userQueryService.list(hubManager.getId(), new UserListCommand(condition, pageable)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
@@ -104,7 +111,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		UserDetailResult result = userQueryService.getById(master.getId(), target.getId());
+		UserDetailResult result = userQueryService.getById(master.getId(), new UserGetByIdCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -118,7 +125,7 @@ class UserQueryServiceTest {
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getById(companyManager.getId(), otherId))
+		assertThatThrownBy(() -> userQueryService.getById(companyManager.getId(), new UserGetByIdCommand(otherId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
@@ -133,7 +140,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(companyManager.getId())).thenReturn(Optional.of(companyManager));
 
 		// when
-		UserDetailResult result = userQueryService.getById(companyManager.getId(), companyManager.getId());
+		UserDetailResult result = userQueryService.getById(companyManager.getId(), new UserGetByIdCommand(companyManager.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(companyManager.getId());
@@ -148,7 +155,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getById(master.getId(), targetId))
+		assertThatThrownBy(() -> userQueryService.getById(master.getId(), new UserGetByIdCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -166,7 +173,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findAllPending(pageable)).thenReturn(page);
 
 		// when
-		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), null, pageable);
+		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), new UserPendingCommand(null, pageable));
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(1);
@@ -185,7 +192,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findPendingByHub(hubId, pageable)).thenReturn(page);
 
 		// when
-		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), hubId, pageable);
+		Page<UserPendingResult> result = userQueryService.getPendingUsers(master.getId(), new UserPendingCommand(hubId, pageable));
 
 		// then
 		assertThat(result.getTotalElements()).isEqualTo(0);
@@ -204,7 +211,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findPendingByHub(myHubId, pageable)).thenReturn(page);
 
 		// when
-		userQueryService.getPendingUsers(hubManager.getId(), requestedHubId, pageable);
+		userQueryService.getPendingUsers(hubManager.getId(), new UserPendingCommand(requestedHubId, pageable));
 
 		// then
 		org.mockito.Mockito.verify(userQueryRepository).findPendingByHub(myHubId, pageable);
@@ -218,7 +225,7 @@ class UserQueryServiceTest {
 		when(callerResolver.resolve(companyManager.getId())).thenReturn(companyManager);
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getPendingUsers(companyManager.getId(), null, pageable))
+		assertThatThrownBy(() -> userQueryService.getPendingUsers(companyManager.getId(), new UserPendingCommand(null, pageable)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
@@ -232,7 +239,7 @@ class UserQueryServiceTest {
 		when(callerResolver.resolve(deliveryManager.getId())).thenReturn(deliveryManager);
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getPendingUsers(deliveryManager.getId(), null, pageable))
+		assertThatThrownBy(() -> userQueryService.getPendingUsers(deliveryManager.getId(), new UserPendingCommand(null, pageable)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.READ_USER_FORBIDDEN);
@@ -245,7 +252,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		InternalUserResult result = userQueryService.getInternalUser(target.getId());
+		InternalUserResult result = userQueryService.getInternalUser(new InternalUserGetCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -262,7 +269,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findAllByIds(ids)).thenReturn(List.of(target1, target2));
 
 		// when
-		List<InternalUserResult> results = userQueryService.getInternalUsersBatch(ids);
+		List<InternalUserResult> results = userQueryService.getInternalUsersBatch(new InternalUserBatchCommand(ids));
 
 		// then
 		assertThat(results).hasSize(2);
@@ -278,7 +285,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findByHubIdAndRole(hubId, Role.HUB_MANAGER)).thenReturn(List.of(hubManager));
 
 		// when
-		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(hubId, Role.HUB_MANAGER);
+		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(new InternalUserHubRoleCommand(hubId, Role.HUB_MANAGER));
 
 		// then
 		assertThat(result.userId()).isEqualTo(hubManager.getId());
@@ -291,7 +298,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findByHubIdAndRole(hubId, Role.HUB_MANAGER)).thenReturn(List.of());
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getInternalUserByHubAndRole(hubId, Role.HUB_MANAGER))
+		assertThatThrownBy(() -> userQueryService.getInternalUserByHubAndRole(new InternalUserHubRoleCommand(hubId, Role.HUB_MANAGER)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_MANAGER_NOT_FOUND);
@@ -307,7 +314,7 @@ class UserQueryServiceTest {
 				.thenReturn(List.of(first, second));
 
 		// when
-		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(hubId, Role.DELIVERY_MANAGER);
+		InternalUserResult result = userQueryService.getInternalUserByHubAndRole(new InternalUserHubRoleCommand(hubId, Role.DELIVERY_MANAGER));
 
 		// then
 		assertThat(result.userId()).isEqualTo(first.getId());
@@ -320,7 +327,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(target.getId())).thenReturn(Optional.of(target));
 
 		// when
-		InternalUserSlackResult result = userQueryService.getInternalUserSlack(target.getId());
+		InternalUserSlackResult result = userQueryService.getInternalUserSlack(new InternalUserSlackCommand(target.getId()));
 
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
@@ -334,7 +341,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getInternalUserSlack(targetId))
+		assertThatThrownBy(() -> userQueryService.getInternalUserSlack(new InternalUserSlackCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -347,7 +354,7 @@ class UserQueryServiceTest {
 		when(userQueryRepository.findById(targetId)).thenReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> userQueryService.getInternalUser(targetId))
+		assertThatThrownBy(() -> userQueryService.getInternalUser(new InternalUserGetCommand(targetId)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
