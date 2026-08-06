@@ -2,6 +2,7 @@ package com.delivery_project.user_service.user.application.command_service;
 
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,16 @@ public class UserCommandService {
 		}
 
 		caller.updateProfile(command.name(), command.slackId());
+
+		// existsBySlackId 사전검사와 저장 사이에 레이스가 있을 수 있어, save()로 즉시 flush해서
+		// 그 사이 동시 요청으로 인한 UNIQUE 제약 위반을 여기서 구체적인 에러코드로 잡는다
+		// (AuthCommandService.saveUser()와 동일한 패턴).
+		try {
+			userCommandRepository.save(caller);
+		} catch (DataIntegrityViolationException e) {
+			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
+		}
+
 		log.info("[User] 내 정보 수정 완료 userId={}", caller.getId());
 
 		return UserUpdateMeResult.from(caller);

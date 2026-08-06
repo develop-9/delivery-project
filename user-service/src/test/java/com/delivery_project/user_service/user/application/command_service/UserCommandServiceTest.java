@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
@@ -102,6 +103,22 @@ class UserCommandServiceTest {
 
 		// then
 		assertThat(result.slackId()).isEqualTo(caller.getSlackId());
+	}
+
+	@Test
+	void 사전검사_통과_후_동시_요청으로_DB_제약이_위반되면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
+		// given
+		User caller = createUser("user1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(caller.getId())).thenReturn(caller);
+		when(userCommandRepository.existsBySlackId("U2222222222")).thenReturn(false);
+		when(userCommandRepository.save(caller)).thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.updateMe(
+				caller.getId(), new UserUpdateMeCommand(null, "U2222222222")))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
 	}
 
 	@Test
