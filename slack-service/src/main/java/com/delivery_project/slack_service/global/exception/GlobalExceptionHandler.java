@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.NoSuchElementException;
 
@@ -44,6 +45,13 @@ public class GlobalExceptionHandler {
         log.warn("[MethodArgumentNotValidException] {}", exception.getMessage());
 
         return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
+            NoResourceFoundException e
+    ) {
+        return createResponse(ErrorCode.NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)

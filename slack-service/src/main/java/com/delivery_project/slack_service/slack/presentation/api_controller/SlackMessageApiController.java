@@ -1,5 +1,7 @@
 package com.delivery_project.slack_service.slack.presentation.api_controller;
 
+import com.delivery_project.slack_service.slack.application.result.SlackMessageDeleteResult;
+import com.delivery_project.slack_service.slack.presentation.response.SlackMessageDeleteResponse;
 import com.delivery_project.slack_service.global.response.SuccessResponse;
 import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
@@ -19,6 +21,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.delivery_project.slack_service.global.common.PageData;
 import com.delivery_project.slack_service.global.response.PageResponse;
@@ -35,10 +39,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/slack-messages")
 @RequiredArgsConstructor
 public class SlackMessageApiController {
-
-    // TODO: JWT 인증 적용 후 로그인 사용자 UUID로 대체
-    private static final UUID TEMP_USER_ID =
-            UUID.fromString("00000000-0000-0000-0000-000000000000");
 
     private final SlackMessageCommandService slackMessageCommandService;
     private final SlackMessageQueryService slackMessageQueryService;
@@ -169,19 +169,33 @@ public class SlackMessageApiController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "메시지 삭제 성공"),
-            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 삭제된 메시지"),
+            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
+            @ApiResponse(responseCode = "403", description = "삭제 권한이 없음"),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "메시지가 존재하지 않거나 이미 삭제됨"
+            ),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
+    // TODO: Slack Service JWT 인증 연동 후
+    // MASTER/비MASTER/미인증 요청 및 deletedBy 저장값 검증
+    @PreAuthorize("hasRole('MASTER')")
     @DeleteMapping("/{slackMessageId}")
-    public ResponseEntity<SuccessResponse<Void>> delete(
-            @PathVariable UUID slackMessageId
+    public ResponseEntity<SuccessResponse<SlackMessageDeleteResponse>> delete(
+            @PathVariable UUID slackMessageId,
+            @AuthenticationPrincipal UUID callerId
     ) {
-        slackMessageCommandService.delete(
-                slackMessageId,
-                TEMP_USER_ID
-        );
+        SlackMessageDeleteResult result =
+                slackMessageCommandService.delete(
+                        slackMessageId,
+                        callerId
+                );
 
-        return ResponseEntity.ok(SuccessResponse.success(null));
+        SlackMessageDeleteResponse response =
+                SlackMessageDeleteResponse.from(result);
+
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
     }
 }
