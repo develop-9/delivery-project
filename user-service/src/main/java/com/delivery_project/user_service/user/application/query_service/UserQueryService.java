@@ -73,6 +73,11 @@ public class UserQueryService {
 		return UserDetailResult.from(target);
 	}
 
+	/**
+	 * getUsers(approvalStatus=PENDING)와 조회 대상이 겹치지만, 그쪽은 MASTER 전용 범용 검색이고
+	 * 이건 승인 워크플로우 전용이라 HUB_MANAGER도 본인 담당 허브 범위로 쓸 수 있다. companyId
+	 * 필터가 없는 것도 같은 이유 — HUB_MANAGER는 허브 단위로만 승인 처리를 하기 때문에 의도적으로 뺐다.
+	 */
 	public Page<UserPendingResult> getPendingUsers(UUID callerId, UserPendingCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		Pageable pageable = pageValidator.normalizeSize(command.pageable());
