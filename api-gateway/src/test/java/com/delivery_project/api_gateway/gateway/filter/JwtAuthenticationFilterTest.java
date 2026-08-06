@@ -1,55 +1,47 @@
 package com.delivery_project.api_gateway.gateway.filter;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Date;
-
-import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.data.redis.core.ReactiveValueOperations;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.delivery_project.api_gateway.global.exception.ErrorCode;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+/**
+ * jjwt 파싱(JjwtTokenValidatorTest)과 Redis 조회(RedisTokenBlacklistCheckerTest)는 각자
+ * 별도 테스트로 커버되므로, 여기서는 필터의 오케스트레이션(화이트리스트/에러코드 분기)만 검증한다.
+ */
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
-	private static final SecretKey SECRET_KEY =
-			Keys.hmacShaKeyFor("test-only-secret-key-must-be-at-least-32-bytes-long".getBytes(StandardCharsets.UTF_8));
+	@Mock
+	private TokenValidator tokenValidator;
 
 	@Mock
-	private ReactiveStringRedisTemplate reactiveStringRedisTemplate;
+	private TokenBlacklistChecker tokenBlacklistChecker;
 
 	@Mock
-	private ReactiveValueOperations<String, String> valueOperations;
+	private GatewayErrorResponseWriter errorResponseWriter;
 
 	@Mock
 	private GatewayFilterChain chain;
 
 	private JwtAuthenticationFilter filterUnderTest() {
-		return new JwtAuthenticationFilter(SECRET_KEY, reactiveStringRedisTemplate, new ObjectMapper());
+		return new JwtAuthenticationFilter(tokenValidator, tokenBlacklistChecker, errorResponseWriter);
 	}
 
 	@Test
@@ -62,72 +54,58 @@ class JwtAuthenticationFilterTest {
 		// when & then
 		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 		verify(chain).filter(exchange);
+		verify(tokenValidator, never()).validate(any());
 	}
 
 	@Test
-	void Authorization_헤더가_없으면_401_AUTH_TOKEN_INVALID를_반환한다() {
+	void Authorization_헤더가_없으면_AUTH_TOKEN_INVALID로_응답한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
 		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", null);
+		when(errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_INVALID)).thenReturn(Mono.empty());
 
-		// when
+		// when & then
 		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-		// then
-		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		verify(errorResponseWriter).write(exchange, ErrorCode.AUTH_TOKEN_INVALID);
+		verify(tokenValidator, never()).validate(any());
 		verify(chain, never()).filter(any());
 	}
 
 	@Test
-	void 서명이_다른_토큰이면_401_AUTH_TOKEN_INVALID를_반환한다() {
+	void 토큰_검증에서_ExpiredTokenException이면_AUTH_TOKEN_EXPIRED로_응답한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
-		SecretKey otherKey =
-				Keys.hmacShaKeyFor("another-secret-key-that-is-also-at-least-32-bytes".getBytes(StandardCharsets.UTF_8));
-		String token = Jwts.builder()
-				.subject("11111111-1111-1111-1111-111111111111")
-				.issuedAt(Date.from(Instant.now()))
-				.expiration(Date.from(Instant.now().plusSeconds(3600)))
-				.signWith(otherKey)
-				.compact();
-		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", token);
+		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "expired-token");
+		when(tokenValidator.validate("expired-token")).thenThrow(new ExpiredTokenException());
+		when(errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_EXPIRED)).thenReturn(Mono.empty());
 
-		// when
+		// when & then
 		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-		// then
-		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		verify(errorResponseWriter).write(exchange, ErrorCode.AUTH_TOKEN_EXPIRED);
 		verify(chain, never()).filter(any());
 	}
 
 	@Test
-	void 만료된_토큰이면_401_AUTH_TOKEN_EXPIRED를_반환한다() {
+	void 토큰_검증에서_InvalidTokenException이면_AUTH_TOKEN_INVALID로_응답한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
-		String token = Jwts.builder()
-				.subject("11111111-1111-1111-1111-111111111111")
-				.issuedAt(Date.from(Instant.now().minusSeconds(7200)))
-				.expiration(Date.from(Instant.now().minusSeconds(3600)))
-				.signWith(SECRET_KEY)
-				.compact();
-		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", token);
+		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "garbage-token");
+		when(tokenValidator.validate("garbage-token")).thenThrow(new InvalidTokenException());
+		when(errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_INVALID)).thenReturn(Mono.empty());
 
-		// when
+		// when & then
 		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-		// then
-		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		verify(errorResponseWriter).write(exchange, ErrorCode.AUTH_TOKEN_INVALID);
 		verify(chain, never()).filter(any());
 	}
 
 	@Test
-	void 무효화_기록이_없으면_정상_통과한다() {
+	void 무효화되지_않았으면_통과한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
-		String token = validToken(Instant.now());
-		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", token);
-		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "valid-token");
+		when(tokenValidator.validate("valid-token")).thenReturn(new ValidatedToken("user1", 1000L));
+		when(tokenBlacklistChecker.isRevoked("user1", 1000L)).thenReturn(Mono.just(false));
 		when(chain.filter(exchange)).thenReturn(Mono.empty());
 
 		// when & then
@@ -136,47 +114,18 @@ class JwtAuthenticationFilterTest {
 	}
 
 	@Test
-	void 발급시각이_무효화_시각보다_이전이면_401_AUTH_TOKEN_REVOKED를_반환한다() {
+	void 무효화됐으면_AUTH_TOKEN_REVOKED로_응답한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
-		Instant issuedAt = Instant.now().minusSeconds(60);
-		String token = validToken(issuedAt);
-		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", token);
-
-		long invalidatedAtMillis = Instant.now().toEpochMilli();
-		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-		when(valueOperations.get(anyString())).thenReturn(Mono.just(String.valueOf(invalidatedAtMillis)));
-
-		// when
-		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-
-		// then
-		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		verify(chain, never()).filter(any());
-	}
-
-	@Test
-	void Redis_조회가_실패하면_fail_open으로_통과한다() {
-		// given
-		JwtAuthenticationFilter filter = filterUnderTest();
-		String token = validToken(Instant.now());
-		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", token);
-		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-		when(valueOperations.get(anyString())).thenReturn(Mono.error(new RuntimeException("connection refused")));
-		when(chain.filter(exchange)).thenReturn(Mono.empty());
+		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "revoked-token");
+		when(tokenValidator.validate("revoked-token")).thenReturn(new ValidatedToken("user1", 1000L));
+		when(tokenBlacklistChecker.isRevoked("user1", 1000L)).thenReturn(Mono.just(true));
+		when(errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_REVOKED)).thenReturn(Mono.empty());
 
 		// when & then
 		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-		verify(chain, times(1)).filter(exchange);
-	}
-
-	private String validToken(Instant issuedAt) {
-		return Jwts.builder()
-				.subject("11111111-1111-1111-1111-111111111111")
-				.issuedAt(Date.from(issuedAt))
-				.expiration(Date.from(issuedAt.plusSeconds(3600)))
-				.signWith(SECRET_KEY)
-				.compact();
+		verify(errorResponseWriter).write(eq(exchange), eq(ErrorCode.AUTH_TOKEN_REVOKED));
+		verify(chain, never()).filter(any());
 	}
 
 	private ServerWebExchange exchangeFor(String path, String bearerToken) {
