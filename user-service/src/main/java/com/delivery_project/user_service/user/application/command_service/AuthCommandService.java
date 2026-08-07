@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
@@ -117,7 +119,13 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		UUID userId = tokenProvider.parse(requestedRefreshToken).userId();
+		// Access Token은 refreshSecretKey로 서명되지 않았으므로 여기서 서명 검증 단계부터 실패한다.
+		// tokenType 체크는 두 시크릿이 실수로 같아지는 설정 오류에 대비한 이중 방어다.
+		JwtPrincipal principal = tokenProvider.parseRefreshToken(requestedRefreshToken);
+		if (principal.tokenType() != TokenType.REFRESH) {
+			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
+		}
+		UUID userId = principal.userId();
 
 		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));
