@@ -104,7 +104,6 @@ public class SlackMessage extends BaseDeletableEntity {
 
     public void markAsFailed(String failureMessage) {
         this.status = SlackMessageStatus.FAILED;
-        this.retryCount++;
         this.failureMessage = failureMessage;
     }
 
@@ -115,6 +114,7 @@ public class SlackMessage extends BaseDeletableEntity {
             );
         }
 
+        this.retryCount++;
         this.status = SlackMessageStatus.PENDING;
         this.failureMessage = null;
     }
