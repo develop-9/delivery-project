@@ -3,6 +3,8 @@ package com.delivery_project.hub_service.hub.application.command_service;
 import java.util.List;
 import java.util.UUID;
 
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class HubCommandService {
 
+	/** 허브명 중복을 실제로 막는 부분 유니크 인덱스 (db/schema.sql). 이름이 바뀌면 여기도 바꾼다. */
+	private static final String HUB_NAME_UNIQUE_INDEX = "uq_hub_name";
+
 	private final HubCommandRepository hubCommandRepository;
 	private final HubRouteCommandRepository hubRouteCommandRepository;
 	private final HubCacheEvictor cacheEvictor;
@@ -52,7 +57,7 @@ public class HubCommandService {
 				? createMain(command)
 				: createSub(command);
 
-		Hub saved = hubCommandRepository.save(hub);
+		Hub saved = saveHub(hub);
 		log.info("[Hub] 허브 생성 완료 hubId={}", saved.getId());
 
 		return HubCreateResult.from(saved, resolveParentHubName(saved));
@@ -65,12 +70,19 @@ public class HubCommandService {
 
 		Hub hub = loadHub(hubId);
 
-		if (command.name() != null && !command.name().equals(hub.getName())) {
+		boolean nameChanged = command.name() != null && !command.name().equals(hub.getName());
+		if (nameChanged) {
 			validateNameNotDuplicated(command.name());
 		}
 
 		applyTypeChange(hub, command);
 		hub.updateBasicInfo(command.name(), command.address(), command.latitude(), command.longitude());
+
+		// 변경감지만으로도 반영되지만 그 UPDATE 는 커밋 시점에 나간다. 허브명을 바꾼 경우에만
+		// 여기서 먼저 내보내, 경합으로 uq_hub_name 이 깨지면 아래 saveHub 가 잡을 수 있게 한다.
+		if (nameChanged) {
+			saveHub(hub);
+		}
 
 		// 허브명은 경로 응답의 구간·경유지 이름으로도 나가므로 경로 캐시까지 함께 비운다.
 		cacheEvictor.evictHub(hubId);
@@ -185,6 +197,39 @@ public class HubCommandService {
 		if (hubCommandRepository.existsByName(name)) {
 			throw new BusinessException(ErrorCode.DUPLICATE_HUB_NAME);
 		}
+	}
+
+	/**
+	 * 저장. {@link #validateNameNotDuplicated} 는 검사와 저장 사이에 끼어드는 동시 요청을 막지 못하고,
+	 * 그 경합을 실제로 막는 것은 부분 유니크 인덱스 {@code uq_hub_name} 이다. 다만 그대로 두면
+	 * {@code GlobalExceptionHandler} 가 제약을 구분하지 않고 {@code INVALID_STATE} 로 응답하므로,
+	 * 사전검사와 같은 코드가 나가도록 여기서 {@code DUPLICATE_HUB_NAME} 으로 바꾼다.
+	 *
+	 * <p>{@code HubCommandRepositoryImpl.save} 가 {@code saveAndFlush} 라 위반이 이 안에서 터진다.
+	 */
+	private Hub saveHub(Hub hub) {
+		try {
+			return hubCommandRepository.save(hub);
+		} catch (DataIntegrityViolationException e) {
+			throw translateHubNameConflict(e);
+		}
+	}
+
+	/**
+	 * 허브명 유니크 위반만 골라 {@code DUPLICATE_HUB_NAME} 으로 바꾸고 나머지는 그대로 돌려준다.
+	 * {@code p_hubs} 에는 {@code ck_hub_type_parent} · {@code fk_hubs_parent} 도 걸려 있어,
+	 * 구분하지 않으면 CHECK 위반까지 허브명 중복으로 응답하게 된다.
+	 *
+	 * <p>예외 메시지 전체를 파싱하지 않고 Hibernate 가 뽑아준 제약 이름만 본다.
+	 */
+	private RuntimeException translateHubNameConflict(DataIntegrityViolationException e) {
+		if (e.getCause() instanceof ConstraintViolationException cause
+				&& HUB_NAME_UNIQUE_INDEX.equals(cause.getConstraintName())) {
+			log.warn("[Hub] 허브명 중복 경합 감지 constraint={}", HUB_NAME_UNIQUE_INDEX);
+			return new BusinessException(ErrorCode.DUPLICATE_HUB_NAME);
+		}
+
+		return e;
 	}
 
 	/** {@code countChildren} 이 자기 자신을 세지 않는다 — 빼지 않으면 D1 때문에 중앙 허브는 영원히 못 지운다. */

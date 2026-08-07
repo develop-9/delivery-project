@@ -1,17 +1,22 @@
 package com.delivery_project.hub_service.hub.application.command_service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.assertj.core.api.AbstractObjectAssert;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.ConstraintViolationException.ConstraintKind;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
@@ -135,6 +141,36 @@ class HubCommandServiceTest {
 			assertThatErrorCode(() -> hubCommandService.create(CALLER_ID, command))
 					.isEqualTo(ErrorCode.DUPLICATE_HUB_NAME);
 		}
+
+		@Test
+		@DisplayName("사전검사를 통과한 뒤 uq_hub_name 이 깨져도 DUPLICATE_HUB_NAME 이다")
+		void translatesUniqueIndexViolation() {
+			// given: 검사와 저장 사이에 같은 이름의 요청이 먼저 커밋된 상황
+			when(hubCommandRepository.existsByName("경기 남부 센터")).thenReturn(false);
+			when(hubCommandRepository.save(any(Hub.class))).thenThrow(constraintViolation("uq_hub_name"));
+
+			HubCreateCommand command = new HubCreateCommand(
+					"경기 남부 센터", "경기도 이천시", LATITUDE, LONGITUDE, HubType.MAIN, null);
+
+			// when & then
+			assertThatErrorCode(() -> hubCommandService.create(CALLER_ID, command))
+					.isEqualTo(ErrorCode.DUPLICATE_HUB_NAME);
+		}
+
+		@Test
+		@DisplayName("허브명이 아닌 제약 위반은 허브명 중복으로 바꾸지 않는다")
+		void keepsOtherConstraintViolations() {
+			// given: 같은 예외 타입이지만 깨진 제약이 다르다
+			when(hubCommandRepository.existsByName("경기 남부 센터")).thenReturn(false);
+			when(hubCommandRepository.save(any(Hub.class))).thenThrow(constraintViolation("ck_hub_type_parent"));
+
+			HubCreateCommand command = new HubCreateCommand(
+					"경기 남부 센터", "경기도 이천시", LATITUDE, LONGITUDE, HubType.MAIN, null);
+
+			// when & then
+			assertThatThrownBy(() -> hubCommandService.create(CALLER_ID, command))
+					.isInstanceOf(DataIntegrityViolationException.class);
+		}
 	}
 
 	@Nested
@@ -195,6 +231,47 @@ class HubCommandServiceTest {
 			// when & then
 			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, command))
 					.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+		}
+
+		@Test
+		@DisplayName("허브명을 바꾸다 uq_hub_name 이 깨져도 DUPLICATE_HUB_NAME 이다")
+		void translatesUniqueIndexViolation() {
+			// given: 수정은 변경감지라 save 호출이 없다. 허브명이 바뀔 때만 미리 내보내 경합을 잡는다
+			Hub main = createMain("대구광역시 센터");
+			Hub sub = createSub("부산광역시 센터", main.getId());
+
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
+			when(hubCommandRepository.existsByName("울산광역시 센터")).thenReturn(false);
+			when(hubCommandRepository.save(any(Hub.class))).thenThrow(constraintViolation("uq_hub_name"));
+
+			HubUpdateCommand command = new HubUpdateCommand(
+					sub.getId(), "울산광역시 센터", null, null, null, null, null);
+
+			// when & then
+			assertThatErrorCode(() -> hubCommandService.update(CALLER_ID, command))
+					.isEqualTo(ErrorCode.DUPLICATE_HUB_NAME);
+		}
+
+		@Test
+		@DisplayName("허브명을 바꾸지 않으면 저장을 앞당기지 않는다")
+		void doesNotFlushWhenNameUnchanged() {
+			// given: 주소만 바꾸는 요청
+			Hub main = createMain("대구광역시 센터");
+			Hub sub = createSub("부산광역시 센터", main.getId());
+
+			when(hubCommandRepository.findById(sub.getId())).thenReturn(Optional.of(sub));
+			when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
+
+			HubUpdateCommand command = new HubUpdateCommand(
+					sub.getId(), null, "부산시 강서구", null, null, null, null);
+
+			// when
+			hubCommandService.update(CALLER_ID, command);
+
+			// then
+			assertThat(sub.getAddress()).isEqualTo("부산시 강서구");
+			verify(hubCommandRepository, never()).save(any(Hub.class));
 		}
 	}
 
@@ -277,6 +354,17 @@ class HubCommandServiceTest {
 		}
 
 		throw new AssertionError("예외가 던져지지 않았다");
+	}
+
+	/**
+	 * DB 제약 위반을 재현한다. Spring 이 감싼 {@link DataIntegrityViolationException} 의 원인에
+	 * Hibernate 가 제약 이름을 담아 주고, 서비스는 그 이름으로 허브명 중복인지 판단한다.
+	 */
+	private static DataIntegrityViolationException constraintViolation(String constraintName) {
+		return new DataIntegrityViolationException(
+				"could not execute statement [제약 " + constraintName + " 위반]",
+				new ConstraintViolationException(
+						"제약 " + constraintName + " 위반", new SQLException(), ConstraintKind.UNIQUE, constraintName));
 	}
 
 	private static Hub createMain(String name) {
