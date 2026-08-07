@@ -8,6 +8,8 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
 import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
+import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryRouteStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
@@ -263,6 +265,159 @@ class DeliveryCommandServiceTest {
                 ErrorCode.DELIVERY_NOT_FOUND,
                 exception.getErrorCode()
         );
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("업체 배송 담당자가 배정된 배송을 취소하면 담당자를 해제한다")
+    void cancelDeliveryReleaseCompanyManagerSuccess() {
+        // given
+        UUID orderId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager deliveryManager = mock(DeliveryManager.class);
+
+        DeliveryCancelCommand command =
+                new DeliveryCancelCommand(orderId);
+
+        when(delivery.getId())
+                .thenReturn(deliveryId);
+
+        when(delivery.getOrderId())
+                .thenReturn(orderId);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(deliveryCommandRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository
+                .findById(managerId))
+                .thenReturn(Optional.of(deliveryManager));
+
+        when(deliveryRouteCommandRepository
+                .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                        deliveryId,
+                        DeliveryRouteStatus.IN_TRANSIT
+                ))
+                .thenReturn(List.of());
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        // when
+        deliveryCommandService.cancel(command);
+
+        // then
+        verify(delivery).cancel();
+
+        verify(deliveryManager)
+                .releaseFromDelivery();
+
+        verify(deliveryCommandRepository)
+                .save(delivery);
+    }
+
+    @Test
+    @DisplayName("배정된 업체 배송 담당자를 찾을 수 없으면 배송 취소에 실패한다")
+    void cancelDeliveryCompanyManagerNotFound() {
+        // given
+        UUID orderId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryCancelCommand command =
+                new DeliveryCancelCommand(orderId);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(deliveryCommandRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository
+                .findById(managerId))
+                .thenReturn(Optional.empty());
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.cancel(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELIVERY_MANAGER_NOT_FOUND,
+                exception.getErrorCode()
+        );
+
+        verify(delivery).cancel();
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("배정된 업체 배송 담당자가 DELIVERING 상태가 아니면 배송 취소에 실패한다")
+    void cancelDeliveryCompanyManagerNotDelivering() {
+        // given
+        UUID orderId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryManager deliveryManager =
+                DeliveryManager.create(
+                        UUID.randomUUID(),
+                        hubId,
+                        DeliveryManagerType.COMPANY_DELIVERY,
+                        0
+                );
+
+        /*
+         * DeliveryManager.create()의 초기 상태는 AVAILABLE이다.
+         * 따라서 releaseFromDelivery() 호출 시
+         * DELIVERY_MANAGER_NOT_DELIVERING 예외가 발생한다.
+         */
+
+        DeliveryCancelCommand command =
+                new DeliveryCancelCommand(orderId);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(deliveryCommandRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository
+                .findById(managerId))
+                .thenReturn(Optional.of(deliveryManager));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.cancel(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING,
+                exception.getErrorCode()
+        );
+
+        verify(delivery).cancel();
 
         verify(deliveryCommandRepository, never())
                 .save(any());
