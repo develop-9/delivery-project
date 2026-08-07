@@ -77,6 +77,10 @@ public class CacheConfig implements CachingConfigurer {
 	 * <p>기본 동작은 예외를 그대로 던져 500 이 나간다. 캐시는 성능 장치일 뿐이고 없어도 DB 로 답할 수 있으므로,
 	 * 실패를 로그로만 남기고 원래 경로를 타게 한다. <b>무효화 실패도 삼킨다</b> —
 	 * 대신 TTL 이 상한이라 낡은 값이 영구히 남지는 않는다.
+	 *
+	 * <p><b>걸리는 범위는 {@code CacheInterceptor} 를 타는 호출, 즉 {@code @Cacheable} 같은 애너테이션
+	 * 경로뿐이다.</b> {@code CacheManager} 에서 꺼낸 {@code Cache} 를 직접 부르는 곳은 이 핸들러를
+	 * 거치지 않으므로 각자 예외를 처리해야 한다 ({@code HubCacheEvictor#clear}).
 	 */
 	@Override
 	public CacheErrorHandler errorHandler() {

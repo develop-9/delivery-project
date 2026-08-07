@@ -68,12 +68,29 @@ public class HubCacheEvictor {
 		});
 	}
 
+	/**
+	 * Redis 장애가 이 지점에서 API 를 실패시키지 않게 한다.
+	 *
+	 * <p>{@code CacheConfig} 의 {@code CacheErrorHandler} 는 {@code @Cacheable} 처럼
+	 * {@code CacheInterceptor} 를 타는 호출에만 걸린다. 여기는 {@code Cache} API 를 직접 부르므로
+	 * 그 핸들러를 거치지 않아, 감싸지 않으면 예외가 그대로 올라간다.
+	 *
+	 * <p>하필 {@link #afterCommit} 안이라 더 나쁘다 — DB 는 이미 커밋됐는데 클라이언트만 실패 응답을
+	 * 받고, 되돌릴 수도 재시도할 수도 없다. 캐시는 성능 장치일 뿐이므로 로그만 남기고 넘어간다.
+	 * 낡은 값은 TTL(허브 24h · 경로 1h)이 상한이라 영구히 남지 않는다.
+	 */
 	private void clear(String cacheName) {
 		Cache cache = cacheManager.getCache(cacheName);
 
-		if (cache != null) {
+		if (cache == null) {
+			return;
+		}
+
+		try {
 			cache.clear();
 			log.debug("[Cache] 전체 무효화 cache={}", cacheName);
+		} catch (RuntimeException e) {
+			log.warn("[Cache] 전체 무효화 실패 cache={}", cacheName, e);
 		}
 	}
 }
