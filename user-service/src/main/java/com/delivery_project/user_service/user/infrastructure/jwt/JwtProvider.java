@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.domain.entity.Role;
 
@@ -26,6 +27,7 @@ import io.jsonwebtoken.security.Keys;
 public class JwtProvider implements TokenProvider {
 
 	private static final String ROLE_CLAIM = "role";
+	private static final String TOKEN_TYPE_CLAIM = "tokenType";
 	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final SecretKey secretKey;
@@ -49,6 +51,7 @@ public class JwtProvider implements TokenProvider {
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.claim(ROLE_CLAIM, role.name())
+				.claim(TOKEN_TYPE_CLAIM, TokenType.ACCESS.name())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(accessTokenExpirationMillis)))
 				.signWith(secretKey)
@@ -61,6 +64,7 @@ public class JwtProvider implements TokenProvider {
 		return Jwts.builder()
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
+				.claim(TOKEN_TYPE_CLAIM, TokenType.REFRESH.name())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(refreshTokenExpirationMillis)))
 				.signWith(secretKey)
@@ -95,7 +99,9 @@ public class JwtProvider implements TokenProvider {
 		UUID userId = UUID.fromString(claims.getSubject());
 		String roleClaim = claims.get(ROLE_CLAIM, String.class);
 		Role role = roleClaim != null ? Role.valueOf(roleClaim) : null;
-		return new JwtPrincipal(userId, role);
+		String tokenTypeClaim = claims.get(TOKEN_TYPE_CLAIM, String.class);
+		TokenType tokenType = tokenTypeClaim != null ? TokenType.valueOf(tokenTypeClaim) : null;
+		return new JwtPrincipal(userId, role, tokenType);
 	}
 
 	private Claims parseClaims(String token) {

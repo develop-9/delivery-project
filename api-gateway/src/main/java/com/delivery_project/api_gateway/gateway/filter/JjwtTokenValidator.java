@@ -14,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JjwtTokenValidator implements TokenValidator {
 
+	private static final String TOKEN_TYPE_CLAIM = "tokenType";
+	private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+
 	private final SecretKey jwtSecretKey;
 
 	@Override
@@ -29,6 +32,12 @@ public class JjwtTokenValidator implements TokenValidator {
 
 		String userId = claims.getSubject();
 		if (userId == null || claims.getIssuedAt() == null) {
+			throw new InvalidTokenException();
+		}
+
+		// Refresh Token도 같은 secret으로 서명되어 있어 위 검증만으로는 구분이 안 된다.
+		// Gateway는 Access Token만 통과시켜야 하므로 tokenType 클레임으로 걸러낸다.
+		if (!ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
 			throw new InvalidTokenException();
 		}
 

@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
@@ -117,7 +119,11 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		UUID userId = tokenProvider.parse(requestedRefreshToken).userId();
+		JwtPrincipal principal = tokenProvider.parse(requestedRefreshToken);
+		if (principal.tokenType() != TokenType.REFRESH) {
+			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
+		}
+		UUID userId = principal.userId();
 
 		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));

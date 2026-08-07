@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
@@ -300,7 +301,7 @@ class AuthCommandServiceTest {
 		ReflectionTestUtils.setField(approvedUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("old-refresh-token");
 
-		when(tokenProvider.parse("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("old-refresh-token"));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
 		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
@@ -319,12 +320,28 @@ class AuthCommandServiceTest {
 	}
 
 	@Test
+	void Access_Token으로_재발급을_시도하면_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given: 같은 secret으로 발급되지만 tokenType이 ACCESS인 토큰(Access Token 형태)
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("access-token-used-as-refresh");
+
+		when(tokenProvider.parse("access-token-used-as-refresh"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
 	void 저장된_RefreshToken과_다르면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("stolen-old-token");
 
-		when(tokenProvider.parse("stolen-old-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("stolen-old-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("current-token"));
 
 		// when & then
@@ -340,7 +357,7 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("some-token");
 
-		when(tokenProvider.parse("some-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("some-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
 		// when & then
@@ -356,7 +373,7 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.empty());
 
@@ -382,7 +399,7 @@ class AuthCommandServiceTest {
 		ReflectionTestUtils.setField(pendingUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null));
+		when(tokenProvider.parse("valid-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
 		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
 

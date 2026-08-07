@@ -64,12 +64,41 @@ class JjwtTokenValidatorTest {
 				.isInstanceOf(InvalidTokenException.class);
 	}
 
+	@Test
+	void Refresh_Token은_서명과_만료가_유효해도_InvalidTokenException을_던진다() {
+		// given: 같은 secret으로 발급되지만 tokenType이 REFRESH인 토큰(Refresh Token 형태)
+		Instant now = Instant.now();
+		String token = tokenWith(
+				SECRET_KEY, "11111111-1111-1111-1111-111111111111", "REFRESH", now, now.plusSeconds(3600));
+
+		// when & then
+		assertThatThrownBy(() -> validator.validate(token)).isInstanceOf(InvalidTokenException.class);
+	}
+
+	@Test
+	void tokenType_클레임이_아예_없으면_InvalidTokenException을_던진다() {
+		// given: tokenType 도입 전에 발급된 것처럼 클레임 자체가 없는 토큰
+		Instant now = Instant.now();
+		String token = tokenWith(SECRET_KEY, "11111111-1111-1111-1111-111111111111", null, now, now.plusSeconds(3600));
+
+		// when & then
+		assertThatThrownBy(() -> validator.validate(token)).isInstanceOf(InvalidTokenException.class);
+	}
+
 	private String tokenWith(SecretKey key, String subject, Instant issuedAt, Instant expiration) {
-		return Jwts.builder()
+		return tokenWith(key, subject, "ACCESS", issuedAt, expiration);
+	}
+
+	private String tokenWith(SecretKey key, String subject, String tokenType, Instant issuedAt, Instant expiration) {
+		var builder = Jwts.builder()
 				.subject(subject)
 				.issuedAt(Date.from(issuedAt))
-				.expiration(Date.from(expiration))
-				.signWith(key)
-				.compact();
+				.expiration(Date.from(expiration));
+
+		if (tokenType != null) {
+			builder.claim("tokenType", tokenType);
+		}
+
+		return builder.signWith(key).compact();
 	}
 }

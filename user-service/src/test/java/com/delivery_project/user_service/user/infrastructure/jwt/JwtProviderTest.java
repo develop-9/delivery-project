@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.domain.entity.Role;
 
 class JwtProviderTest {
@@ -30,6 +31,7 @@ class JwtProviderTest {
 		// then
 		assertThat(principal.userId()).isEqualTo(userId);
 		assertThat(principal.role()).isEqualTo(Role.HUB_MANAGER);
+		assertThat(principal.tokenType()).isEqualTo(TokenType.ACCESS);
 	}
 
 	@Test
@@ -44,6 +46,7 @@ class JwtProviderTest {
 		// then
 		assertThat(principal.userId()).isEqualTo(userId);
 		assertThat(principal.role()).isNull();
+		assertThat(principal.tokenType()).isEqualTo(TokenType.REFRESH);
 	}
 
 	@Test
