@@ -6,7 +6,7 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import java.time.Instant;
 import java.util.UUID;
 
-public record CompanyGetAllDataResult(
+public record CompanySearchDataResult(
 
         UUID companyId,
         String companyName,
@@ -15,8 +15,8 @@ public record CompanyGetAllDataResult(
         String companyAddress,
         Instant createdAt
 ) {
-    public static CompanyGetAllDataResult from(Company company) {
-        return new CompanyGetAllDataResult(
+    public static CompanySearchDataResult from(Company company) {
+        return new CompanySearchDataResult(
                 company.getId(),
                 company.getName(),
                 company.getType(),

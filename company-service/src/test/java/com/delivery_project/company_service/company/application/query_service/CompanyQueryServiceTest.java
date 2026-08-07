@@ -3,7 +3,7 @@ package com.delivery_project.company_service.company.application.query_service;
 import com.delivery_project.company_service.company.application.query.CompanySearchQuery;
 import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
 import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
-import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
+import com.delivery_project.company_service.company.application.result.CompanySearchResult;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
@@ -191,7 +191,7 @@ class CompanyQueryServiceTest {
             )).thenReturn(companyPage);
 
             // When
-            CompanyGetAllResult result =
+            CompanySearchResult result =
                     companyQueryService.getAllCompany(command);
 
             // Then

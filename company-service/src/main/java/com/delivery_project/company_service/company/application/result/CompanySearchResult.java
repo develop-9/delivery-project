@@ -5,19 +5,19 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 
-public record CompanyGetAllResult(
+public record CompanySearchResult(
 
-        List<CompanyGetAllDataResult> content,
+        List<CompanySearchDataResult> content,
         int page,
         int size,
         long totalElements,
         int totalPages
 ) {
-    public static CompanyGetAllResult from(Page<Company> page) {
-        return new CompanyGetAllResult(
+    public static CompanySearchResult from(Page<Company> page) {
+        return new CompanySearchResult(
                 page.getContent()
                         .stream()
-                        .map(CompanyGetAllDataResult::from)
+                        .map(CompanySearchDataResult::from)
                         .toList(),
                 page.getNumber(),
                 page.getSize(),

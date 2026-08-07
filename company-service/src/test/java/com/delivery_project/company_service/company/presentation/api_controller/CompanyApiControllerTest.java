@@ -393,7 +393,7 @@ class CompanyApiControllerTest {
             // Given
             UUID hubId = UUID.randomUUID();
 
-            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+            CompanySearchResult result = mock(CompanySearchResult.class);
 
             when(result.content())
                     .thenReturn(Collections.emptyList());
@@ -445,7 +445,7 @@ class CompanyApiControllerTest {
         void getAllCompany_success_withDefaultParameter() throws Exception {
 
             // Given
-            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+            CompanySearchResult result = mock(CompanySearchResult.class);
 
             when(result.content())
                     .thenReturn(Collections.emptyList());

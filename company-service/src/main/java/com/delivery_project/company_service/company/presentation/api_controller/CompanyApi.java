@@ -221,7 +221,7 @@ public interface CompanyApi {
                     )
             )
     })
-    ResponseEntity<SuccessResponse<PageResponse<CompanyGetAllDataResponse>>> getAllCompany(
+    ResponseEntity<SuccessResponse<PageResponse<CompanySearchDataResponse>>> getAllCompany(
             @Parameter(
                     description = "조회할 페이지 번호",
                     example = "0",

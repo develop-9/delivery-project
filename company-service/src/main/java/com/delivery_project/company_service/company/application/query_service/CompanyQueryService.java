@@ -5,7 +5,7 @@ import com.delivery_project.company_service.company.application.query.CompanyGet
 import com.delivery_project.company_service.company.application.query.InternalCompanyGetQuery;
 import com.delivery_project.company_service.company.application.result.InternalCompanyGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
-import com.delivery_project.company_service.company.application.result.CompanyGetAllResult;
+import com.delivery_project.company_service.company.application.result.CompanySearchResult;
 import com.delivery_project.company_service.company.application.result.CompanyGetResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
@@ -39,7 +39,7 @@ public class CompanyQueryService {
 
     // [외부] 업체 검색 비즈니스 로직
     @Transactional(readOnly = true)
-    public CompanyGetAllResult getAllCompany(CompanySearchQuery companySearchQuery) {
+    public CompanySearchResult getAllCompany(CompanySearchQuery companySearchQuery) {
         int page = pageValidator.validatePage(companySearchQuery.page());
         int size = pageValidator.normalizeSize(companySearchQuery.size());
         Sort sort = pageValidator.normalizeSort(companySearchQuery.sort());
@@ -54,7 +54,7 @@ public class CompanyQueryService {
                         pageable
                 );
 
-        return CompanyGetAllResult.from(companyPage);
+        return CompanySearchResult.from(companyPage);
     }
 
     // [내부] 업체 단건 조회 비즈니스 로직
