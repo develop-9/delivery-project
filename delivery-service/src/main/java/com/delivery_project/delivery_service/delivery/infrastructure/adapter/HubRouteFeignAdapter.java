@@ -15,6 +15,14 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.UUID;
 
+/*
+ * TODO: Hub Service 내부 경로 조회 API 구현 완료 후 통합 테스트
+ * - 대상 API: GET /internal/v1/hub-routes/path
+ * - 확인 항목:
+ *   1. 출발/도착 허브 기준 경로 조회
+ *   2. segments 응답 변환
+ *   3. DeliveryRoute 일괄 생성
+ */
 @Component
 @RequiredArgsConstructor
 public class HubRouteFeignAdapter implements HubRoutePort {
