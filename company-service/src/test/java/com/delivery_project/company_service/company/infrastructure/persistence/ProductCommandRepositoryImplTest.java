@@ -1,6 +1,7 @@
 package com.delivery_project.company_service.company.infrastructure.persistence;
 
 import com.delivery_project.company_service.company.domain.entity.Product;
+import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,7 @@ class ProductCommandRepositoryImplTest {
     private SpringDataProductRepository springDataProductRepository;
 
     @InjectMocks
-    private ProductQueryRepositoryImpl productQueryRepository;
+    private ProductCommandRepository productCommandRepository;
 
     @Nested
     @DisplayName("상품 단건 조회 테스트")
@@ -48,7 +49,7 @@ class ProductCommandRepositoryImplTest {
 
             // when
             Optional<Product> result =
-                    productQueryRepository.findById(productId);
+                    productCommandRepository.findById(productId);
 
             // then
             assertThat(result)
@@ -73,7 +74,7 @@ class ProductCommandRepositoryImplTest {
 
             // when
             Optional<Product> result =
-                    productQueryRepository.findById(productId);
+                    productCommandRepository.findById(productId);
 
             // then
             assertThat(result)

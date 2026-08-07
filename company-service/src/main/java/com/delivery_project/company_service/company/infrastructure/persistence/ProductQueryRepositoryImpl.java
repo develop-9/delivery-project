@@ -14,6 +14,7 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
 
     private final SpringDataProductRepository springDataProductRepository;
 
+    @Override
     public Optional<Product> findById(UUID productId) {
         return springDataProductRepository.findById(productId);
     }

@@ -4,7 +4,6 @@ import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.entity.QCompany;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
-import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -46,8 +45,6 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
     ) {
         QCompany company = QCompany.company;
 
-        BooleanBuilder condition = new BooleanBuilder();
-
         List<Company> content = jpaQueryFactory
                 .selectFrom(company)
                 .where(
@@ -64,7 +61,7 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
         JPAQuery<Long> countQuery = jpaQueryFactory
                 .select(company.count())
                 .from(company)
-                .where(condition);
+                .where(nameContains(company, name), typeEq(company, type), hubIdEq(company, hubId));
 
         return PageableExecutionUtils.getPage(
                 content,
