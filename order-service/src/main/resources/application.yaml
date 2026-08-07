@@ -58,6 +58,12 @@ eureka:
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
+order:
+  internal:
+    # 상품별 재고 배치 조회(/internal/v1/inventories/by-products)의 요청 개수 상한.
+    # 상한이 없으면 IN 절이 그대로 커져 DB 쪽에서 터진다.
+    inventory-batch-max-size: ${INTERNAL_INVENTORY_BATCH_MAX_SIZE:100}
+
 management:
   endpoints:
     web:

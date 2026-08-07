@@ -6,9 +6,11 @@ import com.delivery_project.order_service.order.application.command.InventoryAdj
 import com.delivery_project.order_service.order.application.command.InventoryCreateCommand;
 import com.delivery_project.order_service.order.application.command.InventoryDeleteCommand;
 import com.delivery_project.order_service.order.application.command.InventoryInboundCommand;
+import com.delivery_project.order_service.order.application.command.InventoryInternalCreateCommand;
 import com.delivery_project.order_service.order.application.result.InventoryAdjustResult;
 import com.delivery_project.order_service.order.application.result.InventoryDeleteResult;
 import com.delivery_project.order_service.order.application.result.InventoryInboundResult;
+import com.delivery_project.order_service.order.application.result.InventoryInternalSummaryResult;
 import com.delivery_project.order_service.order.application.result.InventoryResult;
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 import com.delivery_project.order_service.order.domain.repository.InventoryCommandRepository;
@@ -51,6 +53,29 @@ public class InventoryCommandService {
 				inventory.getId(), inventory.getProductId(), inventory.getHubId(), inventory.getQuantity());
 
 		return InventoryResult.from(inventory);
+	}
+
+	/**
+	 * 초기 재고 레코드 생성 (내부 API — company-service 가 상품 생성 시 호출).
+	 *
+	 * 등록 규칙(같은 상품·허브 중복 금지)은 외부 API 와 같아야 하므로 {@link #create} 를 그대로 탄다.
+	 * DTO 는 분리하되 규칙은 한 곳에 둔다.
+	 *
+	 * 여기서 나가는 예외가 곧 호출한 쪽의 롤백 신호다 — company 는 이 호출이 실패하면
+	 * 상품 생성 자체를 롤백한다(팀문서 서비스 간 호출 표).
+	 */
+	public InventoryInternalSummaryResult createInitial(InventoryInternalCreateCommand command) {
+		InventoryResult created = create(command.toCreateCommand());
+
+		log.info("[재고] 초기 레코드 생성(내부) : [{}] productId={} hubId={}",
+				created.inventoryId(), created.productId(), created.hubId());
+
+		return new InventoryInternalSummaryResult(
+				created.inventoryId(),
+				created.productId(),
+				created.hubId(),
+				created.quantity(),
+				created.availableQuantity());
 	}
 
 	/** 입고 — 보유 수량에 누적한다 */
