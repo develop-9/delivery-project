@@ -24,7 +24,7 @@ class ProductCommandRepositoryImplTest {
     private SpringDataProductRepository springDataProductRepository;
 
     @InjectMocks
-    private ProductCommandRepository productCommandRepository;
+    private ProductCommandRepositoryImpl productCommandRepository;
 
     @Nested
     @DisplayName("상품 단건 조회 테스트")
