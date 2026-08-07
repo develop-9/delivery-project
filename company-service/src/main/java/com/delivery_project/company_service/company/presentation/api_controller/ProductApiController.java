@@ -5,19 +5,12 @@ import com.delivery_project.company_service.company.application.command.ProductD
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.ProductCommandService;
 import com.delivery_project.company_service.company.application.query.ProductGetQuery;
+import com.delivery_project.company_service.company.application.query.ProductSearchQuery;
 import com.delivery_project.company_service.company.application.query_service.ProductQueryService;
-import com.delivery_project.company_service.company.application.result.ProductCreateResult;
-import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
-import com.delivery_project.company_service.company.application.result.ProductGetResult;
-import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
-import com.delivery_project.company_service.company.presentation.request.ProductCreateRequest;
-import com.delivery_project.company_service.company.presentation.request.ProductDeleteRequest;
-import com.delivery_project.company_service.company.presentation.request.ProductGetRequest;
-import com.delivery_project.company_service.company.presentation.request.ProductUpdateRequest;
-import com.delivery_project.company_service.company.presentation.response.ProductCreateResponse;
-import com.delivery_project.company_service.company.presentation.response.ProductDeleteResponse;
-import com.delivery_project.company_service.company.presentation.response.ProductGetResponse;
-import com.delivery_project.company_service.company.presentation.response.ProductUpdateResponse;
+import com.delivery_project.company_service.company.application.result.*;
+import com.delivery_project.company_service.company.presentation.request.*;
+import com.delivery_project.company_service.company.presentation.response.*;
+import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -97,6 +90,46 @@ public class ProductApiController implements ProductApi {
                         SuccessResponse.success(
                                 ProductGetResponse.from(productGetResult)
                         )
+                );
+    }
+
+    @GetMapping
+    @Override
+    public ResponseEntity<SuccessResponse<PageResponse<ProductSearchResponse>>> searchProduct(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(required = false) UUID companyId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Integer minPrice,
+            @RequestParam(required = false) Integer maxPrice
+    ) {
+        ProductSearchQuery productSearchQuery =
+                new ProductSearchRequest().toQuery(
+                        page,
+                        size,
+                        sort,
+                        companyId,
+                        name,
+                        minPrice,
+                        maxPrice
+                );
+
+        ProductSearchResult productSearchResult = productQueryService.searchProduct(productSearchQuery);
+
+        PageResponse<ProductSearchResponse> pageResponse =
+                PageResponse.of(
+                        productSearchResult.content(),
+                        productSearchResult.page(),
+                        productSearchResult.size(),
+                        productSearchResult.totalElements(),
+                        productSearchResult.totalPages(),
+                        ProductSearchResponse::from
+                );
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        SuccessResponse.success(pageResponse)
                 );
     }
 }

@@ -26,7 +26,7 @@ public class ProductCommandService {
     private final CompanyQueryRepository companyQueryRepository;
     private final ProductCommandRepository productCommandRepository;
 
-    // 상품 생성 비즈니스 로직
+    // [외부] 상품 생성 비즈니스 로직
     @Transactional
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
 
@@ -67,7 +67,7 @@ public class ProductCommandService {
         return ProductCreateResult.from(savedProduct);
     }
 
-    // 상품 수정 비즈니스 로직
+    // [외부] 상품 수정 비즈니스 로직
     @Transactional
     public ProductUpdateResult updateProduct(ProductUpdateCommand productUpdateCommand) {
 
@@ -101,6 +101,7 @@ public class ProductCommandService {
         return ProductUpdateResult.from(product);
     }
 
+    // [외부] 상품 삭제 비즈니스 로직
     @Transactional
     public ProductDeleteResult deleteProduct(ProductDeleteCommand productDeleteCommand) {
 

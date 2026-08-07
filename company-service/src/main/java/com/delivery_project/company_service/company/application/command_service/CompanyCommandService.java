@@ -24,7 +24,7 @@ public class CompanyCommandService {
 
     private final CompanyCommandRepository companyCommandRepository;
 
-    // 업체 저장 비즈니스 로직
+    // [외부] 업체 저장 비즈니스 로직
     @Transactional
     public CompanyCreateResult createCompany(CompanyCreateCommand companyCreateCommand) {
         /*
@@ -53,7 +53,7 @@ public class CompanyCommandService {
         return CompanyCreateResult.from(savedCompany.getId());
     }
 
-    // 업체 수정 비즈니스 로직
+    // [외부] 업체 수정 비즈니스 로직
     @Transactional
     public CompanyUpdateResult updateCompany(CompanyUpdateCommand companyUpdateCommand) {
 
@@ -84,7 +84,7 @@ public class CompanyCommandService {
         return CompanyUpdateResult.from(company.getId());
     }
 
-    // 업체 삭제 비즈니스 로직
+    // [외부] 업체 삭제 비즈니스 로직
     @Transactional
     public CompanyDeleteResult deleteCompany(CompanyDeleteCommand companyDeleteCommand) {
 

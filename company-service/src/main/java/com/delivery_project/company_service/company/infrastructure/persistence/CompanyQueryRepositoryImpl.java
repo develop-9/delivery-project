@@ -61,7 +61,11 @@ public class CompanyQueryRepositoryImpl implements CompanyQueryRepository {
         JPAQuery<Long> countQuery = jpaQueryFactory
                 .select(company.count())
                 .from(company)
-                .where(nameContains(company, name), typeEq(company, type), hubIdEq(company, hubId));
+                .where(
+                        nameContains(company, name),
+                        typeEq(company, type),
+                        hubIdEq(company, hubId)
+                );
 
         return PageableExecutionUtils.getPage(
                 content,
