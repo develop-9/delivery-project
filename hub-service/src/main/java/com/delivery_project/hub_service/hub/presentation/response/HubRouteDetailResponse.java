@@ -1,0 +1,34 @@
+package com.delivery_project.hub_service.hub.presentation.response;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+import com.delivery_project.hub_service.hub.application.result.HubRouteDetailResult;
+
+/** 단건 조회와 목록 원소가 같은 형태다 (02_hub-routes.md 7·8번). */
+public record HubRouteDetailResponse(
+		UUID hubRouteId,
+		UUID departureHubId,
+		String departureHubName,
+		UUID arrivalHubId,
+		String arrivalHubName,
+		BigDecimal distanceKm,
+		int durationMin,
+		Instant createdAt,
+		Instant updatedAt
+) {
+	public static HubRouteDetailResponse from(HubRouteDetailResult result) {
+		return new HubRouteDetailResponse(
+				result.hubRouteId(),
+				result.departureHubId(),
+				result.departureHubName(),
+				result.arrivalHubId(),
+				result.arrivalHubName(),
+				result.distanceKm(),
+				result.durationMin(),
+				result.createdAt(),
+				result.updatedAt()
+		);
+	}
+}
