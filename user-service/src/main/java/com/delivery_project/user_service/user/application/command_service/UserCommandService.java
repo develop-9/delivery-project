@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
@@ -124,7 +126,16 @@ public class UserCommandService {
 		refreshTokenRepository.deleteByUserId(target.getId());
 		// Refresh Token 삭제만으로는 이미 발급된 Access Token까지 막지 못하므로, 무효화 시각을
 		// 별도로 기록해서 Gateway가 만료 전 토큰도 차단할 수 있게 한다(Gateway JWT 인증 필터 참고).
-		userInvalidationRepository.invalidate(target.getId(), Instant.now());
+		// 커밋이 실패하면 DB는 롤백되는데 Redis 쓰기는 롤백이 안 되므로(실제로는 삭제 안 된
+		// 사용자의 토큰이 부당하게 차단됨), 커밋 성공이 확정된 뒤에만 실행되도록 미룬다.
+		UUID targetId = target.getId();
+		Instant invalidatedAt = Instant.now();
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				userInvalidationRepository.invalidate(targetId, invalidatedAt);
+			}
+		});
 		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", command.targetUserId(), caller.getId());
 
 		return UserDeleteResult.from(target);
