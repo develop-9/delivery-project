@@ -7,7 +7,6 @@ import java.util.UUID;
 public interface HubRoutePort {
 
     DeliveryPath getDeliveryPath(
-            String authorization,
             UUID departureHubId,
             UUID destinationHubId
     );

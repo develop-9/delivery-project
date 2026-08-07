@@ -27,21 +27,19 @@ public class UserFeignAdapter implements UserPort {
      */
     @Override
     public ReceiverInfo getReceiver(
-            String authorization,
             UUID receiverUserId
     ){
         try {
             InternalApiResponse<UserInfoResponse> userResponse =
                     userInternalClient.getUser(
-                            authorization,
                             receiverUserId
                     );
 
             InternalApiResponse<UserSlackResponse> slackResponse =
                     userInternalClient.getUserSlack(
-                            authorization,
                             receiverUserId
                     );
+
             UserInfoResponse user = userResponse.data();
             UserSlackResponse slack = slackResponse.data();
 
@@ -61,7 +59,7 @@ public class UserFeignAdapter implements UserPort {
              * 팀의 Feign 예외 변환 규칙을 확인한 뒤 확정한다.
              */
             throw new BusinessException(
-                    ErrorCode.INTERNAL_SERVER_ERROR
+                    ErrorCode.USER_SERVICE_UNAVAILABLE
             );
         }
     }

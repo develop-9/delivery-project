@@ -22,14 +22,12 @@ public class HubRouteFeignAdapter implements HubRoutePort {
 
     @Override
     public DeliveryPath getDeliveryPath(
-            String authorization,
             UUID departureHubId,
             UUID destinationHubId
     ){
         try {
             InternalApiResponse<HubRoutePathResponse> response =
                     hubInternalClient.getDeliveryRoutePath(
-                            authorization,
                             departureHubId,
                             destinationHubId
                     );
@@ -58,7 +56,7 @@ public class HubRouteFeignAdapter implements HubRoutePort {
             );
         } catch (FeignException exception) {
             throw new BusinessException(
-                    ErrorCode.INTERNAL_SERVER_ERROR
+                    ErrorCode.HUB_SERVICE_UNAVAILABLE
             );
         }
     }

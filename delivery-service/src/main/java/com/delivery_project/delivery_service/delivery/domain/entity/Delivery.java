@@ -93,10 +93,7 @@ public class Delivery extends BaseDeletableEntity {
             );
         }
 
-        if (this.status != DeliveryStatus.PENDING
-                && this.status != DeliveryStatus.HUB_MOVING
-                && this.status != DeliveryStatus.HUB_ARRIVED
-                && this.status != DeliveryStatus.DELIVERING) {
+        if (!this.status.isCancelable()) {
             throw new BusinessException(
                     ErrorCode.DELIVERY_CANCEL_NOT_ALLOWED
             );

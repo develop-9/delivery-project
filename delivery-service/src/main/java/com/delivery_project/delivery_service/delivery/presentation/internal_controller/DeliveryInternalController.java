@@ -26,7 +26,6 @@ public class DeliveryInternalController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse<DeliveryCreateResponse> createDelivery(
-            @RequestHeader("Authorization") String authorization,
             @Valid @RequestBody DeliveryCreateRequest request
     ) {
         DeliveryCreateCommand command =
@@ -34,8 +33,7 @@ public class DeliveryInternalController {
 
         DeliveryCreateResult result =
                 deliveryCommandService.create(
-                        command,
-                        authorization
+                        command
                 );
 
         return SuccessResponse.success(

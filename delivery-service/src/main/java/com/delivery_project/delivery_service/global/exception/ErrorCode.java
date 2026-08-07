@@ -42,10 +42,17 @@ public enum ErrorCode {
     DELIVERY_SEQUENCE_CONFLICT(HttpStatus.CONFLICT, "배송 담당자 배정 순번이 충돌했습니다.", "DELIVERY_SEQUENCE_CONFLICT"),
     DELIVERY_MANAGER_NOT_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자가 아닙니다.", "DELIVERY_MANAGER_NOT_DELIVERING"),
 
+    // User service Errorcode
+    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "User Service를 사용할 수 없습니다.", "USER_SERVICE_UNAVAILABLE"),
+
+    HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Hub Service를 사용할 수 없습니다.", "HUB_SERVICE_UNAVAILABLE"),
+
     // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
     HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
     ;
+
+
 
     private final HttpStatus status;
     private final String message;

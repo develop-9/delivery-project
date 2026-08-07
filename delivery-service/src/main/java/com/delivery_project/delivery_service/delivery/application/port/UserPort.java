@@ -7,7 +7,6 @@ import java.util.UUID;
 public interface UserPort {
 
     ReceiverInfo getReceiver(
-            String authorization,
             UUID receiverUserId
     );
 }
