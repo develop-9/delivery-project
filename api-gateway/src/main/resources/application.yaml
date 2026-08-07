@@ -10,11 +10,11 @@ spring:
       port: 6379
   cloud:
     gateway:
-      httpclient:
-        connect-timeout: 2000
-        response-timeout: 5s
       server:
         webflux:
+          httpclient:
+            connect-timeout: 2000
+            response-timeout: 5s
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
