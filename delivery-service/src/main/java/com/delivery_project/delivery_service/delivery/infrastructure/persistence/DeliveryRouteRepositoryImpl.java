@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class DeliveryRouteCommandRepositoryImpl
+public class DeliveryRouteRepositoryImpl
         implements DeliveryRouteCommandRepository {
 
     private final SpringDataDeliveryRouteRepository springDataRepository;

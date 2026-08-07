@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class DeliveryCommandRepositoryImpl implements DeliveryCommandRepository {
+public class DeliveryRepositoryImpl implements DeliveryCommandRepository {
     private final SpringDataDeliveryRepository springDataDeliveryRepository;
 
     @Override
