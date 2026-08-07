@@ -9,8 +9,11 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
 import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
+import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryRouteStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
@@ -19,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,7 @@ public class DeliveryCommandService {
 
     private final DeliveryCommandRepository deliveryCommandRepository;
     private final DeliveryRouteCommandRepository deliveryRouteCommandRepository;
+    private final DeliveryManagerCommandRepository deliveryManagerCommandRepository;
 
     // Application 계층은 FeignClient를 직접 사용하지 않고 Port에만 의존한다.
     private final UserPort userPort;
@@ -125,6 +130,9 @@ public class DeliveryCommandService {
          */
         delivery.cancel();
 
+        releaseCompanyDeliveryManager(delivery);
+        releaseHubDeliveryManagers(delivery.getId());
+
         /*
          * 변경 감지만으로도 UPDATE는 가능하지만,
          * 최신 updatedAt을 응답에 사용하기 위해 명시적으로 저장한다.
@@ -155,6 +163,53 @@ public class DeliveryCommandService {
             throw new BusinessException(
                     ErrorCode.DELIVERY_ALREADY_EXISTS
             );
+        }
+    }
+
+    private void releaseCompanyDeliveryManager(
+            Delivery delivery
+    ){
+        UUID managerId = delivery.getCompanyDeliveryManagerId();
+
+        if(managerId == null){
+            return;
+        }
+
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findById(managerId)
+                        .orElseThrow(()-> new BusinessException(
+                                ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                        ));
+
+        deliveryManager.releaseFromDelivery();
+    }
+
+    private void releaseHubDeliveryManagers(
+            UUID deliveryId
+    ){
+        List<DeliveryRoute> inTransitRoutes =
+                deliveryRouteCommandRepository
+                        .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                                deliveryId,
+                                DeliveryRouteStatus.IN_TRANSIT
+                        );
+
+        for(DeliveryRoute route : inTransitRoutes){
+            UUID managerId = route.getDeliveryManagerId();
+
+            if(managerId == null){
+                continue;
+            }
+
+            DeliveryManager deliveryManager =
+                    deliveryManagerCommandRepository
+                            .findById(managerId)
+                            .orElseThrow(()-> new BusinessException(
+                                    ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                            ));
+
+            deliveryManager.releaseFromDelivery();
         }
     }
 }

@@ -40,6 +40,7 @@ public enum ErrorCode {
     INTERNAL_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 내부 API에 접근할 수 없습니다.", "INTERNAL_ACCESS_DENIED"),
     ACTIVE_DELIVERY_EXISTS(HttpStatus.CONFLICT, "담당 중인 배송이 존재합니다.", "ACTIVE_DELIVERY_EXISTS"),
     DELIVERY_SEQUENCE_CONFLICT(HttpStatus.CONFLICT, "배송 담당자 배정 순번이 충돌했습니다.", "DELIVERY_SEQUENCE_CONFLICT"),
+    DELIVERY_MANAGER_NOT_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자가 아닙니다.", "DELIVERY_MANAGER_NOT_DELIVERING"),
 
     // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
