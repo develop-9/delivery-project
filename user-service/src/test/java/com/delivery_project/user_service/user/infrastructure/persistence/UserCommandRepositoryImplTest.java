@@ -15,15 +15,15 @@ import org.springframework.context.annotation.Import;
 import com.delivery_project.user_service.global.config.JpaConfig;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaConfig.class, UserRepositoryImpl.class})
-class UserRepositoryImplTest {
+@Import({JpaConfig.class, UserCommandRepositoryImpl.class})
+class UserCommandRepositoryImplTest {
 
 	@Autowired
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Autowired
 	private TestEntityManager entityManager;
@@ -34,7 +34,7 @@ class UserRepositoryImplTest {
 		User user = createUser("pendinguser", "U100001");
 
 		// when
-		User saved = userRepository.save(user);
+		User saved = userCommandRepository.save(user);
 
 		// then
 		assertThat(saved.getId()).isNotNull();
@@ -45,10 +45,10 @@ class UserRepositoryImplTest {
 	@Test
 	void username으로_사용자를_조회할_수_있다() {
 		// given
-		userRepository.save(createUser("finduser", "U100002"));
+		userCommandRepository.save(createUser("finduser", "U100002"));
 
 		// when
-		Optional<User> found = userRepository.findByUsername("finduser");
+		Optional<User> found = userCommandRepository.findByUsername("finduser");
 
 		// then
 		assertThat(found).isPresent();
@@ -58,7 +58,7 @@ class UserRepositoryImplTest {
 	@Test
 	void 존재하지_않는_username으로_조회하면_비어있다() {
 		// when
-		Optional<User> found = userRepository.findByUsername("no-such-user");
+		Optional<User> found = userCommandRepository.findByUsername("no-such-user");
 
 		// then
 		assertThat(found).isEmpty();
@@ -67,36 +67,36 @@ class UserRepositoryImplTest {
 	@Test
 	void existsByUsername으로_중복여부를_확인할_수_있다() {
 		// given
-		userRepository.save(createUser("dupcheck", "U100003"));
+		userCommandRepository.save(createUser("dupcheck", "U100003"));
 
 		// when & then
-		assertThat(userRepository.existsByUsername("dupcheck")).isTrue();
-		assertThat(userRepository.existsByUsername("nobody")).isFalse();
+		assertThat(userCommandRepository.existsByUsername("dupcheck")).isTrue();
+		assertThat(userCommandRepository.existsByUsername("nobody")).isFalse();
 	}
 
 	@Test
 	void existsBySlackId로_중복여부를_확인할_수_있다() {
 		// given
-		userRepository.save(createUser("slackcheck", "U100004"));
+		userCommandRepository.save(createUser("slackcheck", "U100004"));
 
 		// when & then
-		assertThat(userRepository.existsBySlackId("U100004")).isTrue();
-		assertThat(userRepository.existsBySlackId("U999999")).isFalse();
+		assertThat(userCommandRepository.existsBySlackId("U100004")).isTrue();
+		assertThat(userCommandRepository.existsBySlackId("U999999")).isFalse();
 	}
 
 	@Test
 	void 소프트_삭제된_사용자는_findById로_조회되지_않는다() {
 		// given
-		User user = userRepository.save(createUser("deleteduser", "U100005"));
+		User user = userCommandRepository.save(createUser("deleteduser", "U100005"));
 		UUID userId = user.getId();
 
 		user.delete(UUID.randomUUID());
-		userRepository.save(user);
+		userCommandRepository.save(user);
 		entityManager.flush();
 		entityManager.clear();
 
 		// when
-		Optional<User> found = userRepository.findById(userId);
+		Optional<User> found = userCommandRepository.findById(userId);
 
 		// then
 		assertThat(found).isEmpty();
@@ -105,16 +105,16 @@ class UserRepositoryImplTest {
 	@Test
 	void 소프트_삭제된_사용자는_findByUsername으로도_조회되지_않는다() {
 		// given
-		userRepository.save(createUser("deletedbyname", "U100006"));
-		User user = userRepository.findByUsername("deletedbyname").orElseThrow();
+		userCommandRepository.save(createUser("deletedbyname", "U100006"));
+		User user = userCommandRepository.findByUsername("deletedbyname").orElseThrow();
 
 		user.delete(UUID.randomUUID());
-		userRepository.save(user);
+		userCommandRepository.save(user);
 		entityManager.flush();
 		entityManager.clear();
 
 		// when
-		Optional<User> found = userRepository.findByUsername("deletedbyname");
+		Optional<User> found = userCommandRepository.findByUsername("deletedbyname");
 
 		// then
 		assertThat(found).isEmpty();

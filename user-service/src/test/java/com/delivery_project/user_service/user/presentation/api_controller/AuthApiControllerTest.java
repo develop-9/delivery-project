@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -32,7 +32,7 @@ class AuthApiControllerTest {
 	private MockMvcTester mvc;
 
 	@Autowired
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
@@ -68,13 +68,13 @@ class AuthApiControllerTest {
 				.bodyJson()
 				.extractingPath("$.data.approvalStatus").isEqualTo("PENDING");
 
-		assertThat(userRepository.existsByUsername("kim123")).isTrue();
+		assertThat(userCommandRepository.existsByUsername("kim123")).isTrue();
 	}
 
 	@Test
 	void username이_중복이면_409를_반환한다() {
 		// given
-		userRepository.save(
+		userCommandRepository.save(
 				com.delivery_project.user_service.user.domain.entity.User.builder()
 						.username("dupuser")
 						.password("encoded")
@@ -171,7 +171,7 @@ class AuthApiControllerTest {
 		entityManager.clear();
 		jdbcTemplate.update("UPDATE p_users SET approval_status = 'APPROVED' WHERE username = ?", "loginuser");
 
-		UUID userId = userRepository.findByUsername("loginuser").orElseThrow().getId();
+		UUID userId = userCommandRepository.findByUsername("loginuser").orElseThrow().getId();
 
 		String loginBody = """
 				{
@@ -295,7 +295,7 @@ class AuthApiControllerTest {
 		entityManager.clear();
 		jdbcTemplate.update("UPDATE p_users SET deleted_at = now() WHERE username = ?", "softdel1");
 
-		assertThat(userRepository.existsByUsername("softdel1")).isFalse();
+		assertThat(userCommandRepository.existsByUsername("softdel1")).isFalse();
 
 		String reSignupBody = """
 				{
@@ -408,7 +408,7 @@ class AuthApiControllerTest {
 		entityManager.clear();
 		jdbcTemplate.update("UPDATE p_users SET approval_status = 'APPROVED' WHERE username = ?", username);
 
-		UUID userId = userRepository.findByUsername(username).orElseThrow().getId();
+		UUID userId = userCommandRepository.findByUsername(username).orElseThrow().getId();
 
 		String loginBody = """
 				{

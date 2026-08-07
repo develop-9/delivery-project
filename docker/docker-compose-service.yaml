@@ -72,6 +72,33 @@ services:
     networks:
       - delivery-network
 
+  slack-service:
+    build:
+      context: ..
+      dockerfile: slack-service/Dockerfile
+      args:
+        JAR_FILE: slack-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: delivery_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: slack-service
+
+    ports:
+      - "9003:9003"
+
+    networks:
+      - delivery-network
+
   hub-service:
     build:
       context: ..

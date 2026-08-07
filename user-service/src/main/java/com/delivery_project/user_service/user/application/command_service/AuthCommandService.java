@@ -21,7 +21,7 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class AuthCommandService {
 
-	private final UserRepository userRepository;
+	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
@@ -42,10 +42,10 @@ public class AuthCommandService {
 
 		validateHubOrCompanyRequired(command);
 
-		if (userRepository.existsByUsername(command.username())) {
+		if (userCommandRepository.existsByUsername(command.username())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_USERNAME);
 		}
-		if (userRepository.existsBySlackId(command.slackId())) {
+		if (userCommandRepository.existsBySlackId(command.slackId())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
 		}
 
@@ -79,7 +79,7 @@ public class AuthCommandService {
 	 */
 	private User saveUser(User user) {
 		try {
-			return userRepository.save(user);
+			return userCommandRepository.save(user);
 		} catch (DataIntegrityViolationException e) {
 			String message = e.getMessage();
 			if (message != null && message.contains("(username)")) {
@@ -96,7 +96,7 @@ public class AuthCommandService {
 	public UserLoginResult login(UserLoginCommand command) {
 		log.info("[Auth] 로그인 시도 username={}", command.username());
 
-		User user = userRepository.findByUsername(command.username())
+		User user = userCommandRepository.findByUsername(command.username())
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
 		if (!passwordEncoder.matches(command.password(), user.getPassword())) {
@@ -125,7 +125,7 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED);
 		}
 
-		User user = userRepository.findById(userId)
+		User user = userCommandRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
 		if (user.getApprovalStatus() != ApprovalStatus.APPROVED) {
 			throw new BusinessException(ErrorCode.USER_NOT_APPROVED);
