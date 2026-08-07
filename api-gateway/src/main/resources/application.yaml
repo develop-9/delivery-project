@@ -13,6 +13,16 @@ spring:
       httpclient:
         connect-timeout: 2000
         response-timeout: 5s
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "${CORS_ALLOWED_ORIGINS:http://localhost:3000}"
+                allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+                allowedHeaders: "*"
+                maxAge: 3600
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
