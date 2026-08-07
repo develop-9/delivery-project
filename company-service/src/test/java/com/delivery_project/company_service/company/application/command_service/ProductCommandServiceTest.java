@@ -1,8 +1,10 @@
 package com.delivery_project.company_service.company.application.command_service;
 
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
+import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
+import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
@@ -264,6 +266,83 @@ class ProductCommandServiceTest {
                     .isEqualTo("기존 상품");
             assertThat(product.getPrice())
                     .isEqualTo(10000);
+        }
+    }
+
+    @Nested
+    @DisplayName("상품 삭제 비즈니스 로직 테스트")
+    class DeleteProduct {
+
+        @Test
+        @DisplayName("상품을 정상적으로 논리 삭제한다")
+        void deleteProduct_success() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+
+            ProductDeleteCommand command =
+                    new ProductDeleteCommand(productId);
+
+            Product product = new Product(
+                    productId,
+                    companyId,
+                    "테스트 상품",
+                    10000
+            );
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.of(product));
+
+            // when
+            ProductDeleteResult result =
+                    productCommandService.deleteProduct(command);
+
+            // then
+            assertThat(result)
+                    .isNotNull();
+
+            assertThat(result.productId())
+                    .isEqualTo(productId);
+
+            assertThat(product.getDeletedAt())
+                    .isNotNull();
+
+            assertThat(product.getDeletedBy())
+                    .isEqualTo(
+                            UUID.fromString(
+                                    "12345678-1234-5678-1234-123456789123"
+                            )
+                    );
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품을 삭제하면 PRODUCT_NOT_FOUND 예외가 발생한다")
+        void deleteProduct_productNotFound() {
+            // given
+            UUID productId = UUID.randomUUID();
+
+            ProductDeleteCommand command =
+                    new ProductDeleteCommand(productId);
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () -> productCommandService.deleteProduct(command),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
         }
     }
 }

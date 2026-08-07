@@ -1,9 +1,11 @@
 package com.delivery_project.company_service.company.presentation.api_controller;
 
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
+import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.ProductCommandService;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
+import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
 import com.delivery_project.company_service.company.presentation.request.ProductCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.ProductUpdateRequest;
@@ -22,13 +24,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -285,6 +287,91 @@ class ProductApiControllerTest {
             then(productCommandService)
                     .should()
                     .updateProduct(any(ProductUpdateCommand.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("상품 삭제 API 테스트")
+    class DeleteProduct {
+
+        @Test
+        @DisplayName("상품을 정상적으로 삭제한다")
+        void deleteProduct_success() throws Exception {
+            // given
+            UUID productId = UUID.randomUUID();
+            Instant deletedAt = Instant.now();
+
+            ProductDeleteResult result = new ProductDeleteResult(
+                    productId,
+                    deletedAt
+            );
+
+            given(productCommandService.deleteProduct(
+                    any(ProductDeleteCommand.class)
+            )).willReturn(result);
+
+            // when
+            ResultActions resultActions = mockMvc.perform(
+                    delete("/api/v1/products/{productId}", productId)
+            );
+
+            // then
+            resultActions
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.productId")
+                            .value(productId.toString()))
+                    .andExpect(jsonPath("$.data.deletedAt")
+                            .value(deletedAt.toString()));
+
+            then(productCommandService)
+                    .should()
+                    .deleteProduct(any(ProductDeleteCommand.class));
+        }
+
+        @Test
+        @DisplayName("상품 ID가 UUID 형식이 아니면 400 Bad Request를 반환한다")
+        void deleteProduct_invalidProductId() throws Exception {
+            // given
+            String invalidProductId = "invalid-uuid";
+
+            // when
+            ResultActions resultActions = mockMvc.perform(
+                    delete("/api/v1/products/{productId}", invalidProductId)
+            );
+
+            // then
+            resultActions
+                    .andExpect(status().isBadRequest());
+
+            then(productCommandService)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품을 삭제하면 404 Not Found를 반환한다")
+        void deleteProduct_productNotFound() throws Exception {
+            // given
+            UUID productId = UUID.randomUUID();
+
+            given(productCommandService.deleteProduct(
+                    any(ProductDeleteCommand.class)
+            )).willThrow(
+                    new BusinessException(ErrorCode.PRODUCT_NOT_FOUND)
+            );
+
+            // when
+            ResultActions resultActions = mockMvc.perform(
+                    delete("/api/v1/products/{productId}", productId)
+            );
+
+            // then
+            resultActions
+                    .andExpect(status().isNotFound());
+
+            then(productCommandService)
+                    .should()
+                    .deleteProduct(any(ProductDeleteCommand.class));
         }
     }
 }
