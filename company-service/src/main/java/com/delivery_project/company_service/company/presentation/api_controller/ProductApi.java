@@ -3,6 +3,7 @@ package com.delivery_project.company_service.company.presentation.api_controller
 import com.delivery_project.company_service.company.presentation.request.ProductCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.ProductUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.ProductCreateResponse;
+import com.delivery_project.company_service.company.presentation.response.ProductDeleteResponse;
 import com.delivery_project.company_service.company.presentation.response.ProductUpdateResponse;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
@@ -131,5 +132,44 @@ public interface ProductApi {
             )
             @org.springframework.web.bind.annotation.RequestBody
             ProductUpdateRequest productUpdateRequest
+    );
+
+    @Operation(
+            summary = "상품 삭제",
+            description = "Master 또는 담당 Hub Manager가 상품을 삭제합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "상품 삭제 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "상품 삭제 권한이 없는 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "요청한 상품이 존재하지 않음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<SuccessResponse<ProductDeleteResponse>> deleteProduct(
+            @Parameter(
+                    description = "삭제할 상품 ID",
+                    required = true,
+                    example = "550e8400-e29b-41d4-a716-446655440000"
+            )
+            @PathVariable UUID productId
     );
 }
