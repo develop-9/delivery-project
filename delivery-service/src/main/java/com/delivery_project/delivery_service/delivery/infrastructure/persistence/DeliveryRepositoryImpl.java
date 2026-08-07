@@ -23,6 +23,6 @@ public class DeliveryRepositoryImpl implements DeliveryCommandRepository {
             UUID orderId
     ){
         return springDataDeliveryRepository
-                .findByOrderIdAndDeleteAtIsNull(orderId);
+                .findByOrderIdAndDeletedAtIsNull(orderId);
     }
 }

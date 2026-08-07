@@ -9,5 +9,5 @@ import java.util.UUID;
 public interface SpringDataDeliveryRepository
         extends JpaRepository<Delivery, UUID> {
 
-    Optional<Delivery> findByOrderIdAndDeleteAtIsNull(UUID orderId);
+    Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
 }
