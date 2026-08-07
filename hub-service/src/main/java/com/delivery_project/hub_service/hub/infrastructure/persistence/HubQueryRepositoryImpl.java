@@ -4,6 +4,7 @@ import static com.delivery_project.hub_service.hub.domain.entity.QHub.hub;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubSearchCondition;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.ComparableExpressionBase;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -32,6 +34,11 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class HubQueryRepositoryImpl implements HubQueryRepository {
+
+	private static final Map<String, ComparableExpressionBase<?>> SORTABLE_PATHS = Map.of(
+			"createdAt", hub.createdAt,
+			"updatedAt", hub.updatedAt
+	);
 
 	private final SpringDataHubRepository springDataHubRepository;
 	private final JPAQueryFactory queryFactory;
@@ -55,7 +62,7 @@ public class HubQueryRepositoryImpl implements HubQueryRepository {
 						hubTypeEquals(condition.hubType()),
 						parentHubIdEquals(condition.parentHubId())
 				)
-				.orderBy(AuditSortSupport.toOrderSpecifiers(pageable.getSort(), hub.createdAt, hub.updatedAt))
+				.orderBy(SortSupport.toOrderSpecifiers(pageable.getSort(), SORTABLE_PATHS, hub.createdAt))
 				.offset(pageable.getOffset())
 				.limit(pageable.getPageSize())
 				.fetch();

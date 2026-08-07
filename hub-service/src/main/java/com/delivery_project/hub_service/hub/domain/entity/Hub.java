@@ -88,6 +88,46 @@ public class Hub extends BaseDeletableEntity implements Persistable<UUID> {
 		return hub;
 	}
 
+	/** D1. {@code hubType} 을 보지 않고 자기참조 여부로 판정한다 — 둘은 CHECK 제약으로 묶여 있다. */
+	public boolean isMain() {
+		return id.equals(parentHubId);
+	}
+
+	/**
+	 * 이름·주소·좌표 부분 수정. {@code null} 인 필드는 건드리지 않는다 (PATCH).
+	 *
+	 * <p>허브명 중복과 좌표 범위 검증은 Service 가 끝낸 뒤 호출한다.
+	 */
+	public void updateBasicInfo(String name, String address, BigDecimal latitude, BigDecimal longitude) {
+		if (name != null) {
+			this.name = name;
+		}
+		if (address != null) {
+			this.address = address;
+		}
+		if (latitude != null) {
+			this.latitude = latitude;
+		}
+		if (longitude != null) {
+			this.longitude = longitude;
+		}
+	}
+
+	/** 중앙 허브로 전환. {@code parentHubId} 는 요청값과 무관하게 자기 자신이 된다 (D1). */
+	public void changeToMain() {
+		this.hubType = HubType.MAIN;
+		this.parentHubId = this.id;
+	}
+
+	/**
+	 * 일반 허브로 전환. {@code parentHubId} 가 존재하는 {@code MAIN} 인지, 그리고
+	 * 중앙 허브였다면 자기 제외 하위 허브가 없는지(D7)는 Service 가 검증한 뒤 호출한다.
+	 */
+	public void changeToSub(UUID parentHubId) {
+		this.hubType = HubType.SUB;
+		this.parentHubId = parentHubId;
+	}
+
 	@Override
 	public boolean isNew() {
 		return isNew;
