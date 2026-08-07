@@ -8,6 +8,6 @@ public record ProductGetRequest(
 
 ) {
     public ProductGetQuery toQuery(UUID productId) {
-        new ProductGetQuery(productId);
+        return new ProductGetQuery(productId);
     }
 }
