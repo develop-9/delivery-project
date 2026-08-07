@@ -4,8 +4,11 @@ import com.delivery_project.company_service.company.application.command.ProductC
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.ProductCommandService;
+import com.delivery_project.company_service.company.application.query.ProductGetQuery;
+import com.delivery_project.company_service.company.application.query_service.ProductQueryService;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
+import com.delivery_project.company_service.company.application.result.ProductGetResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
 import com.delivery_project.company_service.company.presentation.request.ProductCreateRequest;
 import com.delivery_project.company_service.company.presentation.request.ProductUpdateRequest;
@@ -20,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -30,6 +34,8 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,6 +52,9 @@ class ProductApiControllerTest {
 
     @MockitoBean
     private ProductCommandService productCommandService;
+
+    @MockitoBean
+    private ProductQueryService productQueryService;
 
     @Nested
     @DisplayName("상품 생성 API 테스트")
@@ -372,6 +381,77 @@ class ProductApiControllerTest {
             then(productCommandService)
                     .should()
                     .deleteProduct(any(ProductDeleteCommand.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("상품 단건 조회 API 테스트")
+    class GetProduct {
+        @Test
+        @DisplayName("상품 ID로 상품을 조회할 수 있다.")
+        @WithMockUser
+        void getProduct_success() throws Exception {
+            // Given
+            UUID productId = UUID.randomUUID();
+
+            ProductGetResult productGetResult = mock(ProductGetResult.class);
+
+            given(productQueryService.getProduct(any(ProductGetQuery.class)))
+                    .willReturn(productGetResult);
+
+            // When & Then
+            mockMvc.perform(
+                            get("/api/v1/products/{productId}", productId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
+
+            then(productQueryService)
+                    .should(times(1))
+                    .getProduct(any(ProductGetQuery.class));
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품을 조회하면 404를 반환한다.")
+        @WithMockUser
+        void getProduct_fail_productNotFound() throws Exception {
+            // Given
+            UUID productId = UUID.randomUUID();
+
+            given(productQueryService.getProduct(any(ProductGetQuery.class)))
+                    .willThrow(
+                            new BusinessException(ErrorCode.PRODUCT_NOT_FOUND)
+                    );
+
+            // When & Then
+            mockMvc.perform(
+                            get("/api/v1/products/{productId}", productId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+                    .andExpect(status().isNotFound());
+
+            then(productQueryService)
+                    .should(times(1))
+                    .getProduct(any(ProductGetQuery.class));
+        }
+
+        @Test
+        @DisplayName("상품 ID가 UUID 형식이 아니면 400을 반환한다.")
+        @WithMockUser
+        void getProduct_fail_invalidProductId() throws Exception {
+            // Given
+            String invalidProductId = "invalid-uuid";
+
+            // When & Then
+            mockMvc.perform(
+                            get("/api/v1/products/{productId}", invalidProductId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                    )
+                    .andExpect(status().isBadRequest());
+
+            then(productQueryService)
+                    .shouldHaveNoInteractions();
         }
     }
 }

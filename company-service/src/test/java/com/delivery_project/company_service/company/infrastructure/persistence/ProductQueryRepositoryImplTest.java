@@ -13,83 +13,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class ProductCommandRepositoryImplTest {
+class ProductQueryRepositoryImplTest {
 
     @Mock
     private SpringDataProductRepository springDataProductRepository;
 
     @InjectMocks
-    private ProductCommandRepositoryImpl productCommandRepository;
-
-    @Nested
-    @DisplayName("상품 저장 테스트")
-    class Save {
-
-        @Test
-        @DisplayName("상품을 저장하고 저장된 상품을 반환한다")
-        void save_success() {
-            // given
-            UUID productId = UUID.randomUUID();
-            UUID companyId = UUID.randomUUID();
-
-            Product product = new Product(
-                    productId,
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
-
-            given(springDataProductRepository.save(product))
-                    .willReturn(product);
-
-            // when
-            Product result = productCommandRepository.save(product);
-
-            // then
-            assertThat(result)
-                    .isSameAs(product);
-
-            then(springDataProductRepository)
-                    .should()
-                    .save(product);
-        }
-
-        @Test
-        @DisplayName("상품 저장 중 예외가 발생하면 예외를 그대로 전달한다")
-        void save_fail() {
-            // given
-            UUID productId = UUID.randomUUID();
-            UUID companyId = UUID.randomUUID();
-
-            Product product = new Product(
-                    productId,
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
-
-            RuntimeException exception =
-                    new RuntimeException("상품 저장 실패");
-
-            given(springDataProductRepository.save(product))
-                    .willThrow(exception);
-
-            // when & then
-            assertThatThrownBy(
-                    () -> productCommandRepository.save(product)
-            )
-                    .isSameAs(exception);
-
-            then(springDataProductRepository)
-                    .should()
-                    .save(product);
-        }
-    }
+    private ProductQueryRepositoryImpl productQueryRepository;
 
     @Nested
     @DisplayName("상품 단건 조회 테스트")
@@ -114,7 +48,7 @@ class ProductCommandRepositoryImplTest {
 
             // when
             Optional<Product> result =
-                    productCommandRepository.findById(productId);
+                    productQueryRepository.findById(productId);
 
             // then
             assertThat(result)
@@ -139,7 +73,7 @@ class ProductCommandRepositoryImplTest {
 
             // when
             Optional<Product> result =
-                    productCommandRepository.findById(productId);
+                    productQueryRepository.findById(productId);
 
             // then
             assertThat(result)
