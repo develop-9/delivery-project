@@ -1,7 +1,5 @@
 package com.delivery_project.hub_service.hub.application.support;
 
-import java.util.UUID;
-
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -30,9 +28,19 @@ public class HubCacheEvictor {
 
 	private final CacheManager cacheManager;
 
-	/** 허브 단건 캐시. 해당 허브의 생성·수정·삭제 시 무효화한다. */
-	public void evictHub(UUID hubId) {
-		afterCommit(() -> evictKey(HubCacheNames.HUB, hubId.toString()));
+	/**
+	 * 허브 단건 캐시 전체. 허브 수정·삭제 시 무효화한다.
+	 *
+	 * <p>바뀐 허브의 키 하나만 지워서는 부족하다. {@code HubDetailResult} 는 상위 허브에서 복사해 온
+	 * {@code parentHubName} 을 함께 담기 때문에, 중앙 허브의 이름이 바뀌면 그 값을 품고 있는
+	 * <b>하위 허브들의 캐시</b>까지 낡는다. 어떤 키가 영향받는지는 캐시 키만 봐서는 알 수 없다.
+	 *
+	 * <p>그래서 통째로 비운다. <b>허브는 17개로 고정이고 수정이 사실상 없어</b> 다시 채우는 비용이
+	 * 무시할 만하다. 경로 캐시({@link #evictAllHubPaths})가 같은 이유로 같은 선택을 했고,
+	 * 무효화 규칙을 하나로 두면 응답에 담기는 필드가 늘어도 빠뜨릴 곳이 생기지 않는다.
+	 */
+	public void evictAllHubs() {
+		afterCommit(() -> clear(HubCacheNames.HUB));
 	}
 
 	/**
@@ -58,15 +66,6 @@ public class HubCacheEvictor {
 				eviction.run();
 			}
 		});
-	}
-
-	private void evictKey(String cacheName, String key) {
-		Cache cache = cacheManager.getCache(cacheName);
-
-		if (cache != null) {
-			cache.evict(key);
-			log.debug("[Cache] 무효화 cache={} key={}", cacheName, key);
-		}
 	}
 
 	private void clear(String cacheName) {

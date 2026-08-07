@@ -254,6 +254,26 @@ class HubCommandServiceTest {
 		}
 
 		@Test
+		@DisplayName("MAIN 의 이름을 바꾸면 하위 허브의 parentHubName 때문에 허브 캐시를 통째로 비운다")
+		void evictsAllHubsWhenNameChanges() {
+			// given: 이 허브의 이름은 하위 허브들의 parentHubName 으로도 복사돼 있다
+			Hub main = createMain("대전광역시 센터");
+
+			when(hubCommandRepository.findById(main.getId())).thenReturn(Optional.of(main));
+			when(hubCommandRepository.existsByName("대전 중앙 센터")).thenReturn(false);
+
+			HubUpdateCommand command = new HubUpdateCommand(
+					main.getId(), "대전 중앙 센터", null, null, null, null, null);
+
+			// when
+			hubCommandService.update(CALLER_ID, command);
+
+			// then: 자기 키만 지우면 하위 허브 캐시에 옛 이름이 남는다
+			verify(HubCacheEvictor).evictAllHubs();
+			verify(HubCacheEvictor).evictAllHubPaths();
+		}
+
+		@Test
 		@DisplayName("허브명을 바꾸지 않으면 저장을 앞당기지 않는다")
 		void doesNotFlushWhenNameUnchanged() {
 			// given: 주소만 바꾸는 요청
@@ -303,7 +323,7 @@ class HubCommandServiceTest {
 			assertThat(outbound.isDeleted()).isTrue();
 			assertThat(inbound.isDeleted()).isTrue();
 
-			verify(HubCacheEvictor).evictHub(sub.getId());
+			verify(HubCacheEvictor).evictAllHubs();
 			verify(HubCacheEvictor).evictAllHubPaths();
 		}
 

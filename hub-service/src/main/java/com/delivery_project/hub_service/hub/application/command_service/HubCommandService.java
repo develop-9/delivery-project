@@ -84,8 +84,9 @@ public class HubCommandService {
 			saveHub(hub);
 		}
 
-		// 허브명은 경로 응답의 구간·경유지 이름으로도 나가므로 경로 캐시까지 함께 비운다.
-		cacheEvictor.evictHub(hubId);
+		// 허브명은 하위 허브의 parentHubName 으로도, 경로 응답의 구간·경유지 이름으로도 나간다.
+		// 어느 키가 그 이름을 품고 있는지 알 수 없어 양쪽 캐시를 통째로 비운다.
+		cacheEvictor.evictAllHubs();
 		cacheEvictor.evictAllHubPaths();
 
 		log.info("[Hub] 허브 수정 완료 hubId={}", hubId);
@@ -111,7 +112,7 @@ public class HubCommandService {
 		List<HubRoute> relatedRoutes = hubRouteCommandRepository.findAllByHubId(hubId);
 		relatedRoutes.forEach(route -> route.delete(callerId));
 
-		cacheEvictor.evictHub(hubId);
+		cacheEvictor.evictAllHubs();
 		cacheEvictor.evictAllHubPaths();
 
 		log.info("[Hub] 허브 삭제 완료 hubId={} deletedHubRouteCount={}", hubId, relatedRoutes.size());
