@@ -9,19 +9,20 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
+import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerSequenceCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
-import org.hibernate.exception.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,6 +31,8 @@ import java.util.UUID;
 public class DeliveryManagerCommandService {
     private final DeliveryManagerCommandRepository
             deliveryManagerCommandRepository;
+    private final DeliveryManagerSequenceCommandRepository
+            deliveryManagerSequenceCommandRepository;
     @Value("${system.id}")
     private UUID systemId;
 
@@ -84,20 +87,26 @@ public class DeliveryManagerCommandService {
             UUID hubId,
             DeliveryManagerType type
     ) {
-        Optional<Integer> maxSequence;
+        UUID sequenceHubId =
+                type == DeliveryManagerType.HUB_DELIVERY
+                ? null : hubId;
 
-        if (type == DeliveryManagerType.HUB_DELIVERY) {
-            maxSequence =
-                    deliveryManagerCommandRepository.findMaxSequenceByType(type);
-        } else {
-            maxSequence =
-                    deliveryManagerCommandRepository.findMaxSequenceByHubIdAndType(
-                            hubId,
-                            type
-                    );
-        }
+        DeliveryManagerSequence sequence =
+                deliveryManagerSequenceCommandRepository
+                        .findForUpdate(
+                                type,
+                                sequenceHubId
+                        )
+                        .orElseGet(()->
+                                deliveryManagerSequenceCommandRepository.save(
+                                        DeliveryManagerSequence.create(
+                                                type,
+                                                sequenceHubId
+                                        )
+                                )
+                        );
 
-        return maxSequence.orElse(-1) + 1;
+        return sequence.issueNextSequence();
     }
 
     public DeliveryManagerUpdateResult update(

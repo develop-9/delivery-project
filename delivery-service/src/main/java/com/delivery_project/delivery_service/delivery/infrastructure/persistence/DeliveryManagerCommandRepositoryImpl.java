@@ -1,7 +1,6 @@
 package com.delivery_project.delivery_service.delivery.infrastructure.persistence;
 
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
-import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -36,23 +35,5 @@ public class DeliveryManagerCommandRepositoryImpl
     public Optional<DeliveryManager> findByUserId(UUID userId) {
         return springDataRepository
                 .findByUserIdAndDeletedAtIsNull(userId);
-    }
-
-    @Override
-    public Optional<Integer> findMaxSequenceByType(
-            DeliveryManagerType type
-    ) {
-        return springDataRepository.findMaxSequenceByType(type);
-    }
-
-    @Override
-    public Optional<Integer> findMaxSequenceByHubIdAndType(
-            UUID hubId,
-            DeliveryManagerType type
-    ) {
-        return springDataRepository.findMaxSequenceByHubIdAndType(
-                hubId,
-                type
-        );
     }
 }

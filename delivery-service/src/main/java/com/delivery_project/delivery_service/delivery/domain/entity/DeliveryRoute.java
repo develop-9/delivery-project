@@ -2,6 +2,8 @@ package com.delivery_project.delivery_service.delivery.domain.entity;
 
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryRouteStatus;
 import com.delivery_project.delivery_service.global.common.BaseDeletableEntity;
+import com.delivery_project.delivery_service.global.exception.BusinessException;
+import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -88,5 +90,30 @@ public class DeliveryRoute extends BaseDeletableEntity {
                 estimatedDistanceKm,
                 estimatedDurationMin
         );
+    }
+
+    public void start(UUID deliveryManagerId){
+        if(this.status != DeliveryRouteStatus.WAITING){
+            throw new BusinessException(
+                    ErrorCode.INVALID_ROUTE_STATUS_TRANSITION
+            );
+        }
+        this.deliveryManagerId = deliveryManagerId;
+        this.status = DeliveryRouteStatus.IN_TRANSIT;
+    }
+
+    public void arrive(
+            BigDecimal actualDistanceKm,
+            Integer actualDurationMin
+    ) {
+        if (this.status != DeliveryRouteStatus.IN_TRANSIT) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ROUTE_STATUS_TRANSITION
+            );
+        }
+
+        this.actualDistanceKm = actualDistanceKm;
+        this.actualDurationMin = actualDurationMin;
+        this.status = DeliveryRouteStatus.ARRIVED;
     }
 }
