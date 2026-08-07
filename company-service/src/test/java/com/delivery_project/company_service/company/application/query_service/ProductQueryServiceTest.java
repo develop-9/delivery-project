@@ -1,7 +1,10 @@
 package com.delivery_project.company_service.company.application.query_service;
 
 import com.delivery_project.company_service.company.application.query.ProductGetQuery;
+import com.delivery_project.company_service.company.application.query.ProductSearchQuery;
 import com.delivery_project.company_service.company.application.result.ProductGetResult;
+import com.delivery_project.company_service.company.application.result.ProductSearchResult;
+import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.infrastructure.persistence.ProductQueryRepositoryImpl;
 import com.delivery_project.company_service.global.exception.BusinessException;
@@ -13,7 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,14 +26,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductQueryServiceTest {
 
     @Mock
-    private ProductQueryRepositoryImpl productRepository;
+    private ProductQueryRepositoryImpl productQueryRepository;
+
+    @Mock
+    private PageValidator pageValidator;
 
     @InjectMocks
     private ProductQueryService productQueryService;
@@ -49,7 +56,7 @@ class ProductQueryServiceTest {
             ProductGetQuery productGetQuery =
                     new ProductGetQuery(productId);
 
-            given(productRepository.findById(productId))
+            given(productQueryRepository.findById(productId))
                     .willReturn(Optional.of(product));
 
             // When
@@ -60,7 +67,7 @@ class ProductQueryServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.productId()).isEqualTo(productId);
 
-            then(productRepository)
+            then(productQueryRepository)
                     .should(times(1))
                     .findById(productId);
         }
@@ -74,7 +81,7 @@ class ProductQueryServiceTest {
             ProductGetQuery productGetQuery =
                     new ProductGetQuery(productId);
 
-            given(productRepository.findById(productId))
+            given(productQueryRepository.findById(productId))
                     .willReturn(Optional.empty());
 
             // When
@@ -88,9 +95,143 @@ class ProductQueryServiceTest {
                             ErrorCode.PRODUCT_NOT_FOUND
                     );
 
-            then(productRepository)
+            then(productQueryRepository)
                     .should(times(1))
                     .findById(productId);
+        }
+    }
+
+    @Nested
+    @DisplayName("상품 목록 조회 / 검색 비즈니스 로직 검증")
+    class SearchProduct {
+        @Test
+        @DisplayName("상품 검색에 성공한다.")
+        void searchProduct_success() {
+            // Given
+            int page = 0;
+            int size = 10;
+
+            Sort sort = Sort.by(
+                    Sort.Direction.DESC,
+                    "createdAt"
+            );
+
+            UUID companyId = UUID.randomUUID();
+
+            ProductSearchQuery command = new ProductSearchQuery(
+                    page,
+                    size,
+                    "createdAt,desc",
+                    companyId,
+                    "테스트",
+                    10000,
+                    50000
+            );
+
+            Pageable pageable = PageRequest.of(
+                    page,
+                    size,
+                    sort
+            );
+
+            Product product = Product.builder()
+                    .companyId(companyId)
+                    .name("테스트 상품")
+                    .price(20000)
+                    .build();
+
+            Page<Product> productPage =
+                    new PageImpl<>(
+                            List.of(product),
+                            pageable,
+                            1
+                    );
+
+            when(pageValidator.validatePage(page))
+                    .thenReturn(page);
+
+            when(pageValidator.normalizeSize(size))
+                    .thenReturn(size);
+
+            when(pageValidator.normalizeSort("createdAt,desc"))
+                    .thenReturn(sort);
+
+            when(productQueryRepository.search(
+                    command.companyId(),
+                    command.name(),
+                    command.minPrice(),
+                    command.maxPrice(),
+                    pageable
+            )).thenReturn(productPage);
+
+            // When
+            ProductSearchResult result =
+                    productQueryService.searchProduct(command);
+
+            // Then
+            assertThat(result)
+                    .isNotNull();
+
+            verify(pageValidator)
+                    .validatePage(page);
+
+            verify(pageValidator)
+                    .normalizeSize(size);
+
+            verify(pageValidator)
+                    .normalizeSort("createdAt,desc");
+
+            verify(productQueryRepository)
+                    .search(
+                            command.companyId(),
+                            command.name(),
+                            command.minPrice(),
+                            command.maxPrice(),
+                            pageable
+                    );
+        }
+
+        @Test
+        @DisplayName("페이지 번호가 유효하지 않으면 상품 검색에 실패한다.")
+        void searchProduct_fail_whenInvalidPage() {
+            // Given
+            Integer page = -1;
+
+            ProductSearchQuery command = new ProductSearchQuery(
+                    page,
+                    10,
+                    "createdAt,desc",
+                    null,
+                    null,
+                    null,
+                    null
+            );
+
+            when(pageValidator.validatePage(page))
+                    .thenThrow(
+                            new BusinessException(ErrorCode.INVALID_PAGE)
+                    );
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    productQueryService.searchProduct(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.INVALID_PAGE
+                    );
+
+            verify(pageValidator)
+                    .validatePage(page);
+
+            verify(pageValidator, never())
+                    .normalizeSize(any());
+
+            verify(pageValidator, never())
+                    .normalizeSort(any());
+
+            verifyNoInteractions(productQueryRepository);
         }
     }
 }
