@@ -30,6 +30,13 @@ public class ProductCommandService {
     @Transactional
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
 
+        // 요청 유저가 권한이 있는지 확인
+        /*
+         * TODO:
+         *  권한 검증
+         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
+         */
+
         // companyId가 올바른지 확인
         validateCompany(productCreateCommand.companyId());
 
@@ -64,6 +71,13 @@ public class ProductCommandService {
     @Transactional
     public ProductUpdateResult updateProduct(ProductUpdateCommand productUpdateCommand) {
 
+        // 요청 유저가 권한이 있는지 확인
+        /*
+         * TODO:
+         *  권한 검증
+         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
+         */
+
         // 상품이 존재하는지 확인
         Product product = validateProduct(productUpdateCommand.productId());
 
@@ -89,6 +103,13 @@ public class ProductCommandService {
 
     @Transactional
     public ProductDeleteResult deleteProduct(ProductDeleteCommand productDeleteCommand) {
+
+        // 요청 유저가 권한이 있는지 확인
+        /*
+         * TODO:
+         *  권한 검증
+         *  Master, 담당 Hub Manager만 가능
+         */
 
         // 상품이 존재하는지 확인
         Product product = validateProduct(productDeleteCommand.productId());
