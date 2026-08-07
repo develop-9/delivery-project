@@ -1,6 +1,7 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.port.DeliveryCreationLockPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPathSegment;
@@ -25,7 +26,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DeliveryPersistenceServiceTest {
@@ -35,6 +37,9 @@ class DeliveryPersistenceServiceTest {
 
     @Mock
     private DeliveryRouteCommandRepository deliveryRouteCommandRepository;
+
+    @Mock
+    private DeliveryCreationLockPort deliveryCreationLockPort;
 
     @InjectMocks
     private DeliveryPersistenceService deliveryPersistenceService;
@@ -85,6 +90,9 @@ class DeliveryPersistenceServiceTest {
                                 )
                         )
                 );
+        when(deliveryCommandRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId))
+                .thenReturn(java.util.Optional.empty());
 
         when(deliveryCommandRepository.save(any(Delivery.class)))
                 .thenAnswer(invocation -> {
@@ -111,6 +119,9 @@ class DeliveryPersistenceServiceTest {
         // then
         ArgumentCaptor<List<DeliveryRoute>> routesCaptor =
                 ArgumentCaptor.forClass(List.class);
+
+        verify(deliveryCreationLockPort)
+                .lock(orderId);
 
         verify(deliveryCommandRepository)
                 .save(any(Delivery.class));
