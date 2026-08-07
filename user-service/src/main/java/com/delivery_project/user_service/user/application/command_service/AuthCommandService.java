@@ -119,7 +119,9 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		JwtPrincipal principal = tokenProvider.parse(requestedRefreshToken);
+		// Access Token은 refreshSecretKey로 서명되지 않았으므로 여기서 서명 검증 단계부터 실패한다.
+		// tokenType 체크는 두 시크릿이 실수로 같아지는 설정 오류에 대비한 이중 방어다.
+		JwtPrincipal principal = tokenProvider.parseRefreshToken(requestedRefreshToken);
 		if (principal.tokenType() != TokenType.REFRESH) {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
 		}

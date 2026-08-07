@@ -11,7 +11,11 @@ public interface TokenProvider {
 
 	String generateRefreshToken(UUID userId);
 
-	JwtPrincipal parse(String token);
+	/** Access Token 전용 시크릿으로 검증한다. Refresh Token을 넘기면 서명 검증에서 실패한다. */
+	JwtPrincipal parseAccessToken(String token);
+
+	/** Refresh Token 전용 시크릿으로 검증한다. Access Token을 넘기면 서명 검증에서 실패한다. */
+	JwtPrincipal parseRefreshToken(String token);
 
 	long getAccessTokenExpirationSeconds();
 

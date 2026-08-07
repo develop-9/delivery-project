@@ -15,9 +15,11 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 
 class JwtProviderTest {
 
-	private static final String SECRET = "test-secret-key-for-jwt-provider-unit-test-32bytes-min";
+	private static final String ACCESS_SECRET = "test-access-secret-key-for-jwt-provider-unit-test-32bytes-min";
+	private static final String REFRESH_SECRET = "test-refresh-secret-key-for-jwt-provider-unit-test-32bytes-min";
 
-	private final JwtProvider jwtProvider = new JwtProvider(SECRET, 3_600_000L, 1_209_600_000L);
+	private final JwtProvider jwtProvider =
+			new JwtProvider(ACCESS_SECRET, REFRESH_SECRET, 3_600_000L, 1_209_600_000L);
 
 	@Test
 	void AccessToken을_파싱하면_userId와_role을_함께_꺼낼_수_있다() {
@@ -26,7 +28,7 @@ class JwtProviderTest {
 
 		// when
 		String token = jwtProvider.generateAccessToken(userId, Role.HUB_MANAGER);
-		JwtPrincipal principal = jwtProvider.parse(token);
+		JwtPrincipal principal = jwtProvider.parseAccessToken(token);
 
 		// then
 		assertThat(principal.userId()).isEqualTo(userId);
@@ -41,12 +43,36 @@ class JwtProviderTest {
 
 		// when
 		String token = jwtProvider.generateRefreshToken(userId);
-		JwtPrincipal principal = jwtProvider.parse(token);
+		JwtPrincipal principal = jwtProvider.parseRefreshToken(token);
 
 		// then
 		assertThat(principal.userId()).isEqualTo(userId);
 		assertThat(principal.role()).isNull();
 		assertThat(principal.tokenType()).isEqualTo(TokenType.REFRESH);
+	}
+
+	@Test
+	void AccessToken을_parseRefreshToken으로_검증하면_시크릿이_달라_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given: Access Token은 accessSecretKey로 서명되어 있어 refreshSecretKey로는 검증이 안 된다
+		String token = jwtProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
+
+		// when & then
+		assertThatThrownBy(() -> jwtProvider.parseRefreshToken(token))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
+	void RefreshToken을_parseAccessToken으로_검증하면_시크릿이_달라_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given: Refresh Token은 refreshSecretKey로 서명되어 있어 accessSecretKey로는 검증이 안 된다
+		String token = jwtProvider.generateRefreshToken(UUID.randomUUID());
+
+		// when & then
+		assertThatThrownBy(() -> jwtProvider.parseAccessToken(token))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
 	}
 
 	@Test
@@ -82,17 +108,17 @@ class JwtProviderTest {
 		String token = jwtProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		jwtProvider.parse(token);
+		jwtProvider.parseAccessToken(token);
 	}
 
 	@Test
 	void 만료된_토큰은_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
 		// given
-		JwtProvider expiredTokenProvider = new JwtProvider(SECRET, -1_000L, -1_000L);
+		JwtProvider expiredTokenProvider = new JwtProvider(ACCESS_SECRET, REFRESH_SECRET, -1_000L, -1_000L);
 		String token = expiredTokenProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.parse(token))
+		assertThatThrownBy(() -> jwtProvider.parseAccessToken(token))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
@@ -104,7 +130,7 @@ class JwtProviderTest {
 		String malformedToken = "not-a-valid-jwt-token";
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.parse(malformedToken))
+		assertThatThrownBy(() -> jwtProvider.parseAccessToken(malformedToken))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
@@ -113,11 +139,14 @@ class JwtProviderTest {
 	@Test
 	void 다른_시크릿으로_서명된_토큰은_AUTH_TOKEN_INVALID_예외가_발생한다() {
 		// given
-		JwtProvider otherProvider = new JwtProvider("different-secret-key-for-jwt-provider-unit-test-32bytes", 3_600_000L, 1_209_600_000L);
+		JwtProvider otherProvider = new JwtProvider(
+				"different-access-secret-key-for-jwt-provider-unit-test-32bytes",
+				"different-refresh-secret-key-for-jwt-provider-unit-test-32bytes",
+				3_600_000L, 1_209_600_000L);
 		String token = otherProvider.generateAccessToken(UUID.randomUUID(), Role.MASTER);
 
 		// when & then
-		assertThatThrownBy(() -> jwtProvider.parse(token))
+		assertThatThrownBy(() -> jwtProvider.parseAccessToken(token))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
