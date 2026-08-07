@@ -39,3 +39,6 @@ management:
 
 system:
   id: ${SYSTEM_ID}
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
