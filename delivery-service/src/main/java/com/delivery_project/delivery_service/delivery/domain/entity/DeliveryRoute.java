@@ -68,8 +68,6 @@ public class DeliveryRoute extends BaseDeletableEntity {
         this.arrivalHubId = arrivalHubId;
         this.estimatedDistanceKm = estimatedDistanceKm;
         this.estimatedDurationMin = estimatedDurationMin;
-        this.actualDistanceKm = estimatedDistanceKm;
-        this.actualDurationMin = estimatedDurationMin;
 
         this.status = DeliveryRouteStatus.WAITING;
     }
