@@ -50,8 +50,10 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+      # Redis가 unhealthy면 Gateway 자체가 못 뜨는 건 fail-open 취지와 반대라, 컨테이너
+      # 프로세스가 뜨는 것까지만 기다리고 healthy는 요구하지 않는다.
       redis:
-        condition: service_healthy
+        condition: service_started
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
