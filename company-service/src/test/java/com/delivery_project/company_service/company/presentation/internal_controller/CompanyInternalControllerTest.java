@@ -37,7 +37,7 @@ class CompanyInternalControllerTest {
     private CompanyQueryService companyQueryService;
 
     @Nested
-    @DisplayName("업체 단건 조회")
+    @DisplayName("업체 단건 조회 API 테스트")
     class GetCompany {
 
         @Test

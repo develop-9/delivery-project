@@ -260,7 +260,7 @@ class CompanyQueryServiceTest {
     }
 
     @Nested
-    @DisplayName("내부 업체 단건 조회")
+    @DisplayName("내부 업체 단건 조회 비즈니스 로직 검증")
     class GetCompanyForInternal {
 
         @Test

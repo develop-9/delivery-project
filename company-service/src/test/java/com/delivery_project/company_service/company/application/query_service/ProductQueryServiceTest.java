@@ -1,7 +1,9 @@
 package com.delivery_project.company_service.company.application.query_service;
 
+import com.delivery_project.company_service.company.application.query.InternalProductGetQuery;
 import com.delivery_project.company_service.company.application.query.ProductGetQuery;
 import com.delivery_project.company_service.company.application.query.ProductSearchQuery;
+import com.delivery_project.company_service.company.application.result.InternalProductGetResult;
 import com.delivery_project.company_service.company.application.result.ProductGetResult;
 import com.delivery_project.company_service.company.application.result.ProductSearchResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
@@ -232,6 +234,77 @@ class ProductQueryServiceTest {
                     .normalizeSort(any());
 
             verifyNoInteractions(productQueryRepository);
+        }
+    }
+
+    @Nested
+    @DisplayName("내부 상품 단건 조회 비즈니스 로직 검증")
+    class GetProductForInternal {
+
+        @Test
+        @DisplayName("상품 단건 조회에 성공한다.")
+        void getProduct_success() {
+            // Given
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+
+            InternalProductGetQuery query =
+                    new InternalProductGetQuery(productId);
+
+            Product product = Product.builder()
+                    .companyId(companyId)
+                    .name("테스트 상품")
+                    .price(10000)
+                    .build();
+
+            when(productQueryRepository.findById(productId))
+                    .thenReturn(Optional.of(product));
+
+            // When
+            InternalProductGetResult result =
+                    productQueryService.getProduct(query);
+
+            // Then
+            assertThat(result)
+                    .isNotNull();
+
+            assertThat(result.productId())
+                    .isEqualTo(product.getId());
+
+            assertThat(result.name())
+                    .isEqualTo("테스트 상품");
+
+            assertThat(result.price())
+                    .isEqualTo(10000);
+
+            verify(productQueryRepository)
+                    .findById(productId);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품이면 상품 단건 조회에 실패한다.")
+        void getProduct_fail_whenProductNotFound() {
+            // Given
+            UUID productId = UUID.randomUUID();
+
+            InternalProductGetQuery query =
+                    new InternalProductGetQuery(productId);
+
+            when(productQueryRepository.findById(productId))
+                    .thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    productQueryService.getProduct(query)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.PRODUCT_NOT_FOUND
+                    );
+
+            verify(productQueryRepository)
+                    .findById(productId);
         }
     }
 }
