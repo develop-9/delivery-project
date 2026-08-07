@@ -1,7 +1,9 @@
 package com.delivery_project.company_service.company.application.query_service;
 
+import com.delivery_project.company_service.company.application.query.InternalProductGetQuery;
 import com.delivery_project.company_service.company.application.query.ProductGetQuery;
 import com.delivery_project.company_service.company.application.query.ProductSearchQuery;
+import com.delivery_project.company_service.company.application.result.InternalProductGetResult;
 import com.delivery_project.company_service.company.application.result.ProductSearchResult;
 import com.delivery_project.company_service.company.application.result.ProductGetResult;
 import com.delivery_project.company_service.company.application.support.pagination.PageValidator;
@@ -82,6 +84,23 @@ public class ProductQueryService {
 
         // 결과 반환
         return ProductSearchResult.from(productPage);
+    }
+
+    // [내부] 상품 단건 조회 비즈니스 로직
+    @Transactional(readOnly = true)
+    public InternalProductGetResult getProduct(InternalProductGetQuery internalProductGetQuery) {
+
+        // 조회는 모든 사용자가 가능하므로 인증만 통과되면 조회 가능
+
+        // 상품이 존재하는지 확인
+        Product product = validateProduct(internalProductGetQuery.productId());
+
+        log.info("[내부] 상품 단건 조회 성공. productId={}",
+                product.getId()
+        );
+
+        // 결과 반환
+        return InternalProductGetResult.from(product);
     }
 
     // Validation Check - 상품 조회
