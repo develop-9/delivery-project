@@ -4,6 +4,7 @@ import com.delivery_project.company_service.company.presentation.request.Product
 import com.delivery_project.company_service.company.presentation.request.ProductUpdateRequest;
 import com.delivery_project.company_service.company.presentation.response.ProductCreateResponse;
 import com.delivery_project.company_service.company.presentation.response.ProductDeleteResponse;
+import com.delivery_project.company_service.company.presentation.response.ProductGetResponse;
 import com.delivery_project.company_service.company.presentation.response.ProductUpdateResponse;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
@@ -167,6 +168,37 @@ public interface ProductApi {
     ResponseEntity<SuccessResponse<ProductDeleteResponse>> deleteProduct(
             @Parameter(
                     description = "삭제할 상품 ID",
+                    required = true,
+                    example = "550e8400-e29b-41d4-a716-446655440000"
+            )
+            @PathVariable UUID productId
+    );
+
+    @Operation(
+            summary = "상품 단건 조회",
+            description = "인증된 모든 사용자가 상품의 상세 정보를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "상품 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "요청한 상품이 존재하지 않음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<SuccessResponse<ProductGetResponse>> getProduct(
+            @Parameter(
+                    description = "조회할 상품 ID",
                     required = true,
                     example = "550e8400-e29b-41d4-a716-446655440000"
             )
