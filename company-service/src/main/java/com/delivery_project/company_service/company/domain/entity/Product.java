@@ -19,16 +19,16 @@ public class Product extends BaseDeletableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
 
     @Column(name = "company_id", nullable = false)
-    UUID companyId;
+    private UUID companyId;
 
     @Column(name = "name", nullable = false, length = 100)
-    String name;
+    private String name;
 
     @Column(name = "price", nullable = false)
-    Integer price;
+    private Integer price;
 
     @Builder
     public Product(UUID companyId, String name, Integer price) {
