@@ -1,6 +1,7 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesByOrderQuery;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRoutesByOrderResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -48,5 +50,48 @@ public class DeliveryRouteQueryService {
                 delivery,
                 routes
         );
+    }
+
+    public DeliveryRouteDetailResult getDeliveryRoute(
+            UUID routeId
+    ){
+        DeliveryRoute route =
+                deliveryRouteQueryRepository
+                        .findById(routeId)
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                                )
+                        );
+        return DeliveryRouteDetailResult.from(route);
+    }
+
+    public List<DeliveryRouteDetailResult> getDeliveryRoutes(
+            UUID deliveryId
+    ){
+        Delivery delivery =
+                deliveryQueryRepository
+                        .findById(deliveryId)
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+
+        List<DeliveryRoute> routes =
+                deliveryRouteQueryRepository
+                        .findAllByDeliveryIdOrderBySequenceAsc(
+                                delivery.getId()
+                        );
+
+        if (routes.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+            );
+        }
+
+        return routes.stream()
+                .map(DeliveryRouteDetailResult::from)
+                .toList();
     }
 }

@@ -37,6 +37,10 @@ dependencies {
     // Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
+    // QueryDSL
+    implementation "io.github.openfeign.querydsl:querydsl-jpa:7.4.0"
+    annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:7.4.0:jakarta"
+
     // MSA
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
