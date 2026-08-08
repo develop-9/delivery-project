@@ -58,6 +58,7 @@ public class SlackMessageApiController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "메시지 생성 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
+            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @PostMapping
@@ -83,6 +84,7 @@ public class SlackMessageApiController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "메시지 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
             @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
@@ -109,6 +111,7 @@ public class SlackMessageApiController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "메시지 목록 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @GetMapping
@@ -157,6 +160,7 @@ public class SlackMessageApiController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "메시지 수정 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
+            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
             @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })

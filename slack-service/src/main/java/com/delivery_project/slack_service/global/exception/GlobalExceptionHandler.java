@@ -3,12 +3,14 @@ package com.delivery_project.slack_service.global.exception;
 import com.delivery_project.slack_service.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.NoSuchElementException;
@@ -79,6 +81,18 @@ public class GlobalExceptionHandler {
     ) {
         log.warn(
                 "[MethodArgumentNotValidException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorResponse> handleInvalidRequestException(
+            Exception exception
+    ) {
+        log.warn(
+                "[InvalidRequest] {}",
                 exception.getMessage()
         );
 
