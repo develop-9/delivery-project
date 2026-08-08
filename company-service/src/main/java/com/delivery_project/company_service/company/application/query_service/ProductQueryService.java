@@ -61,7 +61,7 @@ public class ProductQueryService {
         );
 
         // 가격 요청값이 올바른지 확인
-        if (validatePrice(productSearchQuery.minPrice(),  productSearchQuery.maxPrice())) {
+        if (!validatePrice(productSearchQuery.minPrice(),  productSearchQuery.maxPrice())) {
             throw new BusinessException(ErrorCode.PRODUCT_SEARCH_INVALID_PRICE);
         }
 

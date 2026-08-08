@@ -235,6 +235,53 @@ class ProductQueryServiceTest {
 
             verifyNoInteractions(productQueryRepository);
         }
+
+        @Test
+        @DisplayName("가격 검색 범위가 유효하지 않으면 상품 검색에 실패한다.")
+        void searchProduct_fail_whenInvalidPrice() {
+            // Given
+            int page = 0;
+            int size = 10;
+
+            Sort sort = Sort.by(
+                    Sort.Direction.DESC,
+                    "createdAt"
+            );
+
+            ProductSearchQuery command = new ProductSearchQuery(
+                    page,
+                    size,
+                    "createdAt,desc",
+                    null,
+                    null,
+                    50000,
+                    10000
+            );
+
+            when(pageValidator.validatePage(page))
+                    .thenReturn(page);
+
+            when(pageValidator.normalizeSize(size))
+                    .thenReturn(size);
+
+            when(pageValidator.normalizeSort("createdAt,desc"))
+                    .thenReturn(sort);
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    productQueryService.searchProduct(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.PRODUCT_SEARCH_INVALID_PRICE
+                    );
+
+            verify(pageValidator)
+                    .validatePage(page);
+
+            verifyNoInteractions(productQueryRepository);
+        }
     }
 
     @Nested
