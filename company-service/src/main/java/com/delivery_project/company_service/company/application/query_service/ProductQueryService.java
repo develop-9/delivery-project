@@ -60,6 +60,11 @@ public class ProductQueryService {
                 productSearchQuery.sort()
         );
 
+        // 가격 요청값이 올바른지 확인
+        if (validatePrice(productSearchQuery.minPrice(),  productSearchQuery.maxPrice())) {
+            throw new BusinessException(ErrorCode.PRODUCT_SEARCH_INVALID_PRICE);
+        }
+
         // 검색 및 Paging 진행
         Page<Product> productPage =
                 productQueryRepository.search(
@@ -116,5 +121,21 @@ public class ProductQueryService {
         Sort validateSort = pageValidator.normalizeSort(sort);
 
         return PageRequest.of(validatePage, validateSize, validateSort);
+    }
+
+    // Validation Check - 금액 검증
+    private boolean validatePrice(Integer minPrice, Integer maxPrice) {
+
+        if (minPrice != null && minPrice < 0) {
+            return false;
+        }
+
+        if (maxPrice != null && maxPrice < 0) {
+            return false;
+        }
+
+        return minPrice == null
+                || maxPrice == null
+                || minPrice <= maxPrice;
     }
 }

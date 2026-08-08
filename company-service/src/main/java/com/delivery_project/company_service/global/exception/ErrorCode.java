@@ -42,6 +42,7 @@ public enum ErrorCode {
     PRODUCT_COMPANY_ID_INVALID(HttpStatus.BAD_REQUEST, "업체 ID는 필수 필드입니다.", "PRODUCT_COMPANY_ID_INVALID"),
     PRODUCT_PRICE_INVALID(HttpStatus.BAD_REQUEST, "금액은 1원 이상이어야합니다.", "PRODUCT_PRICE_INVALID"),
     PRODUCT_NAME_INVALID(HttpStatus.BAD_REQUEST, "상품의 이름이 존재하지 않습니다.", "PRODUCT_NAME_INVALID"),
+    PRODUCT_SEARCH_INVALID_PRICE(HttpStatus.BAD_REQUEST, "잘못된 검색 금액 조건입니다.", "PRODUCT_SEARCH_INVALID_PRICE"),
 
     // 404
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품이 존재하지 않습니다.", "PRODUCT_NOT_FOUND"),
