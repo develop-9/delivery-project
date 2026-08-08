@@ -2,13 +2,16 @@ package com.delivery_project.delivery_service.delivery.application.command_servi
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryStatusUpdateResult;
 import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryRouteStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
@@ -418,6 +421,208 @@ class DeliveryCommandServiceTest {
         );
 
         verify(delivery).cancel();
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("업체 배송 시작 시 Delivery가 HUB_ARRIVED에서 DELIVERING으로 변경된다")
+    void startCompanyDeliverySuccess() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager manager = mock(DeliveryManager.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.DELIVERING
+                );
+
+        when(delivery.getStatus())
+                .thenReturn(
+                        DeliveryStatus.HUB_ARRIVED,
+                        DeliveryStatus.DELIVERING
+                );
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(manager.getStatus())
+                .thenReturn(DeliveryManagerStatus.DELIVERING);
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository.findById(managerId))
+                .thenReturn(Optional.of(manager));
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        // when
+        DeliveryStatusUpdateResult result =
+                deliveryCommandService.updateStatus(command);
+
+        // then
+        verify(delivery).startCompanyDelivery();
+        verify(deliveryCommandRepository).save(delivery);
+
+        assertEquals(
+                DeliveryStatus.HUB_ARRIVED,
+                result.previousStatus()
+        );
+
+        assertEquals(
+                DeliveryStatus.DELIVERING,
+                result.status()
+        );
+    }
+
+    @Test
+    @DisplayName("업체 배송 완료 시 Delivery는 COMPLETED가 되고 담당자는 AVAILABLE로 복원된다")
+    void completeCompanyDeliverySuccess() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager manager = mock(DeliveryManager.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.COMPLETED
+                );
+
+        when(delivery.getStatus())
+                .thenReturn(
+                        DeliveryStatus.DELIVERING,
+                        DeliveryStatus.COMPLETED
+                );
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository.findById(managerId))
+                .thenReturn(Optional.of(manager));
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        // when
+        DeliveryStatusUpdateResult result =
+                deliveryCommandService.updateStatus(command);
+
+        // then
+        verify(delivery).complete();
+
+        verify(manager)
+                .releaseFromDelivery();
+
+        verify(deliveryManagerCommandRepository)
+                .save(manager);
+
+        assertEquals(
+                DeliveryStatus.DELIVERING,
+                result.previousStatus()
+        );
+
+        assertEquals(
+                DeliveryStatus.COMPLETED,
+                result.status()
+        );
+    }
+
+    @Test
+    @DisplayName("업체 배송 담당자가 배정되지 않은 배송은 업체 배송을 시작할 수 없다")
+    void startCompanyDeliveryManagerNotAssigned() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.DELIVERING
+                );
+
+        when(delivery.getStatus())
+                .thenReturn(DeliveryStatus.HUB_ARRIVED);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(null);
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED,
+                exception.getErrorCode()
+        );
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("배정된 업체 배송 담당자가 DELIVERING 상태가 아니면 업체 배송을 시작할 수 없다")
+    void startCompanyDeliveryManagerNotDelivering() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager manager = mock(DeliveryManager.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.DELIVERING
+                );
+
+        when(delivery.getStatus())
+                .thenReturn(DeliveryStatus.HUB_ARRIVED);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(manager.getStatus())
+                .thenReturn(DeliveryManagerStatus.AVAILABLE);
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository.findById(managerId))
+                .thenReturn(Optional.of(manager));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING,
+                exception.getErrorCode()
+        );
 
         verify(deliveryCommandRepository, never())
                 .save(any());
