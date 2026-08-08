@@ -5,10 +5,7 @@ import com.delivery_project.delivery_service.delivery.application.command.Delive
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryCancelResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
-import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
@@ -101,7 +98,7 @@ public class DeliveryCommandService {
     }
 
     @Transactional
-    public void updateStatus(
+    public DeliveryStatusUpdateResult updateStatus(
             DeliveryStatusUpdateCommand command
     ){
         Delivery delivery =
@@ -112,18 +109,30 @@ public class DeliveryCommandService {
                                         ErrorCode.DELIVERY_NOT_FOUND
                                 )
                         );
-        if(command.status() == DeliveryStatus.DELIVERING){
+
+        DeliveryStatus previousStatus =
+                delivery.getStatus();
+
+        if (command.status() == DeliveryStatus.DELIVERING) {
             startCompanyDelivery(delivery);
-            return;
-        }
 
-        if(command.status() == DeliveryStatus.COMPLETED){
+        } else if (command.status() == DeliveryStatus.COMPLETED) {
             completeCompanyDelivery(delivery);
-            return;
-        }
 
-        throw new BusinessException(
-                ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+        } else {
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+        Delivery savedDelivery =
+                deliveryCommandRepository.save(delivery);
+
+        return new DeliveryStatusUpdateResult(
+                savedDelivery.getId(),
+                previousStatus,
+                savedDelivery.getStatus(),
+                savedDelivery.getCompanyDeliveryManagerId(),
+                savedDelivery.getUpdatedAt()
         );
     }
 
@@ -225,7 +234,6 @@ public class DeliveryCommandService {
         }
 
         delivery.startCompanyDelivery();
-        deliveryCommandRepository.save(delivery);
     }
 
     private void completeCompanyDelivery(
@@ -255,7 +263,6 @@ public class DeliveryCommandService {
         // 업체 배송 담당자 복원
         manager.releaseFromDelivery();
 
-        deliveryCommandRepository.save(delivery); // COMPLETED
         deliveryManagerCommandRepository.save(manager); // AVAILABLE
     }
 }

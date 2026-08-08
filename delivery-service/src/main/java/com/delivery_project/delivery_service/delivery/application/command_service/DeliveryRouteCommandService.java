@@ -1,5 +1,7 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryRouteStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteStatusUpdateResult;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
@@ -28,6 +30,52 @@ public class DeliveryRouteCommandService {
     private final DeliveryManagerCommandRepository deliveryManagerCommandRepository;
     private final DeliveryManagerSequenceCommandRepository deliveryManagerSequenceCommandRepository;
     private final DeliveryCommandRepository deliveryCommandRepository;
+
+    // =========================
+    // 외부 진입점
+    // =========================
+    @Transactional
+    public DeliveryRouteStatusUpdateResult updateStatus(
+            DeliveryRouteStatusUpdateCommand command
+    ) {
+        DeliveryRoute route =
+                deliveryRouteCommandRepository
+                        .findById(command.routeId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                                )
+                        );
+
+        DeliveryRouteStatus previousStatus =
+                route.getStatus();
+
+        if(command.status() == DeliveryRouteStatus.IN_TRANSIT){
+            start(route);
+        }else if(command.status() == DeliveryRouteStatus.ARRIVED){
+            validateArriveRequest(command);
+
+            arrive(
+                    route,
+                    command.actualDistanceKm(),
+                    command.actualDurationMin()
+            );
+        }else{
+            throw new BusinessException(
+                    ErrorCode.INVALID_ROUTE_STATUS_TRANSITION
+            );
+        }
+
+        return new DeliveryRouteStatusUpdateResult(
+                route.getId(),
+                previousStatus,
+                route.getStatus(),
+                route.getUpdatedAt()
+        );
+    }
+    // =========================
+    // 상태 변경
+    // =========================
 /*
 Route 조회
 → HUB_DELIVERY 순번 row 비관적 Lock
@@ -39,17 +87,9 @@ Route 조회
 → 저장
  */ // Delivery: PENDING -> HUB_MOVING
     // Delivery_Route: WAITING -> IN_TRANSIT
-    @Transactional
-    public void start(UUID routeId){
-
-        DeliveryRoute route =
-                deliveryRouteCommandRepository
-                        .findById(routeId)
-                        .orElseThrow(()->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_ROUTE_NOT_FOUND
-                                )
-                        );
+    private void start(
+            DeliveryRoute route
+    ) {
         validateNoInTransitRoute(route);
         validatePreviousRouteArrived(route);
         /*
@@ -101,21 +141,11 @@ Route 조회
         deliveryManagerSequenceCommandRepository.save(sequence);
     }
 
-    @Transactional
-    public void arrive(
-            UUID routeId,
+    private void arrive(
+            DeliveryRoute route,
             BigDecimal actualDistanceKm,
             Integer actualDurationMin
-    ){
-        DeliveryRoute route =
-                deliveryRouteCommandRepository
-                        .findById(routeId)
-                        .orElseThrow(()->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_ROUTE_NOT_FOUND
-                                )
-                        );
-        // 1. 현재 Route 도착 처리
+    ) {
         route.arrive(
                 actualDistanceKm,
                 actualDurationMin
@@ -278,4 +308,14 @@ Route 조회
                 );
     }
 
+    private void validateArriveRequest(
+            DeliveryRouteStatusUpdateCommand command
+    ){
+        if (command.actualDistanceKm() == null
+                || command.actualDurationMin() == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
 }

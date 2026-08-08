@@ -8,4 +8,5 @@ public record DeliveryStatusUpdateCommand(
         UUID deliveryId,
         DeliveryStatus status
 ) {
+
 }
