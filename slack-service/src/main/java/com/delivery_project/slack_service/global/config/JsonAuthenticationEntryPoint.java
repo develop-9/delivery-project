@@ -15,7 +15,8 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
+public class JsonAuthenticationEntryPoint
+        implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
 
@@ -26,13 +27,33 @@ public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
             AuthenticationException authException
     ) throws IOException {
 
-        ErrorCode errorCode = ErrorCode.AUTH_UNAUTHORIZED;
+        Object attribute =
+                request.getAttribute(
+                        JwtAuthenticationFilter
+                                .AUTH_ERROR_CODE_ATTRIBUTE
+                );
 
-        response.setStatus(errorCode.getStatus().value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
+        ErrorCode errorCode =
+                attribute instanceof ErrorCode
+                        ? (ErrorCode) attribute
+                        : ErrorCode.AUTH_UNAUTHORIZED;
+
+        response.setStatus(
+                errorCode.getStatus().value()
+        );
+
+        response.setContentType(
+                MediaType.APPLICATION_JSON_VALUE
+        );
+
+        response.setCharacterEncoding(
+                "UTF-8"
+        );
+
         response.getWriter().write(
-                objectMapper.writeValueAsString(ErrorResponse.from(errorCode))
+                objectMapper.writeValueAsString(
+                        ErrorResponse.from(errorCode)
+                )
         );
     }
 }

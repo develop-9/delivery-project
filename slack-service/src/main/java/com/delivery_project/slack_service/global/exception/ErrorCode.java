@@ -26,6 +26,18 @@ public enum ErrorCode {
             "AUTH_UNAUTHORIZED"
     ),
 
+    AUTH_TOKEN_EXPIRED(
+            HttpStatus.UNAUTHORIZED,
+            "만료된 토큰입니다.",
+            "AUTH_TOKEN_EXPIRED"
+    ),
+
+    AUTH_TOKEN_INVALID(
+            HttpStatus.UNAUTHORIZED,
+            "유효하지 않은 토큰입니다.",
+            "AUTH_TOKEN_INVALID"
+    ),
+
     // 403
     AUTH_FORBIDDEN(
             HttpStatus.FORBIDDEN,

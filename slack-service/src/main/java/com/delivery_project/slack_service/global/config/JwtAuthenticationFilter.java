@@ -1,6 +1,7 @@
 package com.delivery_project.slack_service.global.config;
 
 import com.delivery_project.slack_service.global.exception.BusinessException;
+import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.global.security.JwtPrincipal;
 import com.delivery_project.slack_service.global.security.JwtProvider;
 import jakarta.servlet.FilterChain;
@@ -20,6 +21,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_ERROR_CODE_ATTRIBUTE =
+            "AUTH_ERROR_CODE";
+
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String ROLE_PREFIX = "ROLE_";
 
@@ -32,30 +36,68 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String authorizationHeader =
+                request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
-            authenticate(authorizationHeader);
+        if (authorizationHeader != null
+                && authorizationHeader.startsWith(BEARER_PREFIX)) {
+
+            authenticate(
+                    request,
+                    authorizationHeader
+            );
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
 
-    private void authenticate(String authorizationHeader) {
+    private void authenticate(
+            HttpServletRequest request,
+            String authorizationHeader
+    ) {
         try {
-            String token = jwtProvider.resolveToken(authorizationHeader);
-            JwtPrincipal principal = jwtProvider.parse(token);
+            String token =
+                    jwtProvider.resolveToken(
+                            authorizationHeader
+                    );
 
-            var authorities = principal.role() == null
-                    ? List.<SimpleGrantedAuthority>of()
-                    : List.of(new SimpleGrantedAuthority(ROLE_PREFIX + principal.role().name()));
+            JwtPrincipal principal =
+                    jwtProvider.parse(token);
 
-            SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(principal.userId(), null, authorities)
-            );
+            var authorities =
+                    principal.role() == null
+                            ? List.<SimpleGrantedAuthority>of()
+                            : List.of(
+                            new SimpleGrantedAuthority(
+                                    ROLE_PREFIX
+                                    + principal.role().name()
+                            )
+                    );
+
+            SecurityContextHolder
+                    .getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    principal.userId(),
+                                    null,
+                                    authorities
+                            )
+                    );
 
         } catch (BusinessException exception) {
+
             SecurityContextHolder.clearContext();
+
+            ErrorCode errorCode =
+                    exception.getErrorCode();
+
+            request.setAttribute(
+                    AUTH_ERROR_CODE_ATTRIBUTE,
+                    errorCode
+            );
         }
     }
 }

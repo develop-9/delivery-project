@@ -3,6 +3,7 @@ package com.delivery_project.slack_service.global.security;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -28,26 +29,43 @@ public class JwtProvider {
             );
         }
 
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.secretKey =
+                Keys.hmacShaKeyFor(
+                        secret.getBytes(StandardCharsets.UTF_8)
+                );
     }
 
     public String resolveToken(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
-            throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+
+            throw new BusinessException(
+                    ErrorCode.AUTH_UNAUTHORIZED
+            );
         }
 
-        return authorizationHeader.substring(BEARER_PREFIX.length());
+        return authorizationHeader.substring(
+                BEARER_PREFIX.length()
+        );
     }
 
     public JwtPrincipal parse(String token) {
         Claims claims = parseClaims(token);
 
-        UUID userId = UUID.fromString(claims.getSubject());
-        String roleClaim = claims.get(ROLE_CLAIM, String.class);
+        UUID userId =
+                UUID.fromString(claims.getSubject());
+
+        String roleClaim =
+                claims.get(
+                        ROLE_CLAIM,
+                        String.class
+                );
 
         return new JwtPrincipal(
                 userId,
-                roleClaim == null ? null : toRole(roleClaim)
+                roleClaim == null
+                        ? null
+                        : toRole(roleClaim)
         );
     }
 
@@ -59,8 +77,15 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
 
+        } catch (ExpiredJwtException exception) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_TOKEN_EXPIRED
+            );
+
         } catch (JwtException | IllegalArgumentException exception) {
-            throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
+            throw new BusinessException(
+                    ErrorCode.AUTH_TOKEN_INVALID
+            );
         }
     }
 
@@ -69,7 +94,9 @@ public class JwtProvider {
             return Role.valueOf(roleClaim);
 
         } catch (IllegalArgumentException exception) {
-            throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
+            throw new BusinessException(
+                    ErrorCode.AUTH_TOKEN_INVALID
+            );
         }
     }
 }
