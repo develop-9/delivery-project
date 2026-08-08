@@ -149,7 +149,7 @@ public class Delivery extends BaseDeletableEntity {
     }
 
     public void complete(){
-        if(this.status == DeliveryStatus.DELIVERING){
+        if(this.status != DeliveryStatus.DELIVERING){
             throw new BusinessException(
                     ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
             );
