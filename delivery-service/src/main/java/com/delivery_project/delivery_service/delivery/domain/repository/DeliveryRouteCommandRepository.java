@@ -24,4 +24,6 @@ public interface DeliveryRouteCommandRepository {
             UUID deliveryId,
             Integer sequence
     );
+
+    Optional<DeliveryRoute> findLastByDeliveryId(UUID deliveryId);
 }

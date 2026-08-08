@@ -59,4 +59,30 @@ public class DeliveryManagerCommandRepositoryImpl
                         DeliveryManagerStatus.AVAILABLE
                 );
     }
+
+    @Override
+    public Optional<DeliveryManager> findNextAvailableCompanyManager(
+            UUID hubId,
+            Integer lastAssignedSequence
+    ){
+        return springDataRepository
+                .findFirstByHubIdAndTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        hubId,
+                        DeliveryManagerType.COMPANY_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE,
+                        lastAssignedSequence
+                );
+    }
+
+    @Override
+    public Optional<DeliveryManager> findFirstAvailableCompanyManager(
+            UUID hubId
+    ) {
+        return springDataRepository
+                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        hubId,
+                        DeliveryManagerType.COMPANY_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE
+                );
+    }
 }

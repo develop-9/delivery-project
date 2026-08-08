@@ -60,4 +60,12 @@ public class DeliveryRouteCommandRepositoryImpl
                         sequence
                 );
     }
+
+    @Override
+    public Optional<DeliveryRoute> findLastByDeliveryId(UUID deliveryId){
+        return springDataDeliveryRouteRepository
+                .findFirstByDeliveryIdAndDeletedAtIsNullOrderBySequenceDesc(
+                        deliveryId
+                );
+    }
 }

@@ -2,6 +2,7 @@ package com.delivery_project.delivery_service.delivery.application.command_servi
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCancelResult;
@@ -11,7 +12,9 @@ import com.delivery_project.delivery_service.delivery.application.result.Receive
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryRouteStatus;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
@@ -97,6 +100,33 @@ public class DeliveryCommandService {
         );
     }
 
+    @Transactional
+    public void updateStatus(
+            DeliveryStatusUpdateCommand command
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+        if(command.status() == DeliveryStatus.DELIVERING){
+            startCompanyDelivery(delivery);
+            return;
+        }
+
+        if(command.status() == DeliveryStatus.COMPLETED){
+            completeCompanyDelivery(delivery);
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+        );
+    }
+
     private void validateDuplicateOrder(
             java.util.UUID orderId
     ) {
@@ -160,5 +190,72 @@ public class DeliveryCommandService {
 
             deliveryManager.releaseFromDelivery();
         }
+    }
+
+    private void startCompanyDelivery(
+            Delivery delivery
+    ){
+        UUID managerId =
+                delivery.getCompanyDeliveryManagerId();
+
+        if(managerId == null){
+            throw new BusinessException(
+                    ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED
+            );
+        }
+
+        DeliveryManager manager =
+                deliveryManagerCommandRepository
+                        .findById(managerId)
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+        /*
+         * 마지막 Route 도착 시 이미
+         * AVAILABLE -> DELIVERING 상태로 배정됐어야 한다.
+         * 따라서 assignToDelivery() 호출 x
+         */
+        if(manager.getStatus()
+            != DeliveryManagerStatus.DELIVERING){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING
+            );
+        }
+
+        delivery.startCompanyDelivery();
+        deliveryCommandRepository.save(delivery);
+    }
+
+    private void completeCompanyDelivery(
+            Delivery delivery
+    ){
+        UUID managerId =
+                delivery.getCompanyDeliveryManagerId();
+
+        if(managerId == null){
+            throw new BusinessException(
+                    ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED
+            );
+        }
+
+        DeliveryManager manager =
+                deliveryManagerCommandRepository
+                        .findById(managerId)
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        // DELIVERING 상태에서만 COMPLETED 가능
+        delivery.complete();
+
+        // 업체 배송 담당자 복원
+        manager.releaseFromDelivery();
+
+        deliveryCommandRepository.save(delivery); // COMPLETED
+        deliveryManagerCommandRepository.save(manager); // AVAILABLE
     }
 }

@@ -20,4 +20,13 @@ public interface DeliveryManagerCommandRepository {
     );
 
     Optional<DeliveryManager> findFirstAvailableHubManager();
+
+    Optional<DeliveryManager> findNextAvailableCompanyManager(
+            UUID hubId,
+            Integer lastAssignedSequence
+    );
+
+    Optional<DeliveryManager> findFirstAvailableCompanyManager(
+            UUID hubId
+    );
 }

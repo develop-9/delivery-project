@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -100,6 +101,105 @@ Route 조회
         deliveryManagerSequenceCommandRepository.save(sequence);
     }
 
+    @Transactional
+    public void arrive(
+            UUID routeId,
+            BigDecimal actualDistanceKm,
+            Integer actualDurationMin
+    ){
+        DeliveryRoute route =
+                deliveryRouteCommandRepository
+                        .findById(routeId)
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                                )
+                        );
+        // 1. 현재 Route 도착 처리
+        route.arrive(
+                actualDistanceKm,
+                actualDurationMin
+        );
+        // 2. 허브 배송 담당자 반환
+        UUID managerId = route.getDeliveryManagerId();
+
+        if(managerId == null){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+            );
+        }
+
+        DeliveryManager manager =
+                deliveryManagerCommandRepository
+                        .findById(managerId)
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+        manager.releaseFromDelivery();
+
+        // 3. 마지막 Route인지 확인
+        DeliveryRoute lastRoute =
+            deliveryRouteCommandRepository
+                    .findLastByDeliveryId(route.getDeliveryId())
+                            .orElseThrow(()->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                                    )
+                            );
+
+        // 4. 마지막 Route라면 전체 Delivery도 목적지 허브 도착 처리
+        if(route.getId().equals(lastRoute.getId())){
+            Delivery delivery =
+                    deliveryCommandRepository
+                            .findById(route.getDeliveryId())
+                            .orElseThrow(()->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_NOT_FOUND
+                                    )
+                            );
+            // 마지막 허브 도착
+            delivery.arriveAtDestinationHub();
+
+            // COMPANY_DELIVERY 배정
+            DeliveryManagerSequence companySequence =
+                    deliveryManagerSequenceCommandRepository
+                            .findForUpdate(
+                                    DeliveryManagerType.COMPANY_DELIVERY,
+                                    delivery.getDestinationHubId()
+                            )
+                            .orElseThrow(()->
+                                    new BusinessException(
+                                            ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_AVAILABLE
+                                    )
+                            );
+            DeliveryManager companyManager =
+                    findNextCompanyDeliveryManager(
+                            delivery.getDestinationHubId(),
+                            companySequence
+                    );
+
+            companyManager.assignToDelivery();
+
+            delivery.assignCompanyDeliveryManager(
+                    companyManager.getId()
+            );
+
+            companySequence.updateLastAssignedSequence(
+                    companyManager.getDeliverySequence()
+            );
+
+            deliveryManagerCommandRepository.save(companyManager);
+            deliveryManagerSequenceCommandRepository.save(companySequence);
+            deliveryCommandRepository.save(delivery);
+        }
+
+        deliveryRouteCommandRepository.save(route);
+        deliveryManagerCommandRepository.save(manager);
+    }
+
+
     private DeliveryManager findNextHubDeliveryManager(
             DeliveryManagerSequence sequence
     ){
@@ -157,4 +257,25 @@ Route 조회
             );
         }
     }
+
+    private DeliveryManager findNextCompanyDeliveryManager(
+            UUID hubId,
+            DeliveryManagerSequence sequence
+    ){
+        return deliveryManagerCommandRepository
+                .findNextAvailableCompanyManager(
+                        hubId,
+                        sequence.getLastAssignedSequence()
+                )
+                .orElseGet(()->
+                        deliveryManagerCommandRepository
+                                .findFirstAvailableCompanyManager(hubId)
+                                .orElseThrow(()->
+                                        new BusinessException(
+                                                ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_AVAILABLE
+                                        )
+                                )
+                );
+    }
+
 }

@@ -22,4 +22,8 @@ public interface SpringDataDeliveryRouteRepository
             UUID deliveryId,
             Integer sequence
     );
+
+    Optional<DeliveryRoute> findFirstByDeliveryIdAndDeletedAtIsNullOrderBySequenceDesc(
+            UUID deliveryId
+    );
 }

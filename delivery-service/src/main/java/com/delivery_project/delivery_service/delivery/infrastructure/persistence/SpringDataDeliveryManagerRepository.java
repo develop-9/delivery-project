@@ -34,4 +34,19 @@ public interface SpringDataDeliveryManagerRepository
             DeliveryManagerType type,
             DeliveryManagerStatus status
     );
+
+    Optional<DeliveryManager>
+    findFirstByHubIdAndTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+            UUID hubId,
+            DeliveryManagerType type,
+            DeliveryManagerStatus status,
+            Integer lastAssignedSequence
+    );
+
+    Optional<DeliveryManager>
+    findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+            UUID hubId,
+            DeliveryManagerType type,
+            DeliveryManagerStatus status
+    );
 }
