@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@Tag(name = "Company", description = "Company 관련 내부 API")
+@Tag(name = "Company-Internal", description = "Company 관련 내부 API")
 public interface CompanyInternal {
 
     @Operation(
