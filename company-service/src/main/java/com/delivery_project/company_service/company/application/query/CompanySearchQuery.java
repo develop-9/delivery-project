@@ -1,10 +1,10 @@
-package com.delivery_project.company_service.company.application.command;
+package com.delivery_project.company_service.company.application.query;
 
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 
 import java.util.UUID;
 
-public record CompanyGetAllCommand(
+public record CompanySearchQuery(
 
         Integer page,
         Integer size,
