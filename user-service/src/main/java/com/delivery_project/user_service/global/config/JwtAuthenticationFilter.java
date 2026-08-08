@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
 			try {
 				String token = jwtProvider.resolveToken(authorizationHeader);
-				JwtPrincipal principal = jwtProvider.parse(token);
+				JwtPrincipal principal = jwtProvider.parseAccessToken(token);
 
 				var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name()));
 				var authentication = new UsernamePasswordAuthenticationToken(principal.userId(), null, authorities);

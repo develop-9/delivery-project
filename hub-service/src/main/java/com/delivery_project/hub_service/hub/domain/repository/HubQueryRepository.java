@@ -18,7 +18,7 @@ import com.delivery_project.hub_service.hub.domain.entity.Hub;
  * 서로의 사정에 끌려다니지 않게</b> 하기 위해서다. 조회 성능을 위해 인덱스나 쿼리를 바꿔도
  * 커맨드 측 불변식 검사는 그대로 남는다.
  *
- * <p>{@link #findById} 가 {@link HubRepository#findById} 와 겹쳐 보이지만 목적이 다르다.
+ * <p>{@link #findById} 가 {@link HubCommandRepository#findById} 와 겹쳐 보이지만 목적이 다르다.
  * 이쪽은 응답으로 내보낼 데이터를 읽고, 저쪽은 상태를 바꿀 애그리거트를 불러온다.
  * 나중에 이쪽만 엔티티 대신 프로젝션을 반환하도록 바꿀 수 있다.
  */

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.domain.entity.Role;
 
@@ -26,18 +27,27 @@ import io.jsonwebtoken.security.Keys;
 public class JwtProvider implements TokenProvider {
 
 	private static final String ROLE_CLAIM = "role";
+	private static final String TOKEN_TYPE_CLAIM = "tokenType";
 	private static final String BEARER_PREFIX = "Bearer ";
 
-	private final SecretKey secretKey;
+	private final SecretKey accessSecretKey;
+	private final SecretKey refreshSecretKey;
 	private final long accessTokenExpirationMillis;
 	private final long refreshTokenExpirationMillis;
 
+	/**
+	 * Access/Refresh Token은 서로 다른 시크릿으로 서명한다. Access Token 시크릿은 앞으로 각 서비스가
+	 * 자체 인증 필터를 붙이면 여러 서비스가 알게 되는 반면, Refresh Token은 User Service만 검증하면
+	 * 되므로 노출 범위가 훨씬 좁다 — 한쪽 시크릿이 유출돼도 다른 쪽 토큰은 위조할 수 없게 분리한다.
+	 */
 	public JwtProvider(
-			@Value("${jwt.secret}") String secret,
+			@Value("${jwt.secret}") String accessSecret,
+			@Value("${jwt.refresh-secret}") String refreshSecret,
 			@Value("${jwt.access-token-expiration}") long accessTokenExpirationMillis,
 			@Value("${jwt.refresh-token-expiration}") long refreshTokenExpirationMillis
 	) {
-		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+		this.accessSecretKey = Keys.hmacShaKeyFor(accessSecret.getBytes(StandardCharsets.UTF_8));
+		this.refreshSecretKey = Keys.hmacShaKeyFor(refreshSecret.getBytes(StandardCharsets.UTF_8));
 		this.accessTokenExpirationMillis = accessTokenExpirationMillis;
 		this.refreshTokenExpirationMillis = refreshTokenExpirationMillis;
 	}
@@ -49,9 +59,10 @@ public class JwtProvider implements TokenProvider {
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.claim(ROLE_CLAIM, role.name())
+				.claim(TOKEN_TYPE_CLAIM, TokenType.ACCESS.name())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(accessTokenExpirationMillis)))
-				.signWith(secretKey)
+				.signWith(accessSecretKey)
 				.compact();
 	}
 
@@ -61,9 +72,10 @@ public class JwtProvider implements TokenProvider {
 		return Jwts.builder()
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
+				.claim(TOKEN_TYPE_CLAIM, TokenType.REFRESH.name())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(refreshTokenExpirationMillis)))
-				.signWith(secretKey)
+				.signWith(refreshSecretKey)
 				.compact();
 	}
 
@@ -84,24 +96,35 @@ public class JwtProvider implements TokenProvider {
 		return refreshTokenExpirationMillis;
 	}
 
-	/**
-	 * 토큰을 검증하고 클레임을 한 번만 파싱해서 userId/role을 함께 반환한다.
-	 * validateToken()+getUserId()+getRole()을 각각 호출하면 같은 토큰을 여러 번
-	 * 파싱/서명검증하게 되어 이 메서드로 통합했다.
-	 */
 	@Override
-	public JwtPrincipal parse(String token) {
-		Claims claims = parseClaims(token);
+	public JwtPrincipal parseAccessToken(String token) {
+		return parse(token, accessSecretKey);
+	}
+
+	@Override
+	public JwtPrincipal parseRefreshToken(String token) {
+		return parse(token, refreshSecretKey);
+	}
+
+	/**
+	 * 토큰을 검증하고 클레임을 한 번만 파싱해서 userId/role/tokenType을 함께 반환한다.
+	 * 호출부가 기대하는 종류와 다른 토큰(Access인데 refreshSecretKey로 검증 시도 등)은
+	 * 시크릿이 달라 서명 검증 단계에서부터 실패한다.
+	 */
+	private JwtPrincipal parse(String token, SecretKey key) {
+		Claims claims = parseClaims(token, key);
 		UUID userId = UUID.fromString(claims.getSubject());
 		String roleClaim = claims.get(ROLE_CLAIM, String.class);
 		Role role = roleClaim != null ? Role.valueOf(roleClaim) : null;
-		return new JwtPrincipal(userId, role);
+		String tokenTypeClaim = claims.get(TOKEN_TYPE_CLAIM, String.class);
+		TokenType tokenType = tokenTypeClaim != null ? TokenType.valueOf(tokenTypeClaim) : null;
+		return new JwtPrincipal(userId, role, tokenType);
 	}
 
-	private Claims parseClaims(String token) {
+	private Claims parseClaims(String token, SecretKey key) {
 		try {
 			return Jwts.parser()
-					.verifyWith(secretKey)
+					.verifyWith(key)
 					.build()
 					.parseSignedClaims(token)
 					.getPayload();
