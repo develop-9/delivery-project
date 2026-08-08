@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -15,12 +16,24 @@ public class DeliveryRouteCommandRepositoryImpl
         implements DeliveryRouteCommandRepository {
 
     private final SpringDataDeliveryRouteRepository springDataRepository;
+    private final SpringDataDeliveryRouteRepository springDataDeliveryRouteRepository;
+
+    @Override
+    public DeliveryRoute save(DeliveryRoute route) {
+        return springDataDeliveryRouteRepository.save(route);
+    }
 
     @Override
     public List<DeliveryRoute> saveAll(
             List<DeliveryRoute> deliveryRoutes
     ) {
         return springDataRepository.saveAllAndFlush(deliveryRoutes);
+    }
+
+    @Override
+    public Optional<DeliveryRoute> findById(UUID routeId) {
+        return springDataDeliveryRouteRepository
+                .findByIdAndDeletedAtIsNull(routeId);
     }
 
     @Override
@@ -33,6 +46,18 @@ public class DeliveryRouteCommandRepositoryImpl
                 .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
                         deliveryId,
                         status
+                );
+    }
+
+    @Override
+    public Optional<DeliveryRoute> findByDeliveryIdAndSequenceAndDeletedAtIsNull(
+            UUID deliveryId,
+            Integer sequence
+    ) {
+        return springDataRepository
+                .findByDeliveryIdAndSequenceAndDeletedAtIsNull(
+                        deliveryId,
+                        sequence
                 );
     }
 }

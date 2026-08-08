@@ -102,4 +102,13 @@ public class Delivery extends BaseDeletableEntity {
         this.status = DeliveryStatus.CANCELED;
     }
 
+    public void startHubMoving(){
+        if(this.status != DeliveryStatus.PENDING){
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+        this.status = DeliveryStatus.HUB_MOVING;
+    }
+
 }

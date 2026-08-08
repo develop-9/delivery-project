@@ -25,4 +25,10 @@ public class DeliveryCommandRepositoryImpl implements DeliveryCommandRepository 
         return springDataDeliveryRepository
                 .findByOrderIdAndDeletedAtIsNull(orderId);
     }
+
+    @Override
+    public Optional<Delivery> findById(UUID deliveryId){
+        return springDataDeliveryRepository
+                .findByIdAndDeletedAtIsNull(deliveryId);
+    }
 }
