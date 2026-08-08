@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-public class DeliveryManagerRepositoryImpl
+public class DeliveryManagerCommandRepositoryImpl
         implements DeliveryManagerCommandRepository {
 
     private final SpringDataDeliveryManagerRepository springDataRepository;
