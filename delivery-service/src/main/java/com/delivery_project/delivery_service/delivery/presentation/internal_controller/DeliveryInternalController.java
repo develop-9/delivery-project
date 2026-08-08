@@ -3,11 +3,15 @@ package com.delivery_project.delivery_service.delivery.presentation.internal_con
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryCommandService;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesByOrderQuery;
+import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryRouteQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCancelResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryRoutesByOrderResult;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryCreateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryCancelResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryCreateResponse;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryRoutesByOrderResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,7 @@ import java.util.UUID;
 public class DeliveryInternalController {
 
     private final DeliveryCommandService deliveryCommandService;
+    private final DeliveryRouteQueryService deliveryRouteQueryService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -54,6 +59,23 @@ public class DeliveryInternalController {
 
         return SuccessResponse.success(
                 DeliveryCancelResponse.from(result)
+        );
+    }
+
+    @GetMapping("/orders/{orderId}/routes")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryRoutesByOrderResponse>
+    getDeliveryRoutesByOrder(
+            @PathVariable UUID orderId
+    ){
+        DeliveryRoutesByOrderQuery query =
+                DeliveryRoutesByOrderQuery.from(orderId);
+
+        DeliveryRoutesByOrderResult result =
+                deliveryRouteQueryService.getRoutesByOrder(query);
+
+        return SuccessResponse.success(
+                DeliveryRoutesByOrderResponse.from(result)
         );
     }
 }
