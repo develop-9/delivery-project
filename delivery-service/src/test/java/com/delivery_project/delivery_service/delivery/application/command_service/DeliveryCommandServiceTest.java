@@ -20,6 +20,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -439,7 +440,9 @@ class DeliveryCommandServiceTest {
         DeliveryStatusUpdateCommand command =
                 new DeliveryStatusUpdateCommand(
                         deliveryId,
-                        DeliveryStatus.DELIVERING
+                        DeliveryStatus.DELIVERING,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(delivery.getStatus())
@@ -495,7 +498,9 @@ class DeliveryCommandServiceTest {
         DeliveryStatusUpdateCommand command =
                 new DeliveryStatusUpdateCommand(
                         deliveryId,
-                        DeliveryStatus.COMPLETED
+                        DeliveryStatus.COMPLETED,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(delivery.getStatus())
@@ -551,7 +556,9 @@ class DeliveryCommandServiceTest {
         DeliveryStatusUpdateCommand command =
                 new DeliveryStatusUpdateCommand(
                         deliveryId,
-                        DeliveryStatus.DELIVERING
+                        DeliveryStatus.DELIVERING,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(delivery.getStatus())
@@ -593,7 +600,9 @@ class DeliveryCommandServiceTest {
         DeliveryStatusUpdateCommand command =
                 new DeliveryStatusUpdateCommand(
                         deliveryId,
-                        DeliveryStatus.DELIVERING
+                        DeliveryStatus.DELIVERING,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(delivery.getStatus())
@@ -626,5 +635,82 @@ class DeliveryCommandServiceTest {
 
         verify(deliveryCommandRepository, never())
                 .save(any());
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 배송 상태를 변경할 수 없다")
+    void updateDeliveryStatusCompanyManagerForbidden() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.DELIVERING,
+                        UUID.randomUUID(),
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN,
+                exception.getErrorCode()
+        );
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 본인이 담당하지 않은 배송 상태를 변경할 수 없다")
+    void updateDeliveryStatusOtherManagerForbidden() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager requesterManager = mock(DeliveryManager.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.DELIVERING,
+                        requesterId,
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository.findByUserId(requesterId))
+                .thenReturn(Optional.of(requesterManager));
+
+        when(requesterManager.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(UUID.randomUUID());
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN,
+                exception.getErrorCode()
+        );
     }
 }

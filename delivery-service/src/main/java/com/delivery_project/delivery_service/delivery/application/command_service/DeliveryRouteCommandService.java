@@ -14,6 +14,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,8 @@ public class DeliveryRouteCommandService {
                                         ErrorCode.DELIVERY_ROUTE_NOT_FOUND
                                 )
                         );
+
+        validatePermission(command, route);
 
         DeliveryRouteStatus previousStatus =
                 route.getStatus();
@@ -317,5 +320,59 @@ Route 조회
                     ErrorCode.INVALID_REQUEST
             );
         }
+    }
+
+    private void validatePermission(
+            DeliveryRouteStatusUpdateCommand command,
+            DeliveryRoute route
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.COMPANY_MANAGER) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            // TODO: #53 완료 후 담당 Hub 기준 권한 검증 추가
+            return;
+        }
+
+        if (command.requesterRole() == Role.DELIVERY_MANAGER) {
+
+            // 배송 담당자는 Route 시작 불가
+            if (command.status() == DeliveryRouteStatus.IN_TRANSIT) {
+                throw new BusinessException(
+                        ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+                );
+            }
+
+            // ARRIVED 처리만 본인 담당 Route인지 검증
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findByUserId(command.requesterId())
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+                                    )
+                            );
+
+            if (!manager.getId().equals(
+                    route.getDeliveryManagerId()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+                );
+            }
+
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+        );
     }
 }

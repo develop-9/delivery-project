@@ -17,6 +17,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,6 +110,8 @@ public class DeliveryCommandService {
                                         ErrorCode.DELIVERY_NOT_FOUND
                                 )
                         );
+
+        validateStatusUpdatePermission(command, delivery);
 
         DeliveryStatus previousStatus =
                 delivery.getStatus();
@@ -264,5 +267,50 @@ public class DeliveryCommandService {
         manager.releaseFromDelivery();
 
         deliveryManagerCommandRepository.save(manager); // AVAILABLE
+    }
+
+    private void validateStatusUpdatePermission(
+            DeliveryStatusUpdateCommand command,
+            Delivery delivery
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.COMPANY_MANAGER) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+            );
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            // TODO: #53 완료 후 담당 Hub 기준 권한 검증 추가
+            return;
+        }
+
+        if (command.requesterRole() == Role.DELIVERY_MANAGER) {
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findByUserId(command.requesterId())
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+                                    )
+                            );
+
+            if (!manager.getId().equals(
+                    delivery.getCompanyDeliveryManagerId()
+            )) {
+                throw new BusinessException(
+                        ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+                );
+            }
+
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+        );
     }
 }

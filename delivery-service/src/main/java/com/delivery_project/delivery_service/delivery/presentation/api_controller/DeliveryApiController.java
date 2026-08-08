@@ -5,9 +5,11 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryStatusUpdateRequest;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryStatusUpdateResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
+import com.delivery_project.delivery_service.global.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -23,11 +25,15 @@ public class DeliveryApiController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryStatusUpdateResponse> updateDeliveryStatus(
             @PathVariable UUID deliveryId,
-            @Valid @RequestBody DeliveryStatusUpdateRequest request
+            @Valid @RequestBody DeliveryStatusUpdateRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryStatusUpdateResult result =
                 deliveryCommandService.updateStatus(
-                        request.toCommand(deliveryId)
+                        request.toCommand(
+                                deliveryId,
+                                principal.userId(),
+                                principal.role())
                 );
         return SuccessResponse.success(
                 DeliveryStatusUpdateResponse.from(result)

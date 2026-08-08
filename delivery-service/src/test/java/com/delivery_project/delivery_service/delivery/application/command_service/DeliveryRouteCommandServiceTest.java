@@ -14,6 +14,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,7 +69,9 @@ class DeliveryRouteCommandServiceTest {
                         routeId,
                         DeliveryRouteStatus.IN_TRANSIT,
                         null,
-                        null
+                        null,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(deliveryRouteCommandRepository.findById(routeId))
@@ -165,7 +168,9 @@ class DeliveryRouteCommandServiceTest {
                         routeId,
                         DeliveryRouteStatus.IN_TRANSIT,
                         null,
-                        null
+                        null,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(deliveryRouteCommandRepository.findById(routeId))
@@ -221,7 +226,9 @@ class DeliveryRouteCommandServiceTest {
                         routeId,
                         DeliveryRouteStatus.IN_TRANSIT,
                         null,
-                        null
+                        null,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(deliveryRouteCommandRepository.findById(routeId))
@@ -298,7 +305,9 @@ class DeliveryRouteCommandServiceTest {
                         routeId,
                         DeliveryRouteStatus.ARRIVED,
                         new BigDecimal("125.80"),
-                        98
+                        98,
+                        UUID.randomUUID(),
+                        Role.MASTER
                 );
 
         when(deliveryRouteCommandRepository.findById(routeId))
@@ -398,6 +407,123 @@ class DeliveryRouteCommandServiceTest {
         assertEquals(
                 DeliveryRouteStatus.ARRIVED,
                 result.currentStatus()
+        );
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 배송 경로 상태를 변경할 수 없다")
+    void updateRouteStatusCompanyManagerForbidden() {
+        // given
+        UUID routeId = UUID.randomUUID();
+
+        DeliveryRoute route = mock(DeliveryRoute.class);
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.IN_TRANSIT,
+                        null,
+                        null,
+                        UUID.randomUUID(),
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryRouteCommandRepository.findById(routeId))
+                .thenReturn(Optional.of(route));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryRouteCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN,
+                exception.getErrorCode()
+        );
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 배송 경로를 IN_TRANSIT 상태로 시작할 수 없다")
+    void startRouteDeliveryManagerForbidden() {
+        // given
+        UUID routeId = UUID.randomUUID();
+
+        DeliveryRoute route = mock(DeliveryRoute.class);
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.IN_TRANSIT,
+                        null,
+                        null,
+                        UUID.randomUUID(),
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryRouteCommandRepository.findById(routeId))
+                .thenReturn(Optional.of(route));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryRouteCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN,
+                exception.getErrorCode()
+        );
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 본인이 담당하지 않은 Route를 완료할 수 없다")
+    void arriveRouteOtherDeliveryManagerForbidden() {
+        // given
+        UUID routeId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID assignedManagerId = UUID.randomUUID();
+
+        DeliveryRoute route = mock(DeliveryRoute.class);
+        DeliveryManager requesterManager = mock(DeliveryManager.class);
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.ARRIVED,
+                        new BigDecimal("100.0"),
+                        60,
+                        requesterId,
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryRouteCommandRepository.findById(routeId))
+                .thenReturn(Optional.of(route));
+
+        when(deliveryManagerCommandRepository.findByUserId(requesterId))
+                .thenReturn(Optional.of(requesterManager));
+
+        when(requesterManager.getId())
+                .thenReturn(UUID.randomUUID());
+
+        when(route.getDeliveryManagerId())
+                .thenReturn(assignedManagerId);
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryRouteCommandService.updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN,
+                exception.getErrorCode()
         );
     }
 }
