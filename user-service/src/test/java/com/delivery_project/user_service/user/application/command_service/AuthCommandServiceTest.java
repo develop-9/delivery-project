@@ -33,6 +33,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AuthCommandServiceTest {
@@ -42,6 +43,9 @@ class AuthCommandServiceTest {
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
+	private UserInvalidationRepository userInvalidationRepository;
 
 	@Mock
 	private PasswordEncoder passwordEncoder;
@@ -420,6 +424,19 @@ class AuthCommandServiceTest {
 
 		// then
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(userId);
+	}
+
+	@Test
+	void 정상_로그아웃시_Access_Token_무효화_시각도_기록한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when
+		authCommandService.logout(userId);
+
+		// then
+		org.mockito.Mockito.verify(userInvalidationRepository)
+				.invalidate(org.mockito.Mockito.eq(userId), any(java.time.Instant.class));
 	}
 
 	private User createApprovedUser(String username, String encodedPassword, Role role) {

@@ -1,6 +1,7 @@
 package com.delivery_project.user_service.user.application.command_service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +25,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ public class AuthCommandService {
 
 	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final UserInvalidationRepository userInvalidationRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
 
@@ -148,6 +151,11 @@ public class AuthCommandService {
 	@Transactional(readOnly = true)
 	public void logout(UUID callerId) {
 		refreshTokenRepository.deleteByUserId(callerId);
+		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
+		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
+		// 이 메서드는 DB 쓰기가 없는 읽기 전용 트랜잭션이라 롤백으로 무효화 시각만 앞서가는
+		// 문제가 없으므로, delete()와 달리 커밋 이후로 미룰 필요가 없다.
+		userInvalidationRepository.invalidate(callerId, Instant.now());
 		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}
 
