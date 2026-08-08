@@ -22,7 +22,7 @@ public record SlackInternalMessageCreateResponse(
                 result.receiverUserId(),
                 result.status(),
                 result.retryCount(),
-                result.requestedAt()
+                result.createdAt()
         );
     }
 }

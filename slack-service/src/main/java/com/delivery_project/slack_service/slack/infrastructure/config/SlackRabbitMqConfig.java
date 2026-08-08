@@ -7,6 +7,8 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 
 @Configuration
 public class SlackRabbitMqConfig {
@@ -61,5 +63,10 @@ public class SlackRabbitMqConfig {
                 .bind(slackMessageRetryQueue)
                 .to(slackMessageExchange)
                 .with(RETRY_ROUTING_KEY);
+    }
+
+    @Bean
+    public MessageConverter rabbitMessageConverter() {
+        return new JacksonJsonMessageConverter();
     }
 }

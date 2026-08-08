@@ -1,5 +1,6 @@
 package com.delivery_project.slack_service.slack.application.result;
 
+import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessageStatus;
 
 import java.time.Instant;
@@ -10,6 +11,18 @@ public record SlackInternalMessageCreateResult(
         UUID receiverUserId,
         SlackMessageStatus status,
         int retryCount,
-        Instant requestedAt
+        Instant createdAt
 ) {
+
+    public static SlackInternalMessageCreateResult from(
+            SlackMessage slackMessage
+    ) {
+        return new SlackInternalMessageCreateResult(
+                slackMessage.getId(),
+                slackMessage.getReceiverUserId(),
+                slackMessage.getStatus(),
+                slackMessage.getRetryCount(),
+                slackMessage.getCreatedAt()
+        );
+    }
 }

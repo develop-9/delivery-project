@@ -9,4 +9,10 @@ public interface SlackMessageQueuePublisher {
             String receiverSlackId,
             String message
     );
+
+    void publishRetry(
+            UUID slackMessageId,
+            String receiverSlackId,
+            String message
+    );
 }

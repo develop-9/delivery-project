@@ -34,4 +34,24 @@ public class SlackMessageQueuePublisherImpl
                 payload
         );
     }
+
+    @Override
+    public void publishRetry(
+            UUID slackMessageId,
+            String receiverSlackId,
+            String message
+    ) {
+        SlackMessageQueuePayload payload =
+                new SlackMessageQueuePayload(
+                        slackMessageId,
+                        receiverSlackId,
+                        message
+                );
+
+        rabbitTemplate.convertAndSend(
+                SlackRabbitMqConfig.EXCHANGE,
+                SlackRabbitMqConfig.RETRY_ROUTING_KEY,
+                payload
+        );
+    }
 }
