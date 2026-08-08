@@ -415,6 +415,46 @@ class AuthCommandServiceTest {
 	}
 
 	@Test
+	void 활성_MASTER가_없으면_MASTER_가입시_자동으로_승인된다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master1", "Abcd1234!", "관리자", "U0000000001",
+				Role.MASTER, null, null);
+
+		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000001")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.countActiveMasters()).thenReturn(0L);
+		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+	}
+
+	@Test
+	void 활성_MASTER가_이미_있으면_MASTER로_가입해도_PENDING으로_시작한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master2", "Abcd1234!", "관리자2", "U0000000002",
+				Role.MASTER, null, null);
+
+		when(userCommandRepository.existsByUsername("master2")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000002")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
+	}
+
+	@Test
 	void 정상_로그아웃시_RefreshToken을_삭제한다() {
 		// given
 		UUID userId = UUID.randomUUID();

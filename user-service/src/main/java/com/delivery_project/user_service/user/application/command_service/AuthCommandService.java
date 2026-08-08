@@ -66,6 +66,12 @@ public class AuthCommandService {
 				.companyId(command.companyId())
 				.build();
 
+		// 활성 MASTER가 한 명도 없으면 아무도 승인해줄 수 없어 첫 MASTER 가입자가 영구히
+		// PENDING에 머무르는 부트스트랩 데드락이 생긴다. 이 경우에 한해 가입과 동시에 자동 승인한다.
+		if (command.role() == Role.MASTER && userCommandRepository.countActiveMasters() == 0) {
+			user.approveAsInitialMaster();
+		}
+
 		User saved = saveUser(user);
 		log.info("[Auth] 회원가입 완료 userId={}", saved.getId());
 
