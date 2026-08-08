@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public interface SlackMessageDuplicateGuard {
 
-    boolean tryAcquire(UUID slackMessageId);
+    String tryAcquire(UUID slackMessageId);
 
-    void release(UUID slackMessageId);
+    void release(UUID slackMessageId, String lockToken);
 }

@@ -10,12 +10,14 @@ import java.util.List;
 @Component
 public class SlackMessageTemplateGenerator {
 
-    private static final ZoneId KOREA_ZONE_ID =
+    // 서비스 내부의 시간 저장/전달은 Instant를 유지하고,
+    // Slack 메시지에 표시하는 시점에만 KST로 변환한다.
+    private static final ZoneId SLACK_DISPLAY_ZONE_ID =
             ZoneId.of("Asia/Seoul");
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                    .withZone(KOREA_ZONE_ID);
+                    .withZone(SLACK_DISPLAY_ZONE_ID);
 
     public String generateSystemMessage(
             SlackMessageTemplateData data

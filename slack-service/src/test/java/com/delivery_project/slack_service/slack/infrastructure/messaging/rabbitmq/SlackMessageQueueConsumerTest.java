@@ -1,6 +1,6 @@
 package com.delivery_project.slack_service.slack.infrastructure.messaging.rabbitmq;
 
-import com.delivery_project.slack_service.slack.application.command_service.SlackMessagePersistenceService;
+import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageDuplicateGuard;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageQueuePublisher;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageSender;
@@ -30,7 +30,7 @@ class SlackMessageQueueConsumerTest {
     private SlackMessageSender slackMessageSender;
 
     @Mock
-    private SlackMessagePersistenceService slackMessagePersistenceService;
+    private SlackMessageCommandService slackMessageCommandService;
 
     @Mock
     private SlackMessageQueuePublisher slackMessageQueuePublisher;
@@ -45,8 +45,14 @@ class SlackMessageQueueConsumerTest {
     private final String receiverSlackId = "U1234567890";
     private final String message = "테스트 메시지";
 
+    private final String lockToken = "test-lock-token";
+
     private SlackMessageQueuePayload payload() {
-        return new SlackMessageQueuePayload(slackMessageId, receiverSlackId, message);
+        return new SlackMessageQueuePayload(
+                slackMessageId,
+                receiverSlackId,
+                message
+        );
     }
 
     private SlackMessage newSlackMessage() {
@@ -62,7 +68,9 @@ class SlackMessageQueueConsumerTest {
     @Test
     void 발송에_성공하면_SENT로_저장하고_재시도하지_않는다() {
         // given
-        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId)).thenReturn(true);
+        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId))
+                .thenReturn(lockToken);
+
         when(slackMessageSender.send(receiverSlackId, message))
                 .thenReturn(SlackMessageSendResult.succeeded());
 
@@ -70,10 +78,17 @@ class SlackMessageQueueConsumerTest {
         slackMessageQueueConsumer.consume(payload());
 
         // then
-        verify(slackMessagePersistenceService).markSent(slackMessageId);
-        verify(slackMessagePersistenceService, never()).markFailed(any(), any());
-        verify(slackMessageQueuePublisher, never()).publishRetry(any(), any(), any());
-        verify(slackMessageDuplicateGuard).release(slackMessageId);
+        verify(slackMessageCommandService)
+                .markSent(slackMessageId);
+
+        verify(slackMessageCommandService, never())
+                .markFailed(any(), any());
+
+        verify(slackMessageQueuePublisher, never())
+                .publishRetry(any(), any(), any());
+
+        verify(slackMessageDuplicateGuard)
+                .release(slackMessageId, lockToken);
     }
 
     @Test
@@ -85,61 +100,94 @@ class SlackMessageQueueConsumerTest {
         SlackMessage retryMessage = newSlackMessage();
         retryMessage.prepareRetry();
 
-        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId)).thenReturn(true);
+        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId))
+                .thenReturn(lockToken);
+
         when(slackMessageSender.send(receiverSlackId, message))
                 .thenReturn(SlackMessageSendResult.failed("Slack API 오류"));
-        when(slackMessagePersistenceService.markFailed(slackMessageId, "Slack API 오류"))
-                .thenReturn(failedMessage);
-        when(slackMessagePersistenceService.prepareRetry(slackMessageId))
+
+        when(slackMessageCommandService.markFailed(
+                slackMessageId,
+                "Slack API 오류"
+        )).thenReturn(failedMessage);
+
+        when(slackMessageCommandService.prepareRetry(slackMessageId))
                 .thenReturn(retryMessage);
 
         // when
         slackMessageQueueConsumer.consume(payload());
 
         // then
-        verify(slackMessagePersistenceService).markFailed(slackMessageId, "Slack API 오류");
-        verify(slackMessagePersistenceService).prepareRetry(slackMessageId);
+        verify(slackMessageCommandService)
+                .markFailed(slackMessageId, "Slack API 오류");
+
+        verify(slackMessageCommandService)
+                .prepareRetry(slackMessageId);
+
         verify(slackMessageQueuePublisher)
-                .publishRetry(retryMessage.getId(), receiverSlackId, message);
-        verify(slackMessageDuplicateGuard).release(slackMessageId);
+                .publishRetry(
+                        retryMessage.getId(),
+                        receiverSlackId,
+                        message
+                );
+
+        verify(slackMessageDuplicateGuard)
+                .release(slackMessageId, lockToken);
     }
 
     @Test
     void 최대_재시도_횟수를_초과하면_더이상_재시도하지_않는다() {
         // given
         SlackMessage failedMessage = newSlackMessage();
+
         failedMessage.prepareRetry(); // retryCount 1
         failedMessage.prepareRetry(); // retryCount 2
         failedMessage.prepareRetry(); // retryCount 3
         failedMessage.markAsFailed("Slack API 오류");
 
-        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId)).thenReturn(true);
+        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId))
+                .thenReturn(lockToken);
+
         when(slackMessageSender.send(receiverSlackId, message))
                 .thenReturn(SlackMessageSendResult.failed("Slack API 오류"));
-        when(slackMessagePersistenceService.markFailed(slackMessageId, "Slack API 오류"))
-                .thenReturn(failedMessage);
+
+        when(slackMessageCommandService.markFailed(
+                slackMessageId,
+                "Slack API 오류"
+        )).thenReturn(failedMessage);
 
         // when
         slackMessageQueueConsumer.consume(payload());
 
         // then
-        verify(slackMessagePersistenceService, never()).prepareRetry(any());
-        verify(slackMessageQueuePublisher, never()).publishRetry(any(), any(), any());
-        verify(slackMessageDuplicateGuard).release(slackMessageId);
+        verify(slackMessageCommandService, never())
+                .prepareRetry(any());
+
+        verify(slackMessageQueuePublisher, never())
+                .publishRetry(any(), any(), any());
+
+        verify(slackMessageDuplicateGuard)
+                .release(slackMessageId, lockToken);
     }
 
     @Test
     void 중복_소비로_감지되면_발송을_시도하지_않는다() {
         // given
-        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId)).thenReturn(false);
+        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId))
+                .thenReturn(null);
 
         // when
         slackMessageQueueConsumer.consume(payload());
 
         // then
-        verify(slackMessageSender, never()).send(any(), any());
-        verify(slackMessagePersistenceService, never()).markSent(any());
-        verify(slackMessageDuplicateGuard, never()).release(any());
+        verify(slackMessageSender, never())
+                .send(any(), any());
+
+        verify(slackMessageCommandService, never())
+                .markSent(any());
+
+        verify(slackMessageDuplicateGuard, never())
+                .release(any(), any());
     }
 
     @Test
@@ -151,23 +199,39 @@ class SlackMessageQueueConsumerTest {
         SlackMessage retryMessage = newSlackMessage();
         retryMessage.prepareRetry();
 
-        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId)).thenReturn(true);
+        when(slackMessageDuplicateGuard.tryAcquire(slackMessageId))
+                .thenReturn(lockToken);
+
         when(slackMessageSender.send(receiverSlackId, message))
                 .thenReturn(SlackMessageSendResult.failed("Slack API 오류"));
-        when(slackMessagePersistenceService.markFailed(slackMessageId, "Slack API 오류"))
-                .thenReturn(failedMessage);
-        when(slackMessagePersistenceService.prepareRetry(slackMessageId))
+
+        when(slackMessageCommandService.markFailed(
+                slackMessageId,
+                "Slack API 오류"
+        )).thenReturn(failedMessage);
+
+        when(slackMessageCommandService.prepareRetry(slackMessageId))
                 .thenReturn(retryMessage);
+
         doThrow(new RuntimeException("연결 실패"))
                 .when(slackMessageQueuePublisher)
-                .publishRetry(retryMessage.getId(), receiverSlackId, message);
+                .publishRetry(
+                        retryMessage.getId(),
+                        receiverSlackId,
+                        message
+                );
 
         // when
         slackMessageQueueConsumer.consume(payload());
 
         // then
-        verify(slackMessagePersistenceService)
-                .markFailed(eq(slackMessageId), contains("Retry Queue 발행 실패"));
-        verify(slackMessageDuplicateGuard).release(slackMessageId);
+        verify(slackMessageCommandService)
+                .markFailed(
+                        eq(slackMessageId),
+                        contains("Retry Queue 발행 실패")
+                );
+
+        verify(slackMessageDuplicateGuard)
+                .release(slackMessageId, lockToken);
     }
 }

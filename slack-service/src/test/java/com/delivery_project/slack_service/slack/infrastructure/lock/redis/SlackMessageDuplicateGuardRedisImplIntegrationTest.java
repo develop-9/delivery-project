@@ -12,7 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * docker-compose-infra.yaml의 실제 Redis 컨테이너(localhost:6379)에 붙는 통합 테스트.
- * Redis가 떠 있지 않으면 실패한다. Mock 기반 검증은 SlackMessageDuplicateGuardRedisImplTest가 담당한다.
+ * Redis가 떠 있지 않으면 실패한다.
+ * Mock 기반 검증은 SlackMessageDuplicateGuardRedisImplTest가 담당한다.
  */
 class SlackMessageDuplicateGuardRedisImplIntegrationTest {
 
@@ -37,42 +38,74 @@ class SlackMessageDuplicateGuardRedisImplIntegrationTest {
     }
 
     @Test
-    void 처음_선점하는_메시지는_true를_반환하고_실제_Redis에_키가_생긴다() {
+    void 처음_선점하는_메시지는_lockToken을_반환하고_실제_Redis에_키가_생긴다() {
         // given
         UUID slackMessageId = UUID.randomUUID();
 
         // when
-        boolean acquired = duplicateGuard.tryAcquire(slackMessageId);
+        String lockToken = duplicateGuard.tryAcquire(slackMessageId);
 
         // then
-        assertThat(acquired).isTrue();
-        assertThat(redisTemplate.hasKey("slack:processing:" + slackMessageId)).isTrue();
+        assertThat(lockToken).isNotNull();
+        assertThat(redisTemplate.hasKey("slack:processing:" + slackMessageId))
+                .isTrue();
+
+        assertThat(
+                redisTemplate.opsForValue()
+                        .get("slack:processing:" + slackMessageId)
+        ).isEqualTo(lockToken);
     }
 
     @Test
     void 이미_선점된_메시지는_다시_선점할_수_없다() {
         // given
         UUID slackMessageId = UUID.randomUUID();
-        duplicateGuard.tryAcquire(slackMessageId);
+        String firstLockToken = duplicateGuard.tryAcquire(slackMessageId);
 
         // when
-        boolean secondAttempt = duplicateGuard.tryAcquire(slackMessageId);
+        String secondLockToken = duplicateGuard.tryAcquire(slackMessageId);
 
         // then
-        assertThat(secondAttempt).isFalse();
+        assertThat(firstLockToken).isNotNull();
+        assertThat(secondLockToken).isNull();
     }
 
     @Test
-    void release하면_같은_메시지를_다시_선점할_수_있다() {
+    void 본인이_획득한_lockToken으로_release하면_다시_선점할_수_있다() {
         // given
         UUID slackMessageId = UUID.randomUUID();
-        duplicateGuard.tryAcquire(slackMessageId);
+        String lockToken = duplicateGuard.tryAcquire(slackMessageId);
 
         // when
-        duplicateGuard.release(slackMessageId);
+        duplicateGuard.release(slackMessageId, lockToken);
 
         // then
-        assertThat(duplicateGuard.tryAcquire(slackMessageId)).isTrue();
+        assertThat(duplicateGuard.tryAcquire(slackMessageId))
+                .isNotNull();
+    }
+
+    @Test
+    void 다른_lockToken으로_release하면_기존_Lock은_삭제되지_않는다() {
+        // given
+        UUID slackMessageId = UUID.randomUUID();
+
+        String ownerLockToken =
+                duplicateGuard.tryAcquire(slackMessageId);
+
+        String otherLockToken =
+                UUID.randomUUID().toString();
+
+        // when
+        duplicateGuard.release(
+                slackMessageId,
+                otherLockToken
+        );
+
+        // then
+        assertThat(
+                redisTemplate.opsForValue()
+                        .get("slack:processing:" + slackMessageId)
+        ).isEqualTo(ownerLockToken);
     }
 
     @Test
@@ -84,7 +117,11 @@ class SlackMessageDuplicateGuardRedisImplIntegrationTest {
         duplicateGuard.tryAcquire(slackMessageId);
 
         // then
-        Long ttlSeconds = redisTemplate.getExpire("slack:processing:" + slackMessageId);
+        Long ttlSeconds =
+                redisTemplate.getExpire(
+                        "slack:processing:" + slackMessageId
+                );
+
         assertThat(ttlSeconds).isPositive();
     }
 }
