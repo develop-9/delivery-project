@@ -79,14 +79,13 @@ public class AuthCommandService {
 	}
 
 	/**
-	 * existsByUsername/existsBySlackId는 @SQLRestriction으로 소프트 삭제된 행을 걸러내기 때문에,
-	 * 삭제된 사용자와 같은 username/slackId로 재가입하거나 동시에 같은 값으로 가입 요청이 들어오면
-	 * 사전 체크를 통과하고도 DB의 UNIQUE 제약에서 걸릴 수 있다. 이 경우를 여기서 구체적인
+	 * existsByUsername/existsBySlackId 사전 체크와 저장 사이에 동시에 같은 값으로 가입 요청이
+	 * 들어오면, 사전 체크를 통과하고도 DB의 부분 유니크 인덱스(삭제되지 않은 행에만 적용 —
+	 * User.java, UserTableIndexInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
 	 * ErrorCode로 변환한다(그 외 제약 위반은 GlobalExceptionHandler의 일반 처리로 위임).
 	 *
-	 * 삭제된 사용자의 username/slackId를 영구히 재사용 못 하는 게 현재 의도된 동작이다.
-	 * TODO: 추후 스케줄러로 일정 기간(보관 기간 미정) 지난 소프트 삭제 행을 완전히 제거해서
-	 *       재가입을 허용하는 방향 검토
+	 * 삭제된 사용자와 같은 username/slackId로 재가입하는 것은 더 이상 막히지 않는다 — 부분
+	 * 유니크 인덱스가 삭제되지 않은 행끼리만 유일성을 검사하기 때문이다.
 	 */
 	private User saveUser(User user) {
 		try {

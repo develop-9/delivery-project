@@ -112,8 +112,8 @@ class AuthCommandServiceTest {
 
 	@Test
 	void 사전_중복체크는_통과했지만_저장시점에_username_제약을_위반하면_USER_DUPLICATE_USERNAME_예외가_발생한다() {
-		// given: 소프트 삭제된 동일 username이 있어 existsByUsername은 필터링되어 false를 반환하지만,
-		// DB의 UNIQUE 제약(삭제된 행 포함)에는 여전히 걸리는 상황을 재현
+		// given: existsByUsername 사전 체크와 저장 사이에 동시에 같은 username으로 가입
+		// 요청이 들어와, 사전 체크는 통과했지만 저장 시점에 부분 유니크 인덱스에 걸리는 상황을 재현
 		UserSignupCommand command = new UserSignupCommand(
 				"kim123", "Abcd1234!", "김철수", "U0123456789",
 				Role.COMPANY_MANAGER, null, UUID.randomUUID());

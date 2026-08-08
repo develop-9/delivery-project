@@ -32,7 +32,11 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "id", updatable = false, nullable = false)
 	private UUID id;
 
-	@Column(name = "username", nullable = false, unique = true, length = 50)
+	// username/slack_id의 유일성은 Hibernate가 관리하는 전체 테이블 UNIQUE 제약이 아니라,
+	// deleted_at IS NULL 조건의 부분 유니크 인덱스(UserTableIndexInitializer)로 강제한다.
+	// 전체 테이블 제약이면 Soft Delete된 행까지 유일성 검사에 포함되어 탈퇴한 사용자의 값을
+	// 영구히 재사용할 수 없다.
+	@Column(name = "username", nullable = false, length = 50)
 	private String username;
 
 	@Column(name = "password", nullable = false, length = 255)
@@ -41,7 +45,7 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "name", nullable = false, length = 100)
 	private String name;
 
-	@Column(name = "slack_id", nullable = false, unique = true, length = 100)
+	@Column(name = "slack_id", nullable = false, length = 100)
 	private String slackId;
 
 	@Enumerated(EnumType.STRING)
