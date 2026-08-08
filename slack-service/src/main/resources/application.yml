@@ -35,6 +35,10 @@ spring:
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
+# 게이트웨이가 relay한 토큰을 파싱하기 위한 키. user-service와 반드시 같은 값이어야 한다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
 eureka:
   client:
     register-with-eureka: true

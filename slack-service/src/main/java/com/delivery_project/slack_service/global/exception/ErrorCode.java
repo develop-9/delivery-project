@@ -19,6 +19,20 @@ public enum ErrorCode {
             "SLACK_MESSAGE_SENDER_REQUIRED"
     ),
 
+    // 401
+    AUTH_UNAUTHORIZED(
+            HttpStatus.UNAUTHORIZED,
+            "인증이 올바르지 않습니다.",
+            "AUTH_UNAUTHORIZED"
+    ),
+
+    // 403
+    AUTH_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "접근 권한이 없습니다.",
+            "AUTH_FORBIDDEN"
+    ),
+
     // 404
     NOT_FOUND(
             HttpStatus.NOT_FOUND,
