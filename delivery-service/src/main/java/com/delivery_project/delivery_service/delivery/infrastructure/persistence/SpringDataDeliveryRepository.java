@@ -10,4 +10,6 @@ public interface SpringDataDeliveryRepository
         extends JpaRepository<Delivery, UUID> {
 
     Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
+
+    Optional<Delivery> findByIdAndDeletedAtIsNull(UUID deliveryId);
 }

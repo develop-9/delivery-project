@@ -10,4 +10,6 @@ public interface DeliveryCommandRepository {
     Delivery save(Delivery delivery);
 
     Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
+
+    Optional<Delivery> findById(UUID deliveryId);
 }
