@@ -75,14 +75,200 @@ Spring Cloud Gateway와 Eureka Discovery를 활용하여 마이크로서비스 �
 
 # 👨‍💻 팀원
 
-| 이름 | 담당                                           |
-| -- | -------------------------------------------- |
-| 은택 | User Service / Gateway                       |
-| 찬영 | Hub / Hub Route                              |
-| 경민 | Company / Product                            |
-| 건우 | Order / Order Snapshot / Inventory           |
-| 태윤 | Delivery / Delivery Route / Delivery Manager |
-| 제희 | Slack Message / AI History                   |
+| 이름 | 담당 | 패키지                       |                                          
+| -- | -------------------------------------------- |---------------------------|
+| 은택 | User Service / Gateway                       | api-gateway, user-service |
+| 찬영 | Hub / Hub Route                              | hub-service |
+| 경민 | Company / Product                            | company-service |
+| 건우 | Order / Order Snapshot / Inventory           | order-service |
+| 태윤 | Delivery / Delivery Route / Delivery Manager | delivery-service |
+| 제희 | Slack Message / AI History                   | slack-service |
+
+---
+
+# 🏗 프로젝트 구조
+
+```text
+delivery-project/
+├── .env.example                         # 환경 변수 예시 파일
+│
+├── docker/
+│   ├── postgres/
+│   │   └── init.sql                     # PostgreSQL 초기화 및 Schema/DB 설정 SQL
+│   ├── docker-compose-infra.yaml        # PostgreSQL, Redis 등 공통 인프라 실행 설정
+│   └── docker-compose-service.yaml      # 각 Spring Boot 서비스 실행 설정
+│
+├── eureka-server/
+│   ├── Dockerfile                       # Eureka Server Docker 이미지 빌드 설정
+│   ├── build.gradle                     # Eureka Server의 Gradle 빌드 및 의존성 설정
+│   └── src/main/java/.../
+│       └── EurekaServerApplication.java # Eureka Server 애플리케이션 진입점
+│
+├── api-gateway/
+│   ├── Dockerfile                       # API Gateway Docker 이미지 빌드 설정
+│   ├── build.gradle                     
+│   └── src/main/
+│       ├── java/.../gateway/
+│       │   ├── config/                  # Gateway의 라우팅, CORS 등 전역 설정
+│       │   ├── filter/                  # 요청/응답에 대한 Global Filter 및 JWT 검증
+│       │   └── ApiGatewayApplication.java
+│       └── resources/
+│           └── application.yml          # API Gateway 실행 환경 및 라우팅 설정
+│
+├── user-service/
+│   ├── Dockerfile                       # User Service Docker 이미지 빌드 설정
+│   ├── build.gradle                     
+│   └── src/main/
+│       ├── java/.../user_service/
+│       │   │
+│       │   ├── user/                    # User 도메인의 전체 기능을 담당하는 Bounded Context
+│       │   │
+│       │   ├── application/             # 유스케이스 실행 및 도메인/외부 시스템 간 흐름 조정
+│       │   │   │
+│       │   │   ├── command/              # 상태 변경(Command)에 사용하는 입력 객체
+│       │   │   ├── command_service/      # 생성/수정/삭제 등 상태 변경 유스케이스 구현
+│       │   │   ├── query/                # 조회(Query)에 사용하는 입력 객체
+│       │   │   ├── query_service/        # 단건/목록 조회 및 검색 등 조회 유스케이스 구현
+│       │   │   ├── result/               # Application Service의 처리 결과를 표현하는 객체
+│       │   │   ├── port/                 # 외부 시스템과 통신하기 위한 Application 계층의 추상화
+│       │   │   └── support/              # Application 계층에서 공통적으로 사용하는 지원 기능
+│       │   │
+│       │   ├── domain/                   # 핵심 비즈니스 규칙과 도메인 모델을 담당
+│       │   │   │
+│       │   │   ├── entity/               # User 등 도메인의 핵심 상태와 행위를 표현하는 Entity
+│       │   │   └── repository/           # Domain에서 필요한 Repository의 추상화
+│       │   │
+│       │   ├── infrastructure/           # 외부 기술 및 프레임워크와 실제로 연결되는 구현 영역
+│       │   │   │
+│       │   │   ├── client/               # Feign 등 외부/다른 Service와의 실제 통신 구현
+│       │   │   ├── jwt/                  # JWT 생성/검증 등 JWT 기술 구현
+│       │   │   ├── adapter/              # Application Port의 구체적인 구현체
+│       │   │   └── persistence/          # JPA/QueryDSL 등 DB 접근 기술의 구체적인 구현
+│       │   │
+│       │   ├── presentation/             # 외부 요청을 받아 Application 계층으로 전달하는 진입점
+│       │   │   │
+│       │   │   ├── api_controller/       # 외부 Client가 사용하는 Public API Controller
+│       │   │   ├── internal_controller/  # MSA 내부 Service 간 통신을 위한 Internal API Controller
+│       │   │   ├── request/              # HTTP 요청을 표현하는 Request DTO
+│       │   │   └── response/             # HTTP 응답을 표현하는 Response DTO
+│       │   │
+│       │   ├── global/                   # User 도메인에 한정되지 않고 Service 전체에서 사용하는 공통 기능
+│       │   │   │
+│       │   │   ├── common/                # 여러 계층에서 공통으로 사용하는 공통 객체 및 기능
+│       │   │   ├── config/                # Spring 및 외부 기술에 대한 Service 전역 설정
+│       │   │   ├── exception/             # 공통 예외, ErrorCode 및 예외 처리
+│       │   │   ├── response/              # 공통 API 응답 형식 및 응답 관련 객체
+│       │   │   ├── security/              # Spring Security 인증/인가 관련 공통 구현
+│       │   │   └── util/                  # 특정 도메인에 종속되지 않는 공통 유틸리티
+│       │   │
+│       │   └── UserServiceApplication.java
+│       │
+│       └── resources/
+│           └── application.yml            # User Service 실행 환경 및 Spring 설정
+│
+├── hub-service/                           # Hub 도메인을 담당하는 독립적인 MSA Service
+│   └── (user-service와 동일한 DDD + Layered Architecture 구조)
+│
+├── company-service/                       # Company 도메인을 담당하는 독립적인 MSA Service
+│   └── (user-service와 동일한 DDD + Layered Architecture 구조)
+│
+├── order-service/                         # Order 도메인을 담당하는 독립적인 MSA Service
+│   └── (user-service와 동일한 DDD + Layered Architecture 구조)
+│
+├── delivery-service/                      # Delivery 도메인을 담당하는 독립적인 MSA Service
+│   └── (user-service와 동일한 DDD + Layered Architecture 구조)
+│
+└── slack-service/                         # Slack 알림 및 메시지 연동을 담당하는 독립적인 MSA Service
+    └── (user-service와 동일한 DDD + Layered Architecture 구조)
+```
+
+### 계층별 흐름도
+
+```text
+Client
+  │
+  ▼
+presentation
+  │
+  │ Request DTO → Command / Query
+  ▼
+application
+  │
+  ├── command_service
+  ├── query_service
+  │
+  ├── domain 호출
+  │
+  └── port 호출
+          │
+          ├───────────────┐
+          ▼               ▼
+      domain       infrastructure
+          │               │
+          │               ├── client
+          │               ├── adapter
+          │               └── persistence
+          │
+          ▼
+       Entity
+```
+
+---
+
+# 🛠 기술 스택
+
+## Backend
+
+- Java 21
+- Spring Boot 4.1.0
+- Spring Security
+- Spring Data JPA
+- Hibernate
+- QueryDSL
+- JWT
+- Spring Boot Actuator
+
+## Spring Cloud
+
+- Spring Cloud 2025.1.2
+- Spring Cloud OpenFeign
+- Spring Cloud Netflix Eureka
+
+## Observability
+
+- Micrometer Tracing
+- Zipkin
+
+## Database
+
+- PostgreSQL 16
+- Redis 7
+
+## AI
+
+- Google Gemini
+
+## External Services
+
+- Slack
+
+## Testing
+
+- JUnit 5
+
+## Build
+
+- Gradle
+
+## Infrastructure
+
+- Docker
+- Docker Compose
+- AWS EC2
+
+## CI/CD
+
+- GitHub Actions
 
 ---
 

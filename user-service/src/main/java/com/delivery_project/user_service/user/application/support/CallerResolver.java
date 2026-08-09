@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,10 +19,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CallerResolver {
 
-	private final UserRepository userRepository;
+	private final UserCommandRepository userCommandRepository;
 
 	public User resolve(UUID callerId) {
-		return userRepository.findById(callerId)
+		return userCommandRepository.findById(callerId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
 	}
 }

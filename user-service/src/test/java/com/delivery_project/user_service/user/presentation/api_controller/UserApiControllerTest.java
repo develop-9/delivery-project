@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -35,7 +35,7 @@ class UserApiControllerTest {
 	private MockMvcTester mvc;
 
 	@Autowired
-	private UserRepository userRepository;
+	private UserCommandRepository userCommandRepository;
 
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
@@ -98,6 +98,19 @@ class UserApiControllerTest {
 				.hasStatus(403)
 				.bodyJson()
 				.extractingPath("$.error.errorCode").isEqualTo("READ_USER_FORBIDDEN");
+	}
+
+	@Test
+	void 허용되지_않은_size로_승인대기_목록을_조회하면_기본값_10으로_보정된다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master6", "U7000000015", Role.MASTER, null, null);
+
+		// when & then
+		assertThat(mvc.get().uri("/api/v1/users/pending?size=25")
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(200)
+				.bodyJson()
+				.extractingPath("$.data.size").isEqualTo(10);
 	}
 
 	@Test
@@ -186,7 +199,7 @@ class UserApiControllerTest {
 				}
 				""".formatted(username, slackId, role, hubField, companyField);
 		mvc.post().uri("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body).exchange();
-		return userRepository.findByUsername(username).orElseThrow().getId();
+		return userCommandRepository.findByUsername(username).orElseThrow().getId();
 	}
 
 	private String signupApprovedUserAndLogin(String username, String slackId, Role role, UUID hubId, UUID companyId) {

@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
@@ -21,7 +23,7 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
-import com.delivery_project.user_service.user.domain.repository.UserRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class AuthCommandService {
 
-	private final UserRepository userRepository;
+	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
@@ -42,10 +44,10 @@ public class AuthCommandService {
 
 		validateHubOrCompanyRequired(command);
 
-		if (userRepository.existsByUsername(command.username())) {
+		if (userCommandRepository.existsByUsername(command.username())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_USERNAME);
 		}
-		if (userRepository.existsBySlackId(command.slackId())) {
+		if (userCommandRepository.existsBySlackId(command.slackId())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
 		}
 
@@ -79,7 +81,7 @@ public class AuthCommandService {
 	 */
 	private User saveUser(User user) {
 		try {
-			return userRepository.save(user);
+			return userCommandRepository.save(user);
 		} catch (DataIntegrityViolationException e) {
 			String message = e.getMessage();
 			if (message != null && message.contains("(username)")) {
@@ -96,7 +98,7 @@ public class AuthCommandService {
 	public UserLoginResult login(UserLoginCommand command) {
 		log.info("[Auth] 로그인 시도 username={}", command.username());
 
-		User user = userRepository.findByUsername(command.username())
+		User user = userCommandRepository.findByUsername(command.username())
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
 		if (!passwordEncoder.matches(command.password(), user.getPassword())) {
@@ -117,7 +119,13 @@ public class AuthCommandService {
 		log.info("[Auth] 토큰 재발급 시도");
 
 		String requestedRefreshToken = command.refreshToken();
-		UUID userId = tokenProvider.parse(requestedRefreshToken).userId();
+		// Access Token은 refreshSecretKey로 서명되지 않았으므로 여기서 서명 검증 단계부터 실패한다.
+		// tokenType 체크는 두 시크릿이 실수로 같아지는 설정 오류에 대비한 이중 방어다.
+		JwtPrincipal principal = tokenProvider.parseRefreshToken(requestedRefreshToken);
+		if (principal.tokenType() != TokenType.REFRESH) {
+			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
+		}
+		UUID userId = principal.userId();
 
 		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));
@@ -125,7 +133,7 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED);
 		}
 
-		User user = userRepository.findById(userId)
+		User user = userCommandRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
 		if (user.getApprovalStatus() != ApprovalStatus.APPROVED) {
 			throw new BusinessException(ErrorCode.USER_NOT_APPROVED);

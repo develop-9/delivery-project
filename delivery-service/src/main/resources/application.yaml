@@ -6,7 +6,7 @@ spring:
     name: delivery-service
 
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
     username: ${POSTGRES_USERNAME}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -16,9 +16,14 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
+        default_schema: delivery_schema
         format_sql: true
     open-in-view: false
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
 eureka:
   client:
     service-url:
@@ -31,3 +36,9 @@ management:
     export:
       zipkin:
         endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans
+
+system:
+  id: ${SYSTEM_ID}
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}

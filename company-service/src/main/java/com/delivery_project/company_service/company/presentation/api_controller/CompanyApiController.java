@@ -2,6 +2,8 @@ package com.delivery_project.company_service.company.presentation.api_controller
 
 import com.delivery_project.company_service.company.application.command.*;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
+import com.delivery_project.company_service.company.application.query.CompanySearchQuery;
+import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
@@ -82,8 +84,8 @@ public class CompanyApiController implements CompanyApi {
     public ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
             @PathVariable UUID companyId
     ) {
-        CompanyGetCommand companyGetCommand = new CompanyGetRequest().toCommand(companyId);
-        CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetCommand);
+        CompanyGetQuery companyGetQuery = new CompanyGetRequest().toCommand(companyId);
+        CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetQuery);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(
@@ -96,7 +98,7 @@ public class CompanyApiController implements CompanyApi {
 
     @GetMapping
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<CompanyGetAllDataResponse>>> getAllCompany(
+    public ResponseEntity<SuccessResponse<PageResponse<CompanySearchDataResponse>>> getAllCompany(
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
@@ -104,8 +106,8 @@ public class CompanyApiController implements CompanyApi {
             @RequestParam(required = false) CompanyType companyType,
             @RequestParam(required = false) UUID hubId
     ) {
-        CompanyGetAllCommand companyGetAllCommand =
-                new CompanyGetAllRequest().toCommand(
+        CompanySearchQuery companySearchQuery =
+                new CompanySearchRequest().toCommand(
                         page,
                         size,
                         sort,
@@ -114,16 +116,16 @@ public class CompanyApiController implements CompanyApi {
                         hubId
                 );
 
-        CompanyGetAllResult companyGetAllResult = companyQueryService.getAllCompany(companyGetAllCommand);
+        CompanySearchResult companySearchResult = companyQueryService.getAllCompany(companySearchQuery);
 
-        PageResponse<CompanyGetAllDataResponse> pageResponse =
+        PageResponse<CompanySearchDataResponse> pageResponse =
                 PageResponse.of(
-                        companyGetAllResult.content(),
-                        companyGetAllResult.page(),
-                        companyGetAllResult.size(),
-                        companyGetAllResult.totalElements(),
-                        companyGetAllResult.totalPages(),
-                        CompanyGetAllDataResponse::from
+                        companySearchResult.content(),
+                        companySearchResult.page(),
+                        companySearchResult.size(),
+                        companySearchResult.totalElements(),
+                        companySearchResult.totalPages(),
+                        CompanySearchDataResponse::from
                 );
 
         return ResponseEntity.status(HttpStatus.OK)
