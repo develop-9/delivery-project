@@ -55,6 +55,13 @@ public enum ErrorCode {
 
     // 503
     USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "USER-SERVICE 호출에 실패했습니다.", "USER_SERVICE_UNAVAILABLE"),
+
+    // hub
+    // 404
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
+
+    // 503
+    HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "HUB-SERVICE 호출에 실패했습니다.", "HUB_SERVICE_UNAVAILABLE"),
     ;
 
     private final HttpStatus status;

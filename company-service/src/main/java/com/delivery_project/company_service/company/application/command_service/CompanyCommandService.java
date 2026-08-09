@@ -3,8 +3,10 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
+import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
+import com.delivery_project.company_service.company.application.port.dto.HubInfo;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
@@ -28,6 +30,7 @@ public class CompanyCommandService {
 
     private final CompanyCommandRepository companyCommandRepository;
     private final UserPort userPort;
+    private final HubPort hubPort;
 
     // [외부] 업체 저장 비즈니스 로직
     @Transactional
@@ -61,10 +64,8 @@ public class CompanyCommandService {
             );
         }
 
-        /*
-         * TODO:
-         *  Validation Check - hub_id를 통해 실제 존재하는 허브인지 확인
-         */
+        // 존재하는 허브인지 확인
+        HubInfo hubInfo = hubPort.getHub(companyCreateCommand.hubId());
 
         // 업체 생성
         Company company = Company.create(
@@ -129,10 +130,8 @@ public class CompanyCommandService {
             );
         }
 
-        /*
-         * TODO:
-         *  Validation Check - hub_id를 통해 실제 존재하는 허브인지 확인
-         */
+        // 존재하는 허브인지 확인
+        HubInfo hubInfo = hubPort.getHub(companyUpdateCommand.hubId());
 
         // 업체 정보 수정
         company.update(
