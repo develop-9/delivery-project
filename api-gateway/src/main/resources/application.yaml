@@ -32,6 +32,18 @@ spring:
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
 
+# Redis 장애 시 매 요청마다 타임아웃(2초)을 기다리지 않고, 임계치를 넘으면 즉시 fail-open
+# 처리한다(User Service와 동일 설정).
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+
 eureka:
   client:
     service-url:

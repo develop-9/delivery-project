@@ -28,6 +28,22 @@ spring:
       # 무한정(최대 1분 가까이) 대기해, 그동안 로그인/로그아웃/사용자 삭제가 전부 멈춘다.
       # Gateway의 HTTP 타임아웃(connect-timeout 2000ms)과 맞춰 2초로 잡는다.
       timeout: 2000ms
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# Redis 장애 시 매 요청마다 타임아웃(2초)을 기다리지 않고, 임계치를 넘으면 즉시 실패 처리한다.
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
