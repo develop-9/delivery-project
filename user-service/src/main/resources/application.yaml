@@ -35,6 +35,11 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+# User.name/slackId 암호화(AesGcmCipher)에 쓰는 키. 실제 값 길이와 무관하게 SHA-256으로
+# 정규화해서 쓰므로 32바이트를 맞출 필요는 없지만, 운영 환경에서는 반드시 .env로 덮어써야 한다.
+encryption:
+  key: ${ENCRYPTION_KEY:local-dev-only-encryption-key-please-override-in-env-file}
+
 # 인증된 행위자가 없는 상태에서 생성되는 행(회원가입 등)의 created_by/updated_by에 쓰는
 # 팀 공통 시스템 주체 ID. 전 서비스가 같은 값을 쓰도록 .env에서 관리한다.
 system:

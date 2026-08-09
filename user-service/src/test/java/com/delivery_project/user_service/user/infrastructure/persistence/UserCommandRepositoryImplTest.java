@@ -16,13 +16,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import com.delivery_project.user_service.global.config.JpaConfig;
 import com.delivery_project.user_service.global.config.UserTableIndexInitializer;
+import com.delivery_project.user_service.global.crypto.AesGcmCipher;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaConfig.class, UserCommandRepositoryImpl.class, UserTableIndexInitializer.class})
+@Import({JpaConfig.class, UserCommandRepositoryImpl.class, UserTableIndexInitializer.class, AesGcmCipher.class})
 class UserCommandRepositoryImplTest {
 
 	@Autowired

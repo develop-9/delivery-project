@@ -6,8 +6,11 @@ import java.util.UUID;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.delivery_project.user_service.global.common.BaseDeletableEntity;
+import com.delivery_project.user_service.user.infrastructure.persistence.converter.NameConverter;
+import com.delivery_project.user_service.user.infrastructure.persistence.converter.SlackIdConverter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -42,10 +45,14 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "password", nullable = false, length = 255)
 	private String password;
 
-	@Column(name = "name", nullable = false, length = 100)
+	// name/slack_id는 AttributeConverter로 저장 시 AES-256-GCM 암호화된다(AesGcmCipher 참고).
+	// 컬럼 길이는 원문보다 암호문(IV+태그 포함, Base64)이 더 길어지는 걸 감안해 넉넉히 잡는다.
+	@Convert(converter = NameConverter.class)
+	@Column(name = "name", nullable = false, length = 255)
 	private String name;
 
-	@Column(name = "slack_id", nullable = false, length = 100)
+	@Convert(converter = SlackIdConverter.class)
+	@Column(name = "slack_id", nullable = false, length = 255)
 	private String slackId;
 
 	@Enumerated(EnumType.STRING)
