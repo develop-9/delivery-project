@@ -1,6 +1,6 @@
 package com.delivery_project.slack_service.ai_history.application.query_service;
 
-import com.delivery_project.slack_service.ai_history.application.command.AiHistorySearchCommand;
+import com.delivery_project.slack_service.ai_history.application.query.AiHistorySearchQuery;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryListResult;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
@@ -99,8 +99,8 @@ class AiHistoryQueryServiceTest {
         Instant startDate = Instant.parse("2026-08-01T00:00:00Z");
         Instant endDate = Instant.parse("2026-08-09T23:59:59Z");
 
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         orderId,
                         AiHistoryStatus.SUCCESS,
                         "gemini-2.5-flash",
@@ -168,8 +168,8 @@ class AiHistoryQueryServiceTest {
     @DisplayName("허용되지 않은 size 값은 기본값 10으로 정규화한다")
     void findAll_invalidSizeUsesDefault() {
         // given
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         null,
                         null,
                         null,
@@ -223,8 +223,8 @@ class AiHistoryQueryServiceTest {
     @DisplayName("page가 음수이면 검색 조건 예외가 발생한다")
     void findAll_invalidPage() {
         // given
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         null,
                         null,
                         null,
@@ -246,8 +246,8 @@ class AiHistoryQueryServiceTest {
     @DisplayName("시작일이 종료일보다 늦으면 검색 조건 예외가 발생한다")
     void findAll_invalidDateRange() {
         // given
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         null,
                         null,
                         null,
@@ -269,8 +269,8 @@ class AiHistoryQueryServiceTest {
     @DisplayName("허용되지 않은 정렬 필드이면 검색 조건 예외가 발생한다")
     void findAll_invalidSortField() {
         // given
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         null,
                         null,
                         null,
@@ -292,8 +292,8 @@ class AiHistoryQueryServiceTest {
     @DisplayName("허용되지 않은 정렬 방향이면 검색 조건 예외가 발생한다")
     void findAll_invalidSortDirection() {
         // given
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery command =
+                AiHistorySearchQuery.of(
                         null,
                         null,
                         null,
@@ -312,7 +312,7 @@ class AiHistoryQueryServiceTest {
     }
 
     private void assertInvalidSearchCondition(
-            AiHistorySearchCommand command
+            AiHistorySearchQuery command
     ) {
         assertThatThrownBy(
                 () -> aiHistoryQueryService.findAll(command)

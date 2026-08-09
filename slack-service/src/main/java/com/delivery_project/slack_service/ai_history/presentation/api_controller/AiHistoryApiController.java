@@ -3,7 +3,7 @@ package com.delivery_project.slack_service.ai_history.presentation.api_controlle
 import com.delivery_project.slack_service.global.response.ErrorResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.delivery_project.slack_service.ai_history.application.command.AiHistorySearchCommand;
+import com.delivery_project.slack_service.ai_history.application.query.AiHistorySearchQuery;
 import com.delivery_project.slack_service.ai_history.application.query_service.AiHistoryQueryService;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryListResult;
@@ -171,8 +171,8 @@ public class AiHistoryApiController {
     ) {
         String[] sortValues = parseSort(sort);
 
-        AiHistorySearchCommand command =
-                AiHistorySearchCommand.of(
+        AiHistorySearchQuery query =
+                AiHistorySearchQuery.of(
                         orderId,
                         parseStatus(status),
                         modelName,
@@ -185,7 +185,7 @@ public class AiHistoryApiController {
                 );
 
         PageData<AiHistoryListResult> result =
-                aiHistoryQueryService.findAll(command);
+                aiHistoryQueryService.findAll(query);
 
         PageResponse<AiHistoryListResponse> response =
                 PageResponse.from(

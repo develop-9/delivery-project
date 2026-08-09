@@ -1,11 +1,11 @@
-package com.delivery_project.slack_service.ai_history.application.command;
+package com.delivery_project.slack_service.ai_history.application.query;
 
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
 
 import java.time.Instant;
 import java.util.UUID;
 
-public record AiHistorySearchCommand(
+public record AiHistorySearchQuery(
         UUID orderId,
         AiHistoryStatus status,
         String modelName,
@@ -17,7 +17,7 @@ public record AiHistorySearchCommand(
         String sortDirection
 ) {
 
-    public static AiHistorySearchCommand of(
+    public static AiHistorySearchQuery of(
             UUID orderId,
             AiHistoryStatus status,
             String modelName,
@@ -28,7 +28,7 @@ public record AiHistorySearchCommand(
             String sortField,
             String sortDirection
     ) {
-        return new AiHistorySearchCommand(
+        return new AiHistorySearchQuery(
                 orderId,
                 status,
                 modelName,

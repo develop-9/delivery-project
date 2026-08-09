@@ -2,6 +2,7 @@ package com.delivery_project.slack_service.ai_history.application.command_servic
 
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.repository.AiHistoryCommandRepository;
+import com.delivery_project.slack_service.ai_history.domain.repository.AiHistoryQueryRepository;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class AiHistoryStatusCommandService {
 
     private final AiHistoryCommandRepository aiHistoryCommandRepository;
+    private final AiHistoryQueryRepository aiHistoryQueryRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID createPending(
@@ -75,7 +77,7 @@ public class AiHistoryStatusCommandService {
     private AiHistory findAiHistory(
             UUID aiHistoryId
     ) {
-        return aiHistoryCommandRepository
+        return aiHistoryQueryRepository
                 .findById(aiHistoryId)
                 .orElseThrow(() ->
                         new BusinessException(

@@ -1,88 +1,118 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
-import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
-import com.delivery_project.slack_service.ai_history.domain.repository.AiHistoryCommandRepository;
-import com.delivery_project.slack_service.ai_history.domain.repository.AiHistoryQueryRepository;
+import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
+import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
+import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
+import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
+import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class AiHistoryStatusCommandService {
+public class AiHistoryCommandService {
 
-    private final AiHistoryCommandRepository aiHistoryCommandRepository;
-    private final AiHistoryQueryRepository aiHistoryQueryRepository;
+    private final OrderSummaryClient orderSummaryClient;
+    private final DeliveryRouteClient deliveryRouteClient;
+    private final AiGenerationClient aiGenerationClient;
+    private final AiPromptGenerator aiPromptGenerator;
+    private final AiHistoryStatusCommandService aiHistoryStatusCommandService;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public UUID createPending(
-            UUID orderId,
-            String prompt,
-            Instant requestedAt
+    public AiHistoryCreateResult create(
+            AiHistoryCreateCommand command
     ) {
-        AiHistory aiHistory = AiHistory.createPending(
-                orderId,
-                prompt,
-                requestedAt
-        );
-
-        AiHistory savedAiHistory =
-                aiHistoryCommandRepository.save(aiHistory);
-
-        return savedAiHistory.getId();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public AiHistory complete(
-            UUID aiHistoryId,
-            String modelName,
-            Instant finalDispatchDeadline,
-            Instant respondedAt
-    ) {
-        AiHistory aiHistory =
-                findAiHistory(aiHistoryId);
-
-        aiHistory.complete(
-                modelName,
-                finalDispatchDeadline,
-                respondedAt
-        );
-
-        return aiHistoryCommandRepository.save(aiHistory);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void fail(
-            UUID aiHistoryId,
-            String modelName,
-            Instant respondedAt
-    ) {
-        AiHistory aiHistory =
-                findAiHistory(aiHistoryId);
-
-        aiHistory.fail(
-                modelName,
-                respondedAt
-        );
-
-        aiHistoryCommandRepository.save(aiHistory);
-    }
-
-    private AiHistory findAiHistory(
-            UUID aiHistoryId
-    ) {
-        return aiHistoryQueryRepository
-                .findById(aiHistoryId)
-                .orElseThrow(() ->
-                        new BusinessException(
-                                ErrorCode.AI_HISTORY_NOT_FOUND
-                        )
+        OrderSummaryResult orderSummary =
+                orderSummaryClient.getOrderSummary(
+                        command.orderId()
                 );
+
+        DeliveryRouteResult deliveryRoute =
+                deliveryRouteClient.getRoutesByOrderId(
+                        command.orderId()
+                );
+
+        validateDeliveryRoute(deliveryRoute);
+
+        String prompt =
+                aiPromptGenerator.generate(
+                        orderSummary,
+                        deliveryRoute
+                );
+
+        Instant requestedAt = Instant.now();
+
+        UUID aiHistoryId =
+                aiHistoryStatusCommandService.createPending(
+                        command.orderId(),
+                        prompt,
+                        requestedAt
+                );
+
+        AiGenerationResult generationResult;
+
+        try {
+            generationResult =
+                    aiGenerationClient
+                            .generateFinalDispatchDeadline(
+                                    prompt
+                            );
+        } catch (BusinessException exception) {
+            saveFailedHistory(
+                    aiHistoryId,
+                    null
+            );
+
+            throw exception;
+        } catch (Exception exception) {
+            saveFailedHistory(
+                    aiHistoryId,
+                    null
+            );
+
+            throw new BusinessException(
+                    ErrorCode.AI_REQUEST_FAILED
+            );
+        }
+
+        return AiHistoryCreateResult.from(
+                aiHistoryStatusCommandService.complete(
+                        aiHistoryId,
+                        generationResult.modelName(),
+                        generationResult.finalDispatchDeadline(),
+                        Instant.now()
+                )
+        );
+    }
+
+    private void validateDeliveryRoute(
+            DeliveryRouteResult deliveryRoute
+    ) {
+        if (
+                deliveryRoute.routes() == null
+                        || deliveryRoute.routes().isEmpty()
+        ) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+            );
+        }
+    }
+
+    private void saveFailedHistory(
+            UUID aiHistoryId,
+            String modelName
+    ) {
+        aiHistoryStatusCommandService.fail(
+                aiHistoryId,
+                modelName,
+                Instant.now()
+        );
     }
 }

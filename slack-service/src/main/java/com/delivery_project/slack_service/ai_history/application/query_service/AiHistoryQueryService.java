@@ -1,6 +1,6 @@
 package com.delivery_project.slack_service.ai_history.application.query_service;
 
-import com.delivery_project.slack_service.ai_history.application.command.AiHistorySearchCommand;
+import com.delivery_project.slack_service.ai_history.application.query.AiHistorySearchQuery;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryListResult;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
@@ -54,31 +54,31 @@ public class AiHistoryQueryService {
     }
 
     public PageData<AiHistoryListResult> findAll(
-            AiHistorySearchCommand command
+            AiHistorySearchQuery query
     ) {
-        validatePage(command.page());
+        validatePage(query.page());
         validateDateRange(
-                command.startDate(),
-                command.endDate()
+                query.startDate(),
+                query.endDate()
         );
-        validateSortField(command.sortField());
-        validateSortDirection(command.sortDirection());
+        validateSortField(query.sortField());
+        validateSortDirection(query.sortDirection());
 
-        int validatedSize = normalizeSize(command.size());
+        int validatedSize = normalizeSize(query.size());
 
         String validatedSortDirection =
-                command.sortDirection().toUpperCase(Locale.ROOT);
+                query.sortDirection().toUpperCase(Locale.ROOT);
 
         return aiHistoryQueryRepository
                 .findAll(
-                        command.orderId(),
-                        command.status(),
-                        command.modelName(),
-                        command.startDate(),
-                        command.endDate(),
-                        command.page(),
+                        query.orderId(),
+                        query.status(),
+                        query.modelName(),
+                        query.startDate(),
+                        query.endDate(),
+                        query.page(),
                         validatedSize,
-                        command.sortField(),
+                        query.sortField(),
                         validatedSortDirection
                 )
                 .map(AiHistoryListResult::from);
