@@ -46,6 +46,15 @@ public enum ErrorCode {
 
     // 404
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품이 존재하지 않습니다.", "PRODUCT_NOT_FOUND"),
+
+
+    // === internal ===
+    // user
+    // 404
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
+
+    // 503
+    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "USER-SERVICE 호출에 실패했습니다.", "USER_SERVICE_UNAVAILABLE"),
     ;
 
     private final HttpStatus status;

@@ -2,6 +2,7 @@ package com.delivery_project.company_service.company.presentation.request;
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -24,8 +25,10 @@ public record CompanyCreateRequest(
         @Size(max = 255)
         String address
 ) {
-        public CompanyCreateCommand toCommand() {
+        public CompanyCreateCommand toCommand(JwtPrincipal jwtPrincipal) {
                 return new CompanyCreateCommand(
+                        jwtPrincipal.userId(),
+                        jwtPrincipal.role(),
                         this.hubId,
                         this.type,
                         this.name,

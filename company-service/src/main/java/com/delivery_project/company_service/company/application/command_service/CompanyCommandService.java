@@ -3,6 +3,8 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
+import com.delivery_project.company_service.company.application.port.UserPort;
+import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
@@ -10,11 +12,13 @@ import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -23,15 +27,44 @@ import java.util.UUID;
 public class CompanyCommandService {
 
     private final CompanyCommandRepository companyCommandRepository;
+    private final UserPort userPort;
 
     // [외부] 업체 저장 비즈니스 로직
     @Transactional
     public CompanyCreateResult createCompany(CompanyCreateCommand companyCreateCommand) {
+
+        log.info(
+                "업체 생성 요청. callerId={}",
+                companyCreateCommand.callerId()
+        );
+
+        // 업체 생성 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(companyCreateCommand.callerId());
+
+        // Master, 담당 Hub Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                                callerInfo.role() == Role.HUB_MANAGER
+                                        && Objects.equals(
+                                                callerInfo.hubId(),
+                                                companyCreateCommand.hubId()
+                                        )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
+
         /*
-        * TODO:
-        *  Validation Check - 권한 검증 (Master와 담당 Hub Manager만 가능)
-        *  Validation Check - hub_id를 통해 실제 존재하는 허브인지 확인
-        */
+         * TODO:
+         *  Validation Check - hub_id를 통해 실제 존재하는 허브인지 확인
+         */
 
         // 업체 생성
         Company company = Company.create(
@@ -50,6 +83,7 @@ public class CompanyCommandService {
                 savedCompany.getCreatedBy()
         );
 
+        // 결과 반환
         return CompanyCreateResult.from(savedCompany.getId());
     }
 
@@ -57,13 +91,46 @@ public class CompanyCommandService {
     @Transactional
     public CompanyUpdateResult updateCompany(CompanyUpdateCommand companyUpdateCommand) {
 
-        // Validation Check - 업체 존재 여부 판단
-        Company company = companyCommandRepository.findById(companyUpdateCommand.companyId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+        log.info(
+                "업체 수정 요청. callerId={}",
+                companyUpdateCommand.callerId()
+        );
+
+        // 업체가 존재하는지 확인
+        Company company = validateCompany(companyUpdateCommand.companyId());
+
+        // 업체 수정 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(companyUpdateCommand.callerId());
+
+        // Master, 담당 Hub Manager, 담당 Company Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                                callerInfo.role() == Role.HUB_MANAGER
+                                        && Objects.equals(
+                                                callerInfo.hubId(),
+                                                companyUpdateCommand.hubId()
+                                )
+                )
+                        || (
+                                callerInfo.role() == Role.COMPANY_MANAGER
+                                        && Objects.equals(
+                                                callerInfo.companyId(),
+                                                companyUpdateCommand.companyId()
+                                )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
 
         /*
          * TODO:
-         *  Validation Check - 권한 검증 (Master와 담당 Hub Manager, 담당 Company Manager만 가능)
          *  Validation Check - hub_id를 통해 실제 존재하는 허브인지 확인
          */
 
@@ -81,6 +148,7 @@ public class CompanyCommandService {
                 company.getUpdatedBy()
         );
 
+        // 결과 반환
         return CompanyUpdateResult.from(company.getId());
     }
 
@@ -88,20 +156,36 @@ public class CompanyCommandService {
     @Transactional
     public CompanyDeleteResult deleteCompany(CompanyDeleteCommand companyDeleteCommand) {
 
-        // Validation Check - 업체 존재 여부 판단
-        Company company = companyCommandRepository.findById(companyDeleteCommand.companyId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+        log.info(
+                "업체 삭제 요청. callerId={}",
+                companyDeleteCommand.callerId()
+        );
 
-        /*
-         * TODO:
-         *  Validation Check - 권한 검증 (Master와 담당 Hub Manager만 가능)
-         */
+        // 업체가 존재하는지 확인
+        Company company = validateCompany(companyDeleteCommand.companyId());
 
-        /*
-         * TODO:
-         *  권한이 통과된 사용자의 UUID 기입
-         *  현재는 임의로 생성된 UUID를 작성
-         */
+        // 업체 생성 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(companyDeleteCommand.callerId());
+
+        // Master, 담당 Hub Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                company.getHubId()
+                        )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
 
         /*
          * TODO:
@@ -109,7 +193,8 @@ public class CompanyCommandService {
          *  허브에 존재하는 상품들 삭제
          */
 
-        company.delete(UUID.fromString("12345678-1234-5678-1234-123456789123"));
+        // 업체 논리 삭제
+        company.delete(companyDeleteCommand.callerId());
 
         log.info(
                 "업체 논리 삭제 완료. companyId={}, deletedBy={}",
@@ -117,6 +202,14 @@ public class CompanyCommandService {
                 company.getDeletedBy()
         );
 
+        // 결과 반환
         return CompanyDeleteResult.from(company.getId(), company.getDeletedAt());
+    }
+
+
+    // Validation Check - 업체 존재 여부 판단
+    private Company validateCompany(UUID companyId) {
+        return companyCommandRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
     }
 }
