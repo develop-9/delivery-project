@@ -88,7 +88,7 @@ services:
       POSTGRES_DB: delivery_db
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      EUREKA_URL: http://eureka-server:8761/eureka/
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
       ZIPKIN_HOST: zipkin
 
     container_name: slack-service
