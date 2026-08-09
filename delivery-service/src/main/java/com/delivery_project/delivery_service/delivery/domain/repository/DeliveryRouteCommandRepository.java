@@ -26,4 +26,8 @@ public interface DeliveryRouteCommandRepository {
     );
 
     Optional<DeliveryRoute> findLastByDeliveryId(UUID deliveryId);
+
+    List<DeliveryRoute> findAllByDeliveryIdAndDeletedAtIsNull(
+            UUID deliveryId
+    );
 }

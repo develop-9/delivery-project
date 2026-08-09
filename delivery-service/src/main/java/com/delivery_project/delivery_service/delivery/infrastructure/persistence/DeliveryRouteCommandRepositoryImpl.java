@@ -68,4 +68,12 @@ public class DeliveryRouteCommandRepositoryImpl
                         deliveryId
                 );
     }
+
+    @Override
+    public List<DeliveryRoute> findAllByDeliveryIdAndDeletedAtIsNull(
+            UUID deliveryId
+    ) {
+        return springDataRepository
+                .findAllByDeliveryIdAndDeletedAtIsNull(deliveryId);
+    }
 }

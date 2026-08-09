@@ -1,5 +1,6 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryDeleteCommand;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryCommandService;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
@@ -135,6 +136,25 @@ public class DeliveryApiController {
 
         return SuccessResponse.success(
                 DeliveryUpdateResponse.from(result)
+        );
+    }
+
+    @DeleteMapping("/{deliveryId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryDeleteResponse> deleteDelivery(
+            @PathVariable UUID deliveryId,
+            @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        DeliveryDeleteCommand command =
+                new DeliveryDeleteCommand(
+                        deliveryId,
+                        principal.userId()
+                );
+        DeliveryDeleteResult result =
+                deliveryCommandService.delete(command);
+
+        return SuccessResponse.success(
+                DeliveryDeleteResponse.from(result)
         );
     }
 

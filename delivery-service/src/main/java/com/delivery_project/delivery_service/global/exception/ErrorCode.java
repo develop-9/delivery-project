@@ -24,6 +24,7 @@ public enum ErrorCode {
     DELIVERY_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 배송입니다.", "DELIVERY_ALREADY_CANCELED"),
     DELIVERY_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 취소할 수 없습니다.", "DELIVERY_CANCEL_NOT_ALLOWED"),
     DELIVERY_ALREADY_STARTED(HttpStatus.CONFLICT, "이미 시작된 배송은 수정할 수 없습니다." ,"DELIVERY_ALREADY_STARTED"),
+    DELIVERY_DELETE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 삭제할 수 없습니다.", "DELIVERY_DELETE_NOT_ALLOWED"),
 
     // DeliveryRoute ErrorCode
     DELIVERY_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 경로를 찾을 수 없습니다.", "DELIVERY_ROUTE_NOT_FOUND"),

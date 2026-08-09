@@ -1,9 +1,6 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.*;
@@ -173,6 +170,45 @@ public class DeliveryCommandService {
         return DeliveryUpdateResult.from(savedDelivery);
     }
 
+    @Transactional
+    public DeliveryDeleteResult delete(
+            DeliveryDeleteCommand command
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+        // PENDING / CANCELED 상태만 삭제 가능
+        delivery.validateDeletable();
+
+        List<DeliveryRoute> routes =
+                deliveryRouteCommandRepository
+                        .findAllByDeliveryIdAndDeletedAtIsNull(
+                                delivery.getId()
+                        );
+        // 혹시 남아있는 담당자가 있다면 AVAILABLE 복원
+        releaseAssignedManagersForDelete(delivery);
+
+        // Delivery 논리 삭제
+        delivery.delete(command.deletedBy());
+
+        // 연결된 Route 전체 논리 삭제
+        for(DeliveryRoute route : routes){
+            route.delete(command.deletedBy());
+        }
+
+        deliveryRouteCommandRepository.saveAll(routes);
+
+        Delivery savedDelivery =
+                deliveryCommandRepository.save(delivery);
+
+        return DeliveryDeleteResult.from(savedDelivery);
+    }
+
     private void validateDuplicateOrder(
             java.util.UUID orderId
     ) {
@@ -318,7 +354,7 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: #53 완료 후 담당 Hub 기준 권한 검증 추가
+            // TODO: #51 완료 후 담당 Hub 기준 권한 검증 추가
             return;
         }
 
@@ -346,5 +382,56 @@ public class DeliveryCommandService {
         throw new BusinessException(
                 ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
         );
+    }
+
+    private void releaseAssignedManagersForDelete(
+            Delivery delivery
+    ) {
+        UUID managerId = delivery.getCompanyDeliveryManagerId();
+
+        if (managerId != null) {
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findById(managerId)
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                    )
+                            );
+
+            if (manager.getStatus()
+                    == DeliveryManagerStatus.DELIVERING) {
+                manager.releaseFromDelivery();
+            }
+        }
+
+        List<DeliveryRoute> inTransitRoutes =
+                deliveryRouteCommandRepository
+                        .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                                delivery.getId(),
+                                DeliveryRouteStatus.IN_TRANSIT
+                        );
+
+        for (DeliveryRoute route : inTransitRoutes) {
+            UUID hubManagerId = route.getDeliveryManagerId();
+
+            if (hubManagerId == null) {
+                continue;
+            }
+
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findById(hubManagerId)
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                    )
+                            );
+
+            if (manager.getStatus()
+                    == DeliveryManagerStatus.DELIVERING) {
+                manager.releaseFromDelivery();
+            }
+        }
     }
 }

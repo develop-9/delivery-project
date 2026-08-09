@@ -31,4 +31,8 @@ public interface SpringDataDeliveryRouteRepository
     findAllByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(
             UUID deliveryId
     );
+
+    List<DeliveryRoute> findAllByDeliveryIdAndDeletedAtIsNull(
+            UUID deliveryId
+    );
 }
