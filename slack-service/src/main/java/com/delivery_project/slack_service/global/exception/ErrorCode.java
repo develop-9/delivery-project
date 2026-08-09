@@ -29,6 +29,8 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "요청 형식이 올바르지 않습니다.",
             "INVALID_REQUEST"
+    ),
+
     // 401
     AUTH_UNAUTHORIZED(
             HttpStatus.UNAUTHORIZED,
@@ -68,6 +70,12 @@ public enum ErrorCode {
             "SLACK_MESSAGE_NOT_FOUND"
     ),
 
+    USER_SLACK_ID_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "사용자의 Slack ID를 찾을 수 없습니다.",
+            "USER_SLACK_ID_NOT_FOUND"
+    ),
+
     AI_HISTORY_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "AI 요청 이력이 존재하지 않습니다.",
@@ -84,16 +92,6 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "주문이 존재하지 않습니다.",
             "ORDER_NOT_FOUND"
-    USER_SLACK_ID_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
-            "사용자의 Slack ID를 찾을 수 없습니다.",
-            "USER_SLACK_ID_NOT_FOUND"
-    ),
-
-    DEPENDENCY_SERVICE_UNAVAILABLE(
-            HttpStatus.SERVICE_UNAVAILABLE,
-            "연관 서비스를 사용할 수 없습니다.",
-            "DEPENDENCY_SERVICE_UNAVAILABLE"
     ),
 
     // 409
@@ -110,22 +108,24 @@ public enum ErrorCode {
             "INTERNAL_SERVER_ERROR"
     ),
 
-    DEPENDENCY_SERVICE_UNAVAILABLE(
-            HttpStatus.SERVICE_UNAVAILABLE,
-            "연관 서비스를 사용할 수 없습니다.",
-            "DEPENDENCY_SERVICE_UNAVAILABLE"
+    AI_RESPONSE_PARSE_FAILED(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "AI 응답 분석에 실패했습니다.",
+            "AI_RESPONSE_PARSE_FAILED"
     ),
 
+    // 502
     AI_REQUEST_FAILED(
             HttpStatus.BAD_GATEWAY,
             "AI 요청에 실패했습니다.",
             "AI_REQUEST_FAILED"
     ),
 
-    AI_RESPONSE_PARSE_FAILED(
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            "AI 응답 분석에 실패했습니다.",
-            "AI_RESPONSE_PARSE_FAILED"
+    // 503
+    DEPENDENCY_SERVICE_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "연관 서비스를 사용할 수 없습니다.",
+            "DEPENDENCY_SERVICE_UNAVAILABLE"
     );
 
     private final HttpStatus status;

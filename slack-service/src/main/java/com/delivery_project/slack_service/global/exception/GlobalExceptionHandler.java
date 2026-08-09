@@ -101,19 +101,10 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
-    public ResponseEntity<ErrorResponse> handleInvalidRequestException(
-            Exception exception
-    ) {
-        log.warn(
-                "[InvalidRequest] {}",
-                exception.getMessage()
-        );
-
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
-    }
-
-    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    @ExceptionHandler({
+            AccessDeniedException.class,
+            AuthorizationDeniedException.class
+    })
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(
             Exception exception
     ) {
@@ -122,7 +113,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.AUTH_FORBIDDEN);
+        return createResponse(
+                ErrorCode.AUTH_FORBIDDEN
+        );
     }
 
     // HTTP 요청은 필터체인이 먼저 401을 내므로 여기까지 오지 않는다.
@@ -136,7 +129,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.AUTH_UNAUTHORIZED);
+        return createResponse(
+                ErrorCode.AUTH_UNAUTHORIZED
+        );
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
