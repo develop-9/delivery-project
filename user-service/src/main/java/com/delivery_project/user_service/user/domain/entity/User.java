@@ -111,6 +111,20 @@ public class User extends BaseDeletableEntity {
 		this.approvalStatus = ApprovalStatus.REJECTED;
 	}
 
+	public void suspend() {
+		if (this.approvalStatus != ApprovalStatus.APPROVED) {
+			throw new IllegalStateException("승인된 사용자만 정지할 수 있습니다.");
+		}
+		this.approvalStatus = ApprovalStatus.SUSPENDED;
+	}
+
+	public void reinstate() {
+		if (this.approvalStatus != ApprovalStatus.SUSPENDED) {
+			throw new IllegalStateException("정지된 사용자만 정지 해제할 수 있습니다.");
+		}
+		this.approvalStatus = ApprovalStatus.APPROVED;
+	}
+
 	public void updateProfile(String name, String slackId) {
 		if (name != null) {
 			this.name = name;

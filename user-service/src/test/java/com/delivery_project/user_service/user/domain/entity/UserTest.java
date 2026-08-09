@@ -83,6 +83,54 @@ class UserTest {
 				.isInstanceOf(IllegalStateException.class);
 	}
 
+	@Test
+	void APPROVED_상태의_사용자를_정지하면_SUSPENDED_상태가_된다() {
+		// given
+		User user = createUser();
+		user.approve(UUID.randomUUID());
+
+		// when
+		user.suspend();
+
+		// then
+		assertThat(user.getApprovalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+	}
+
+	@Test
+	void APPROVED가_아닌_사용자를_정지하려하면_IllegalStateException이_발생한다() {
+		// given
+		User user = createUser();
+
+		// when & then
+		assertThatThrownBy(user::suspend)
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void SUSPENDED_상태의_사용자를_정지_해제하면_APPROVED_상태로_돌아간다() {
+		// given
+		User user = createUser();
+		user.approve(UUID.randomUUID());
+		user.suspend();
+
+		// when
+		user.reinstate();
+
+		// then
+		assertThat(user.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+	}
+
+	@Test
+	void SUSPENDED가_아닌_사용자를_정지_해제하려하면_IllegalStateException이_발생한다() {
+		// given
+		User user = createUser();
+		user.approve(UUID.randomUUID());
+
+		// when & then
+		assertThatThrownBy(user::reinstate)
+				.isInstanceOf(IllegalStateException.class);
+	}
+
 	private User createUser() {
 		return User.builder()
 				.username("kim123")

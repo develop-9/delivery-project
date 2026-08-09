@@ -183,6 +183,125 @@ class UserApiControllerTest {
 				.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_INVALID");
 	}
 
+	@Test
+	void MASTER가_정지하면_200과_SUSPENDED_상태를_반환한다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master7", "U7000000016", Role.MASTER, null, null);
+		signupApprovedUserAndLogin("target7", "U7000000017", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		UUID targetId = userCommandRepository.findByUsername("target7").orElseThrow().getId();
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId)
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(200)
+				.bodyJson()
+				.extractingPath("$.data.approvalStatus").isEqualTo("SUSPENDED");
+	}
+
+	@Test
+	void 정지된_계정의_기존_토큰으로는_이후_요청이_403을_반환한다() {
+		// given: 정지 이전에 발급받은 토큰을 그대로 재사용 — CallerResolver가 승인 상태를 다시 검증하는지 확인
+		String masterToken = signupApprovedUserAndLogin("master8", "U7000000018", Role.MASTER, null, null);
+		String targetToken = signupApprovedUserAndLogin("target8", "U7000000019", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		UUID targetId = userCommandRepository.findByUsername("target8").orElseThrow().getId();
+		mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId)
+				.header("Authorization", "Bearer " + masterToken)
+				.exchange();
+
+		// when & then
+		assertThat(mvc.get().uri("/api/v1/users/me")
+				.header("Authorization", "Bearer " + targetToken))
+				.hasStatus(403)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("USER_NOT_APPROVED");
+	}
+
+	@Test
+	void MASTER가_아니면_정지시_403을_반환한다() {
+		// given
+		String companyManagerToken = signupApprovedUserAndLogin("company9", "U7000000020", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		UUID targetId = signupUser("target9", "U7000000021", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId)
+				.header("Authorization", "Bearer " + companyManagerToken))
+				.hasStatus(403)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("SUSPEND_USER_FORBIDDEN");
+	}
+
+	@Test
+	void PENDING_사용자를_정지하려하면_409를_반환한다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master10", "U7000000022", Role.MASTER, null, null);
+		UUID targetId = signupUser("target10", "U7000000023", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId)
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(409)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("USER_NOT_SUSPENDABLE");
+	}
+
+	@Test
+	void 존재하지_않는_사용자를_정지하려하면_404를_반환한다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master11", "U7000000024", Role.MASTER, null, null);
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/suspend", UUID.randomUUID())
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(404)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("USER_NOT_FOUND");
+	}
+
+	@Test
+	void MASTER가_정지_해제하면_200과_APPROVED_상태를_반환한다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master12", "U7000000025", Role.MASTER, null, null);
+		signupApprovedUserAndLogin("target12", "U7000000026", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		UUID targetId = userCommandRepository.findByUsername("target12").orElseThrow().getId();
+		mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId)
+				.header("Authorization", "Bearer " + masterToken)
+				.exchange();
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/reinstate", targetId)
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(200)
+				.bodyJson()
+				.extractingPath("$.data.approvalStatus").isEqualTo("APPROVED");
+	}
+
+	@Test
+	void 정지되지_않은_사용자를_정지_해제하려하면_409를_반환한다() {
+		// given
+		String masterToken = signupApprovedUserAndLogin("master13", "U7000000027", Role.MASTER, null, null);
+		signupApprovedUserAndLogin("target13", "U7000000028", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		UUID targetId = userCommandRepository.findByUsername("target13").orElseThrow().getId();
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/reinstate", targetId)
+				.header("Authorization", "Bearer " + masterToken))
+				.hasStatus(409)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("USER_NOT_SUSPENDED");
+	}
+
+	@Test
+	void Authorization_헤더가_없으면_정지시_401을_반환한다() {
+		// given
+		UUID targetId = signupUser("target14", "U7000000029", Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		// when & then
+		assertThat(mvc.patch().uri("/api/v1/users/{userId}/suspend", targetId))
+				.hasStatus(401)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_INVALID");
+	}
+
 	private UUID signupUser(String username, String slackId, Role role, UUID hubId, UUID companyId) {
 		String hubField = hubId != null ? "\"hubId\": \"" + hubId + "\"," : "";
 		String companyField = companyId != null ? "\"companyId\": \"" + companyId + "\"," : "";

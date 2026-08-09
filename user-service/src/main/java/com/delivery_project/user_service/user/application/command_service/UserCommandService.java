@@ -16,13 +16,17 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.command.UserApproveCommand;
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserReinstateCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
+import com.delivery_project.user_service.user.application.command.UserSuspendCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.port.DeliveryManagerPort;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
+import com.delivery_project.user_service.user.application.result.UserReinstateResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
+import com.delivery_project.user_service.user.application.result.UserSuspendResult;
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
@@ -104,6 +108,68 @@ public class UserCommandService {
 		log.info("[User] 회원가입 거절 완료 targetUserId={} rejectedBy={}", command.targetUserId(), caller.getId());
 
 		return UserRejectResult.from(target);
+	}
+
+	/**
+	 * 정지는 delete()와 달리 다른 서비스로의 Feign 호출이 없어 트랜잭션 경계를 따로 분리할
+	 * 필요가 없다. Refresh Token 삭제 + Access Token 무효화는 delete()와 동일한 이유(커밋
+	 * 실패 시 무고한 사용자가 부당하게 차단되는 것 방지)로 커밋 이후로 미룬다.
+	 */
+	public UserSuspendResult suspend(UUID callerId, UserSuspendCommand command) {
+		User caller = callerResolver.resolve(callerId);
+		if (!caller.isMaster()) {
+			throw new BusinessException(ErrorCode.SUSPEND_USER_FORBIDDEN);
+		}
+
+		User target = userCommandRepository.findById(command.targetUserId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		if (target.getApprovalStatus() != ApprovalStatus.APPROVED) {
+			throw new BusinessException(ErrorCode.USER_NOT_SUSPENDABLE);
+		}
+
+		if (target.getRole() == Role.MASTER && userCommandRepository.countActiveMasters() <= 1) {
+			throw new BusinessException(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
+		}
+
+		target.suspend();
+		refreshTokenRepository.deleteByUserId(target.getId());
+
+		UUID targetId = target.getId();
+		Instant invalidatedAt = Instant.now();
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				userInvalidationRepository.invalidate(targetId, invalidatedAt);
+			}
+		});
+		log.info("[User] 계정 정지 완료 targetUserId={} suspendedBy={}", command.targetUserId(), caller.getId());
+
+		return UserSuspendResult.from(target);
+	}
+
+	/**
+	 * 정지 해제는 CallerResolver의 승인 상태 검증(APPROVED만 통과)이 다시 걸리게 하는 것뿐이라,
+	 * 삭제/정지와 달리 Redis에 남길 것이 없다 — 무효화 기록을 지우는 게 아니라 그냥 만료를
+	 * 기다리면 되고, 재승인 이후엔 어차피 새로 로그인해서 새 토큰을 받아야 한다.
+	 */
+	public UserReinstateResult reinstate(UUID callerId, UserReinstateCommand command) {
+		User caller = callerResolver.resolve(callerId);
+		if (!caller.isMaster()) {
+			throw new BusinessException(ErrorCode.REINSTATE_USER_FORBIDDEN);
+		}
+
+		User target = userCommandRepository.findById(command.targetUserId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		if (target.getApprovalStatus() != ApprovalStatus.SUSPENDED) {
+			throw new BusinessException(ErrorCode.USER_NOT_SUSPENDED);
+		}
+
+		target.reinstate();
+		log.info("[User] 계정 정지 해제 완료 targetUserId={} reinstatedBy={}", command.targetUserId(), caller.getId());
+
+		return UserReinstateResult.from(target);
 	}
 
 	/**

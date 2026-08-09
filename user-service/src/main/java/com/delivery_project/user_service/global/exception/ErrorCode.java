@@ -27,6 +27,8 @@ public enum ErrorCode {
 	READ_USER_FORBIDDEN(HttpStatus.FORBIDDEN, "승인 대기자 조회 권한이 없습니다."),
 	HUB_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "담당 허브로 신청한 사용자만 처리할 수 있습니다."),
 	DELETE_USER_FORBIDDEN(HttpStatus.FORBIDDEN, "사용자 삭제 권한이 없습니다."),
+	SUSPEND_USER_FORBIDDEN(HttpStatus.FORBIDDEN, "계정 정지 권한이 없습니다."),
+	REINSTATE_USER_FORBIDDEN(HttpStatus.FORBIDDEN, "계정 정지 해제 권한이 없습니다."),
 
 	// 404
 	NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다."),
@@ -39,6 +41,9 @@ public enum ErrorCode {
 	USER_DUPLICATE_SLACK_ID(HttpStatus.CONFLICT, "이미 등록된 Slack ID입니다."),
 	USER_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 가입 신청입니다."),
 	LAST_MASTER_DELETE_FORBIDDEN(HttpStatus.CONFLICT, "마지막 MASTER 계정은 삭제할 수 없습니다."),
+	LAST_MASTER_SUSPEND_FORBIDDEN(HttpStatus.CONFLICT, "마지막 MASTER 계정은 정지할 수 없습니다."),
+	USER_NOT_SUSPENDABLE(HttpStatus.CONFLICT, "승인된 사용자만 정지할 수 있습니다."),
+	USER_NOT_SUSPENDED(HttpStatus.CONFLICT, "정지된 사용자만 정지 해제할 수 있습니다."),
 
 	// 415
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 미디어 타입입니다."),
