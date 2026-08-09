@@ -12,6 +12,7 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,10 +52,15 @@ class CompanyQueryServiceTest {
         @DisplayName("업체 조회에 성공한다.")
         void getCompany_success() {
             // Given
+            UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
             CompanyGetQuery command =
-                    new CompanyGetQuery(companyId);
+                    new CompanyGetQuery(
+                            callerId,
+                            Role.MASTER,
+                            companyId
+                    );
 
             Company company = Company.builder()
                     .hubId(UUID.randomUUID())
@@ -102,10 +108,15 @@ class CompanyQueryServiceTest {
         @DisplayName("존재하지 않는 업체를 조회하면 예외가 발생한다.")
         void getCompany_fail_whenCompanyNotFound() {
             // Given
+            UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
             CompanyGetQuery command =
-                    new CompanyGetQuery(companyId);
+                    new CompanyGetQuery(
+                            callerId,
+                            Role.MASTER,
+                            companyId
+                    );
 
             when(companyQueryRepository.findById(companyId))
                     .thenReturn(Optional.empty());
@@ -144,8 +155,11 @@ class CompanyQueryServiceTest {
             );
 
             UUID hubId = UUID.randomUUID();
+            UUID callerId = UUID.randomUUID();
 
             CompanySearchQuery command = new CompanySearchQuery(
+                    callerId,
+                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",
@@ -222,7 +236,11 @@ class CompanyQueryServiceTest {
             // Given
             Integer page = -1;
 
+            UUID callerId = UUID.randomUUID();
+
             CompanySearchQuery command = new CompanySearchQuery(
+                    callerId,
+                    Role.MASTER,
                     page,
                     10,
                     "createdAt,desc",

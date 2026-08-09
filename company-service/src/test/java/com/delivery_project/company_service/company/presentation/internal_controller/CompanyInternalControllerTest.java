@@ -7,6 +7,7 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.JwtTokenParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class CompanyInternalControllerTest {
 
     @MockitoBean
     private CompanyQueryService companyQueryService;
+
+    @MockitoBean
+    private JwtTokenParser jwtTokenParser;
 
     @Nested
     @DisplayName("업체 단건 조회 API 테스트")

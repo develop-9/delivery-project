@@ -11,6 +11,7 @@ import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.infrastructure.persistence.ProductQueryRepositoryImpl;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,12 +52,17 @@ class ProductQueryServiceTest {
         void getProduct_success() {
             // Given
             UUID productId = UUID.randomUUID();
+            UUID callerId = UUID.randomUUID();
 
             Product product = mock(Product.class);
             given(product.getId()).willReturn(productId);
 
             ProductGetQuery productGetQuery =
-                    new ProductGetQuery(productId);
+                    new ProductGetQuery(
+                            callerId,
+                            Role.MASTER,
+                            productId
+                    );
 
             given(productQueryRepository.findById(productId))
                     .willReturn(Optional.of(product));
@@ -78,10 +84,15 @@ class ProductQueryServiceTest {
         @DisplayName("존재하지 않는 상품을 조회하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
         void getProduct_fail_productNotFound() {
             // Given
+            UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
 
             ProductGetQuery productGetQuery =
-                    new ProductGetQuery(productId);
+                    new ProductGetQuery(
+                            callerId,
+                            Role.MASTER,
+                            productId
+                    );
 
             given(productQueryRepository.findById(productId))
                     .willReturn(Optional.empty());
@@ -118,9 +129,12 @@ class ProductQueryServiceTest {
                     "createdAt"
             );
 
+            UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
+                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",
@@ -199,7 +213,11 @@ class ProductQueryServiceTest {
             // Given
             Integer page = -1;
 
+            UUID callerId = UUID.randomUUID();
+
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
+                    Role.MASTER,
                     page,
                     10,
                     "createdAt,desc",
@@ -248,7 +266,11 @@ class ProductQueryServiceTest {
                     "createdAt"
             );
 
+            UUID callerId = UUID.randomUUID();
+
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
+                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",
