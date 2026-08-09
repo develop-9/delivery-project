@@ -29,6 +29,30 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "요청 형식이 올바르지 않습니다.",
             "INVALID_REQUEST"
+    // 401
+    AUTH_UNAUTHORIZED(
+            HttpStatus.UNAUTHORIZED,
+            "인증이 올바르지 않습니다.",
+            "AUTH_UNAUTHORIZED"
+    ),
+
+    AUTH_TOKEN_EXPIRED(
+            HttpStatus.UNAUTHORIZED,
+            "만료된 토큰입니다.",
+            "AUTH_TOKEN_EXPIRED"
+    ),
+
+    AUTH_TOKEN_INVALID(
+            HttpStatus.UNAUTHORIZED,
+            "유효하지 않은 토큰입니다.",
+            "AUTH_TOKEN_INVALID"
+    ),
+
+    // 403
+    AUTH_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "접근 권한이 없습니다.",
+            "AUTH_FORBIDDEN"
     ),
 
     // 404
@@ -60,6 +84,16 @@ public enum ErrorCode {
             HttpStatus.NOT_FOUND,
             "주문이 존재하지 않습니다.",
             "ORDER_NOT_FOUND"
+    USER_SLACK_ID_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "사용자의 Slack ID를 찾을 수 없습니다.",
+            "USER_SLACK_ID_NOT_FOUND"
+    ),
+
+    DEPENDENCY_SERVICE_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "연관 서비스를 사용할 수 없습니다.",
+            "DEPENDENCY_SERVICE_UNAVAILABLE"
     ),
 
     // 409

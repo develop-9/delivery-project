@@ -4,6 +4,9 @@ import com.delivery_project.slack_service.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -96,6 +99,44 @@ public class GlobalExceptionHandler {
         return createResponse(
                 ErrorCode.INVALID_REQUEST
         );
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorResponse> handleInvalidRequestException(
+            Exception exception
+    ) {
+        log.warn(
+                "[InvalidRequest] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            Exception exception
+    ) {
+        log.info(
+                "[AccessDeniedException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(ErrorCode.AUTH_FORBIDDEN);
+    }
+
+    // HTTP 요청은 필터체인이 먼저 401을 내므로 여기까지 오지 않는다.
+    // 필터를 거치지 않고 서비스를 직접 호출하는 경로(예: 스케줄러)에서만 발생한다.
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            AuthenticationException exception
+    ) {
+        log.info(
+                "[AuthenticationException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(ErrorCode.AUTH_UNAUTHORIZED);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

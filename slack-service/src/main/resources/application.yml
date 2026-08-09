@@ -25,6 +25,12 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
 # 인증된 사용자가 없는 시스템 작업의 감사 필드에 사용하는 공통 시스템 ID
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
@@ -34,6 +40,9 @@ gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
   api-key: ${GEMINI_API_KEY:}
   model: ${GEMINI_MODEL:gemini-2.5-flash}
+# 게이트웨이가 relay한 토큰을 파싱하기 위한 키. user-service와 반드시 같은 값이어야 한다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
 
 eureka:
   client:
@@ -66,3 +75,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+slack:
+  api-url: ${SLACK_API_URL:https://slack.com/api/chat.postMessage}
+  bot-token: ${SLACK_BOT_TOKEN:}
