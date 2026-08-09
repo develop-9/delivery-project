@@ -10,6 +10,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,7 +66,8 @@ class DeliveryManagerCommandServiceTest {
         DeliveryManagerDeleteCommand command =
                 new DeliveryManagerDeleteCommand(
                         managerId,
-                        deletedBy
+                        deletedBy,
+                        Role.MASTER
                 );
 
         BusinessException exception =
@@ -105,7 +107,8 @@ class DeliveryManagerCommandServiceTest {
         DeliveryManagerDeleteCommand command =
                 new DeliveryManagerDeleteCommand(
                         managerId,
-                        deletedBy
+                        deletedBy,
+                        Role.MASTER
                 );
 
         BusinessException exception =
@@ -145,7 +148,8 @@ class DeliveryManagerCommandServiceTest {
         DeliveryManagerDeleteCommand command =
                 new DeliveryManagerDeleteCommand(
                         managerId,
-                        deletedBy
+                        deletedBy,
+                        Role.MASTER
                 );
 
         deliveryManagerCommandService.delete(command);

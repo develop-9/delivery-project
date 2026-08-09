@@ -17,6 +17,7 @@ import com.delivery_project.delivery_service.delivery.domain.repository.Delivery
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -42,6 +43,8 @@ public class DeliveryManagerCommandService {
     public DeliveryManagerCreateResult create(
             DeliveryManagerCreateCommand command
     ){
+        validateManagePermission(command.requesterRole());
+
         validateDuplicateUser(command);
 
         int nextSequence = calculateNextSequence(command);
@@ -62,6 +65,102 @@ public class DeliveryManagerCommandService {
         } catch (DataIntegrityViolationException e) {
             throw convertDataIntegrityException(e);
         }
+    }
+
+    public DeliveryManagerUpdateResult update(
+            DeliveryManagerUpdateCommand command
+    ) {
+        validateManagePermission(command.requesterRole());
+
+        validateUpdateRequest(command);
+
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findById(command.managerId())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        DeliveryManagerType updatedType =
+                command.type() != null
+                        ? command.type()
+                        : deliveryManager.getType();
+
+        UUID updatedHubId =
+                resolveUpdatedHubId(
+                        deliveryManager,
+                        command,
+                        updatedType
+                );
+
+        boolean assignmentRangeChanged =
+                deliveryManager.getType() != updatedType
+                        || !Objects.equals(
+                        deliveryManager.getHubId(),
+                        updatedHubId
+                );
+
+        // TODO: COMPANY_DELIVERY인 경우 Hub Service에서
+        //       updatedHubId 존재 여부를 검증한다.
+        //       존재하지 않으면 BusinessException(ErrorCode.HUB_NOT_FOUND) 발생
+
+        deliveryManager.update(
+                updatedHubId,
+                updatedType
+        );
+
+        if (assignmentRangeChanged) {
+            deliveryManager.updateDeliverySequence(
+                    calculateNextSequence(
+                            updatedHubId,
+                            updatedType
+                    )
+            );
+        }
+
+        return DeliveryManagerUpdateResult.from(deliveryManager);
+    }
+
+    public DeliveryManagerDeleteResult delete(
+            DeliveryManagerDeleteCommand command
+    ){
+        validateManagePermission(command.requesterRole());
+
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository.findById(command.managerId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        validateNoActiveAssignment(deliveryManager);
+
+        deliveryManager.deleteManager(command.deletedBy());
+
+        return DeliveryManagerDeleteResult.from(deliveryManager);
+    }
+
+    public DeliveryManagerInternalDeleteResult deleteByUserId(
+            DeliveryManagerInternalDeleteCommand command
+    ) {
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository.findByUserId(command.userId())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        validateNoActiveAssignment(deliveryManager);
+
+        deliveryManager.deleteManager(systemId);
+
+        return DeliveryManagerInternalDeleteResult.from(
+                deliveryManager
+        );
     }
 
     private void validateDuplicateUser(
@@ -115,60 +214,6 @@ public class DeliveryManagerCommandService {
         return sequence.issueNextSequence();
     }
 
-    public DeliveryManagerUpdateResult update(
-            DeliveryManagerUpdateCommand command
-    ) {
-        validateUpdateRequest(command);
-
-        DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository
-                        .findById(command.managerId())
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
-                                )
-                        );
-
-        DeliveryManagerType updatedType =
-                command.type() != null
-                        ? command.type()
-                        : deliveryManager.getType();
-
-        UUID updatedHubId =
-                resolveUpdatedHubId(
-                        deliveryManager,
-                        command,
-                        updatedType
-                );
-
-        boolean assignmentRangeChanged =
-                deliveryManager.getType() != updatedType
-                        || !Objects.equals(
-                        deliveryManager.getHubId(),
-                        updatedHubId
-                );
-
-        // TODO: COMPANY_DELIVERY인 경우 Hub Service에서
-        //       updatedHubId 존재 여부를 검증한다.
-        //       존재하지 않으면 BusinessException(ErrorCode.HUB_NOT_FOUND) 발생
-
-        deliveryManager.update(
-                updatedHubId,
-                updatedType
-        );
-
-        if (assignmentRangeChanged) {
-            deliveryManager.updateDeliverySequence(
-                    calculateNextSequence(
-                            updatedHubId,
-                            updatedType
-                    )
-            );
-        }
-
-        return DeliveryManagerUpdateResult.from(deliveryManager);
-    }
-
     private void validateUpdateRequest(
             DeliveryManagerUpdateCommand command
     ) {
@@ -192,44 +237,6 @@ public class DeliveryManagerCommandService {
         return command.hubId() != null
                 ? command.hubId()
                 : deliveryManager.getHubId();
-    }
-
-    public DeliveryManagerDeleteResult delete(
-            DeliveryManagerDeleteCommand command
-    ){
-        DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findById(command.managerId())
-                        .orElseThrow(()->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
-                                )
-                        );
-
-        validateNoActiveAssignment(deliveryManager);
-
-        deliveryManager.deleteManager(command.deletedBy());
-
-        return DeliveryManagerDeleteResult.from(deliveryManager);
-    }
-
-    public DeliveryManagerInternalDeleteResult deleteByUserId(
-            DeliveryManagerInternalDeleteCommand command
-    ) {
-        DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findByUserId(command.userId())
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
-                                )
-                        );
-
-        validateNoActiveAssignment(deliveryManager);
-
-        deliveryManager.deleteManager(systemId);
-
-        return DeliveryManagerInternalDeleteResult.from(
-                deliveryManager
-        );
     }
 
     private BusinessException convertDataIntegrityException(
@@ -286,5 +293,18 @@ public class DeliveryManagerCommandService {
                     ErrorCode.ACTIVE_DELIVERY_EXISTS
             );
         }
+    }
+
+    private void validateManagePermission(
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.MASTER
+                || requesterRole == Role.HUB_MANAGER) {
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.MANAGE_DELIVERY_MANAGER_FORBIDDEN
+        );
     }
 }
