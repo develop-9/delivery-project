@@ -41,6 +41,10 @@ dependencies {
     implementation "io.github.openfeign.querydsl:querydsl-jpa:7.4.0"
     annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:7.4.0:jakarta"
 
+    // Flyway
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+
     // MSA
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'

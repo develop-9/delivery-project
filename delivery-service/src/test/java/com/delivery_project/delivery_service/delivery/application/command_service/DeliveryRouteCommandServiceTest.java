@@ -74,7 +74,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.MASTER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         when(route.getId())
@@ -173,7 +173,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.MASTER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         when(route.getDeliveryId())
@@ -231,7 +231,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.MASTER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         when(route.getDeliveryId())
@@ -310,7 +310,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.MASTER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         when(route.getId())
@@ -428,7 +428,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.COMPANY_MANAGER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         // when
@@ -463,7 +463,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.DELIVERY_MANAGER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         // when
@@ -501,7 +501,7 @@ class DeliveryRouteCommandServiceTest {
                         Role.DELIVERY_MANAGER
                 );
 
-        when(deliveryRouteCommandRepository.findById(routeId))
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
                 .thenReturn(Optional.of(route));
 
         when(deliveryManagerCommandRepository.findByUserId(requesterId))

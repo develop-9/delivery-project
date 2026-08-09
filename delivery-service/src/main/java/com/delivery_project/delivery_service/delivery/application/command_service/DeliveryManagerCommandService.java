@@ -91,18 +91,21 @@ public class DeliveryManagerCommandService {
                 type == DeliveryManagerType.HUB_DELIVERY
                 ? null : hubId;
 
+        deliveryManagerSequenceCommandRepository
+                .createIfAbsent(
+                        type,
+                        sequenceHubId
+                );
+
         DeliveryManagerSequence sequence =
                 deliveryManagerSequenceCommandRepository
                         .findForUpdate(
                                 type,
                                 sequenceHubId
                         )
-                        .orElseGet(()->
-                                deliveryManagerSequenceCommandRepository.save(
-                                        DeliveryManagerSequence.create(
-                                                type,
-                                                sequenceHubId
-                                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_SEQUENCE_CONFLICT
                                 )
                         );
 

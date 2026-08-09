@@ -5,6 +5,7 @@ import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManag
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,5 +28,33 @@ public interface SpringDataDeliveryManagerSequenceRepository
     Optional<DeliveryManagerSequence> findForUpdate(
             @Param("managerType") DeliveryManagerType managerType,
             @Param("hubId")  UUID hubId
+    );
+
+    @Modifying
+    @Query(
+            value = """
+                INSERT INTO delivery_schema.p_delivery_manager_sequences
+                (
+                    id,
+                    manager_type,
+                    hub_id,
+                    next_sequence,
+                    last_assigned_sequence
+                )
+                VALUES
+                (
+                    gen_random_uuid(),
+                    :managerType,
+                    :hubId,
+                    0,
+                    -1
+                )
+                ON CONFLICT DO NOTHING
+                """,
+            nativeQuery = true
+    )
+    void createIfAbsent(
+            @Param("managerType") String managerType,
+            @Param("hubId") UUID hubId
     );
 }

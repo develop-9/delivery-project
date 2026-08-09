@@ -26,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.cloud.discovery.enabled=false",
         "management.tracing.enabled=false",
         "system.id=00000000-0000-0000-0000-000000000001",
+
+        "spring.flyway.enabled=false",
+
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.default_schema=delivery_schema"
 })
