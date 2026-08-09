@@ -30,4 +30,8 @@ public interface DeliveryRouteCommandRepository {
     List<DeliveryRoute> findAllByDeliveryIdAndDeletedAtIsNull(
             UUID deliveryId
     );
+
+    Optional<DeliveryRoute> findByIdForUpdate(
+            UUID routeId
+    );
 }

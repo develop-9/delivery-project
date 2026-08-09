@@ -76,4 +76,12 @@ public class DeliveryRouteCommandRepositoryImpl
         return springDataRepository
                 .findAllByDeliveryIdAndDeletedAtIsNull(deliveryId);
     }
+
+    @Override
+    public Optional<DeliveryRoute> findByIdForUpdate(
+            UUID routeId
+    ) {
+        return springDataRepository
+                .findByIdForUpdate(routeId);
+    }
 }

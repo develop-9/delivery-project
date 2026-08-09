@@ -41,8 +41,8 @@ public class DeliveryRouteCommandService {
     ) {
         DeliveryRoute route =
                 deliveryRouteCommandRepository
-                        .findById(command.routeId())
-                        .orElseThrow(()->
+                        .findByIdForUpdate(command.routeId())
+                        .orElseThrow(() ->
                                 new BusinessException(
                                         ErrorCode.DELIVERY_ROUTE_NOT_FOUND
                                 )
