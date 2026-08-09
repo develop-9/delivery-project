@@ -153,13 +153,12 @@ public class AuthCommandService {
 		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
-	@Transactional(readOnly = true)
 	public void logout(UUID callerId) {
 		refreshTokenRepository.deleteByUserId(callerId);
 		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
 		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
-		// 이 메서드는 DB 쓰기가 없는 읽기 전용 트랜잭션이라 롤백으로 무효화 시각만 앞서가는
-		// 문제가 없으므로, delete()와 달리 커밋 이후로 미룰 필요가 없다.
+		// Redis에 직접 쓰지 않고 아웃박스에 DB insert로 기록되므로(UserInvalidationRepositoryImpl
+		// 참고) 더 이상 읽기 전용 트랜잭션일 수 없다 — 클래스 레벨 @Transactional을 그대로 쓴다.
 		userInvalidationRepository.invalidate(callerId, Instant.now());
 		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}

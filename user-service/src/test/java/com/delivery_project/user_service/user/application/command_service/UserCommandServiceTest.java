@@ -7,8 +7,6 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
@@ -66,23 +62,6 @@ class UserCommandServiceTest {
 
 	@InjectMocks
 	private UserCommandService userCommandService;
-
-	@BeforeEach
-	void setUpTransactionSynchronization() {
-		TransactionSynchronizationManager.initSynchronization();
-	}
-
-	@AfterEach
-	void clearTransactionSynchronization() {
-		TransactionSynchronizationManager.clearSynchronization();
-	}
-
-	/** delete()가 afterCommit으로 미룬 콜백을 실제 커밋이 일어난 것처럼 실행시킨다. */
-	private void simulateCommit() {
-		for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-			synchronization.afterCommit();
-		}
-	}
 
 	@Test
 	void 이름과_Slack_ID를_모두_수정하면_둘_다_반영된다() {
@@ -176,12 +155,6 @@ class UserCommandServiceTest {
 		assertThat(result.userId()).isEqualTo(target.getId());
 		assertThat(target.isDeleted()).isTrue();
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
-		// 무효화 기록은 커밋 성공이 확정된 뒤에만 실행되도록 미뤄뒀으므로, 커밋 전엔 아직 호출 안 된다.
-		org.mockito.Mockito.verify(userInvalidationRepository, org.mockito.Mockito.never())
-				.invalidate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
-
-		simulateCommit();
-
 		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
 				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}
@@ -461,11 +434,6 @@ class UserCommandServiceTest {
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
-		org.mockito.Mockito.verify(userInvalidationRepository, org.mockito.Mockito.never())
-				.invalidate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
-
-		simulateCommit();
-
 		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
 				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}
