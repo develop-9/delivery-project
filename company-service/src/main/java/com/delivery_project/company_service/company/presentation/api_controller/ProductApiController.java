@@ -12,10 +12,12 @@ import com.delivery_project.company_service.company.presentation.request.*;
 import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -31,9 +33,10 @@ public class ProductApiController implements ProductApi {
     @PostMapping
     @Override
     public ResponseEntity<SuccessResponse<ProductCreateResponse>> createProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @Valid @RequestBody ProductCreateRequest productCreateRequest
     ) {
-        ProductCreateCommand productCreateCommand = productCreateRequest.toCommand();
+        ProductCreateCommand productCreateCommand = productCreateRequest.toCommand(jwtPrincipal);
         ProductCreateResult productCreateResult = productCommandService.createProduct(productCreateCommand);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -47,10 +50,11 @@ public class ProductApiController implements ProductApi {
     @PutMapping("/{productId}")
     @Override
     public ResponseEntity<SuccessResponse<ProductUpdateResponse>> updateProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID productId,
             @Valid @RequestBody ProductUpdateRequest productUpdateRequest
     ) {
-        ProductUpdateCommand productUpdateCommand = productUpdateRequest.toCommand(productId);
+        ProductUpdateCommand productUpdateCommand = productUpdateRequest.toCommand(jwtPrincipal, productId);
         ProductUpdateResult productUpdateResult = productCommandService.updateProduct(productUpdateCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -64,9 +68,10 @@ public class ProductApiController implements ProductApi {
     @DeleteMapping("/{productId}")
     @Override
     public ResponseEntity<SuccessResponse<ProductDeleteResponse>> deleteProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID productId
     ) {
-        ProductDeleteCommand productDeleteCommand = new ProductDeleteRequest().toCommand(productId);
+        ProductDeleteCommand productDeleteCommand = new ProductDeleteRequest().toCommand(jwtPrincipal, productId);
         ProductDeleteResult productDeleteResult = productCommandService.deleteProduct(productDeleteCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -80,9 +85,10 @@ public class ProductApiController implements ProductApi {
     @GetMapping("/{productId}")
     @Override
     public ResponseEntity<SuccessResponse<ProductGetResponse>> getProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID productId
     ) {
-        ProductGetQuery productGetQuery = new ProductGetRequest().toQuery(productId);
+        ProductGetQuery productGetQuery = new ProductGetRequest().toQuery(jwtPrincipal, productId);
         ProductGetResult productGetResult = productQueryService.getProduct(productGetQuery);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -96,6 +102,7 @@ public class ProductApiController implements ProductApi {
     @GetMapping
     @Override
     public ResponseEntity<SuccessResponse<PageResponse<ProductSearchResponse>>> searchProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
@@ -106,6 +113,7 @@ public class ProductApiController implements ProductApi {
     ) {
         ProductSearchQuery productSearchQuery =
                 new ProductSearchRequest().toQuery(
+                        jwtPrincipal,
                         page,
                         size,
                         sort,

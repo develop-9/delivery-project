@@ -1,6 +1,7 @@
 package com.delivery_project.company_service.company.presentation.request;
 
 import com.delivery_project.company_service.company.application.query.ProductSearchQuery;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 
 import java.util.UUID;
 
@@ -8,6 +9,7 @@ public record ProductSearchRequest(
 
 ) {
     public ProductSearchQuery toQuery(
+            JwtPrincipal jwtPrincipal,
             Integer page,
             Integer size,
             String sort,
@@ -17,6 +19,8 @@ public record ProductSearchRequest(
             Integer maxPrice
     ) {
         return new ProductSearchQuery(
+                jwtPrincipal.userId(),
+                jwtPrincipal.role(),
                 page,
                 size,
                 sort,

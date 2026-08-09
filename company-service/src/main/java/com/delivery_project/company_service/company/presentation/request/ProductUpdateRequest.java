@@ -1,6 +1,7 @@
 package com.delivery_project.company_service.company.presentation.request;
 
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -21,8 +22,10 @@ public record ProductUpdateRequest(
         @Positive
         Integer price
 ) {
-    public ProductUpdateCommand toCommand(UUID productId) {
+    public ProductUpdateCommand toCommand(JwtPrincipal jwtPrincipal, UUID productId) {
         return new ProductUpdateCommand(
+                jwtPrincipal.userId(),
+                jwtPrincipal.role(),
                 productId,
                 companyId,
                 name,

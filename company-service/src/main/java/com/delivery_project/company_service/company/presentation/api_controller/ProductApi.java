@@ -6,6 +6,7 @@ import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -62,6 +64,7 @@ public interface ProductApi {
             )
     })
     ResponseEntity<SuccessResponse<ProductCreateResponse>> createProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
 
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "상품 생성 요청 정보",
@@ -115,6 +118,7 @@ public interface ProductApi {
             )
     })
     ResponseEntity<SuccessResponse<ProductUpdateResponse>> updateProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
 
             @Parameter(
                     description = "수정할 상품 ID",
@@ -166,6 +170,8 @@ public interface ProductApi {
             )
     })
     ResponseEntity<SuccessResponse<ProductDeleteResponse>> deleteProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "삭제할 상품 ID",
                     required = true,
@@ -197,6 +203,8 @@ public interface ProductApi {
             )
     })
     ResponseEntity<SuccessResponse<ProductGetResponse>> getProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "조회할 상품 ID",
                     required = true,
@@ -228,6 +236,7 @@ public interface ProductApi {
             )
     })
     ResponseEntity<SuccessResponse<PageResponse<ProductSearchResponse>>> searchProduct(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
 
             @Parameter(
                     description = "조회할 페이지 번호",

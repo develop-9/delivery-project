@@ -47,11 +47,11 @@ public class CompanyCommandService {
         boolean hasPermission =
                 callerInfo.role() == Role.MASTER
                         || (
-                                callerInfo.role() == Role.HUB_MANAGER
-                                        && Objects.equals(
-                                                callerInfo.hubId(),
-                                                companyCreateCommand.hubId()
-                                        )
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                companyCreateCommand.hubId()
+                        )
                 );
 
         // 권한이 없을 경우 오류 반환
@@ -108,18 +108,18 @@ public class CompanyCommandService {
         boolean hasPermission =
                 callerInfo.role() == Role.MASTER
                         || (
-                                callerInfo.role() == Role.HUB_MANAGER
-                                        && Objects.equals(
-                                                callerInfo.hubId(),
-                                                companyUpdateCommand.hubId()
-                                )
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                companyUpdateCommand.hubId()
+                        )
                 )
                         || (
-                                callerInfo.role() == Role.COMPANY_MANAGER
-                                        && Objects.equals(
-                                                callerInfo.companyId(),
-                                                companyUpdateCommand.companyId()
-                                )
+                        callerInfo.role() == Role.COMPANY_MANAGER
+                                && Objects.equals(
+                                callerInfo.companyId(),
+                                companyUpdateCommand.companyId()
+                        )
                 );
 
         // 권한이 없을 경우 오류 반환

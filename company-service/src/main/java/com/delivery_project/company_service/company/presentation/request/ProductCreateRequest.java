@@ -1,6 +1,7 @@
 package com.delivery_project.company_service.company.presentation.request;
 
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import jakarta.validation.constraints.*;
 
 import java.util.UUID;
@@ -18,7 +19,13 @@ public record ProductCreateRequest(
         @Positive
         Integer price
 ) {
-    public ProductCreateCommand toCommand() {
-        return new ProductCreateCommand(companyId, name, price);
+    public ProductCreateCommand toCommand(JwtPrincipal jwtPrincipal) {
+        return new ProductCreateCommand(
+                jwtPrincipal.userId(),
+                jwtPrincipal.role(),
+                companyId,
+                name,
+                price
+        );
     }
 }

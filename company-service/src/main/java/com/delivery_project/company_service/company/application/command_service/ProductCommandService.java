@@ -3,19 +3,24 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
+import com.delivery_project.company_service.company.application.port.UserPort;
+import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
+import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
 import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -25,20 +30,49 @@ public class ProductCommandService {
 
     private final CompanyQueryRepository companyQueryRepository;
     private final ProductCommandRepository productCommandRepository;
+    private final UserPort userPort;
 
     // [외부] 상품 생성 비즈니스 로직
     @Transactional
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
-        /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
-         */
+        log.info(
+                "상품 생성 요청. callerId={}",
+                productCreateCommand.callerId()
+        );
 
-        // companyId가 올바른지 확인
-        validateCompany(productCreateCommand.companyId());
+        // 업체가 존재하는지 확인
+        Company company = validateCompany(productCreateCommand.companyId());
+
+        // 상품 생성 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productCreateCommand.callerId());
+
+        // Master, 담당 Hub Manager, 담당 Company Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                company.getHubId()
+                        )
+                )
+                        || (
+                        callerInfo.role() == Role.COMPANY_MANAGER
+                                && Objects.equals(
+                                callerInfo.companyId(),
+                                company.getId()
+                        )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
 
         // Product 생성
         Product product = Product.create(
@@ -71,18 +105,46 @@ public class ProductCommandService {
     @Transactional
     public ProductUpdateResult updateProduct(ProductUpdateCommand productUpdateCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
-        /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
-         */
+        log.info(
+                "상품 수정 요청. callerId={}",
+                productUpdateCommand.callerId()
+        );
+
+        // 업체가 존재하는지 확인
+        Company company = validateCompany(productUpdateCommand.companyId());
+
+        // 상품 수정 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productUpdateCommand.callerId());
+
+        // Master, 담당 Hub Manager, 담당 Company Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                company.getHubId()
+                        )
+                )
+                        || (
+                        callerInfo.role() == Role.COMPANY_MANAGER
+                                && Objects.equals(
+                                callerInfo.companyId(),
+                                company.getId()
+                        )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
 
         // 상품이 존재하는지 확인
         Product product = validateProduct(productUpdateCommand.productId());
-
-        // 변경할 companyId가 올바른지 확인
-        validateCompany(productUpdateCommand.companyId());
 
         // 상품 정보 변경
         product.update(
@@ -105,15 +167,39 @@ public class ProductCommandService {
     @Transactional
     public ProductDeleteResult deleteProduct(ProductDeleteCommand productDeleteCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
-        /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager만 가능
-         */
+        log.info(
+                "상품 삭제 요청. callerId={}",
+                productDeleteCommand.callerId()
+        );
 
         // 상품이 존재하는지 확인
         Product product = validateProduct(productDeleteCommand.productId());
+
+        // 상품 삭제 권한 검증
+        // 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productDeleteCommand.callerId());
+
+        // 상품을 관리하는 업체 조회
+        Company company = validateCompany(product.getCompanyId());
+
+        // Master, 담당 Hub Manager, 담당 Company Manager만 가능
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                company.getHubId()
+                        )
+                );
+
+        // 권한이 없을 경우 오류 반환
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
 
         // Inventory에 Hub별로 저장된 Product 제거
         /*
@@ -123,11 +209,7 @@ public class ProductCommandService {
          */
 
         // 상품 제거
-        /*
-         * TODO:
-         *  Auth 적용 후 호출한 사용자 or 시스템 ID 넘겨주는 것으로 변경
-         */
-        product.delete(UUID.fromString("12345678-1234-5678-1234-123456789123"));
+        product.delete(productDeleteCommand.callerId());
 
         log.info(
                 "상품 논리 삭제 완료. productId={}, deletedBy={}",
@@ -139,11 +221,11 @@ public class ProductCommandService {
         return ProductDeleteResult.from(product);
     }
 
+
     // Validation Check - 업체 존재 여부 판단
-    private void validateCompany(UUID companyId) {
-        if (!companyQueryRepository.existsById(companyId)) {
-            throw new BusinessException(ErrorCode.COMPANY_NOT_FOUND);
-        }
+    private Company validateCompany(UUID companyId) {
+        return companyQueryRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
     }
 
     // Validation Check - 상품 조회

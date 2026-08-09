@@ -40,6 +40,8 @@ public class CompanyQueryService {
                 companyGetQuery.companyId()
         );
 
+        // 조회는 모든 사용자가 가능하므로 인증만 통과되면 조회 가능
+
         // 업체가 존재하는지 확인
         Company company = validateCompany(companyGetQuery.companyId());
 
@@ -50,6 +52,8 @@ public class CompanyQueryService {
     // [외부] 업체 검색 비즈니스 로직
     @Transactional(readOnly = true)
     public CompanySearchResult getAllCompany(CompanySearchQuery companySearchQuery) {
+
+        // 조회는 모든 사용자가 가능하므로 인증만 통과되면 조회 가능
 
         // page, size, sort가 올바른지 확인
         int page = pageValidator.validatePage(companySearchQuery.page());
@@ -85,8 +89,14 @@ public class CompanyQueryService {
     @Transactional(readOnly = true)
     public InternalCompanyGetResult getCompanyForInternal(InternalCompanyGetQuery internalCompanyGetQuery) {
 
+        // 조회는 모든 사용자가 가능하므로 인증만 통과되면 조회 가능
+
         // 업체가 존재하는지 확인
         Company company = validateCompany(internalCompanyGetQuery.companyId());
+
+        log.info("[내부] 업체 단건 조회 성공. companyId={}",
+                company.getId()
+        );
 
         // 결과 반환
         return InternalCompanyGetResult.from(company);
