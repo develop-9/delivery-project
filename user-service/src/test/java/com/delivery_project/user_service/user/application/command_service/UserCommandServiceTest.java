@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -55,6 +56,9 @@ class UserCommandServiceTest {
 
 	@Mock
 	private CallerResolver callerResolver;
+
+	@Mock
+	private PlatformTransactionManager transactionManager;
 
 	@InjectMocks
 	private UserCommandService userCommandService;

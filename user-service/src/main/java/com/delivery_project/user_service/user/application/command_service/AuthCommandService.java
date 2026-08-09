@@ -1,6 +1,7 @@
 package com.delivery_project.user_service.user.application.command_service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +25,7 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ public class AuthCommandService {
 
 	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final UserInvalidationRepository userInvalidationRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
 
@@ -63,6 +66,12 @@ public class AuthCommandService {
 				.companyId(command.companyId())
 				.build();
 
+		// 활성 MASTER가 한 명도 없으면 아무도 승인해줄 수 없어 첫 MASTER 가입자가 영구히
+		// PENDING에 머무르는 부트스트랩 데드락이 생긴다. 이 경우에 한해 가입과 동시에 자동 승인한다.
+		if (command.role() == Role.MASTER && userCommandRepository.countActiveMasters() == 0) {
+			user.approveAsInitialMaster();
+		}
+
 		User saved = saveUser(user);
 		log.info("[Auth] 회원가입 완료 userId={}", saved.getId());
 
@@ -70,14 +79,13 @@ public class AuthCommandService {
 	}
 
 	/**
-	 * existsByUsername/existsBySlackId는 @SQLRestriction으로 소프트 삭제된 행을 걸러내기 때문에,
-	 * 삭제된 사용자와 같은 username/slackId로 재가입하거나 동시에 같은 값으로 가입 요청이 들어오면
-	 * 사전 체크를 통과하고도 DB의 UNIQUE 제약에서 걸릴 수 있다. 이 경우를 여기서 구체적인
+	 * existsByUsername/existsBySlackId 사전 체크와 저장 사이에 동시에 같은 값으로 가입 요청이
+	 * 들어오면, 사전 체크를 통과하고도 DB의 부분 유니크 인덱스(삭제되지 않은 행에만 적용 —
+	 * User.java, UserTableIndexInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
 	 * ErrorCode로 변환한다(그 외 제약 위반은 GlobalExceptionHandler의 일반 처리로 위임).
 	 *
-	 * 삭제된 사용자의 username/slackId를 영구히 재사용 못 하는 게 현재 의도된 동작이다.
-	 * TODO: 추후 스케줄러로 일정 기간(보관 기간 미정) 지난 소프트 삭제 행을 완전히 제거해서
-	 *       재가입을 허용하는 방향 검토
+	 * 삭제된 사용자와 같은 username/slackId로 재가입하는 것은 더 이상 막히지 않는다 — 부분
+	 * 유니크 인덱스가 삭제되지 않은 행끼리만 유일성을 검사하기 때문이다.
 	 */
 	private User saveUser(User user) {
 		try {
@@ -148,6 +156,11 @@ public class AuthCommandService {
 	@Transactional(readOnly = true)
 	public void logout(UUID callerId) {
 		refreshTokenRepository.deleteByUserId(callerId);
+		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
+		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
+		// 이 메서드는 DB 쓰기가 없는 읽기 전용 트랜잭션이라 롤백으로 무효화 시각만 앞서가는
+		// 문제가 없으므로, delete()와 달리 커밋 이후로 미룰 필요가 없다.
+		userInvalidationRepository.invalidate(callerId, Instant.now());
 		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}
 

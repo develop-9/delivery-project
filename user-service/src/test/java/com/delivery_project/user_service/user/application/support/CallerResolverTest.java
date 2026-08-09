@@ -30,15 +30,10 @@ class CallerResolverTest {
 	private CallerResolver callerResolver;
 
 	@Test
-	void 존재하는_callerId면_User를_반환한다() {
+	void 존재하고_APPROVED_상태인_callerId면_User를_반환한다() {
 		// given
-		User user = User.builder()
-				.username("kim123")
-				.password("encoded-password")
-				.name("김철수")
-				.slackId("U0123456789")
-				.role(Role.MASTER)
-				.build();
+		User user = createUser();
+		user.approve(UUID.randomUUID());
 		UUID callerId = UUID.randomUUID();
 		ReflectionTestUtils.setField(user, "id", callerId);
 		when(userCommandRepository.findById(callerId)).thenReturn(Optional.of(user));
@@ -61,5 +56,46 @@ class CallerResolverTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
+	void PENDING_상태의_callerId면_USER_NOT_APPROVED_예외가_발생한다() {
+		// given
+		User user = createUser();
+		UUID callerId = UUID.randomUUID();
+		ReflectionTestUtils.setField(user, "id", callerId);
+		when(userCommandRepository.findById(callerId)).thenReturn(Optional.of(user));
+
+		// when & then
+		assertThatThrownBy(() -> callerResolver.resolve(callerId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	@Test
+	void REJECTED_상태의_callerId면_USER_NOT_APPROVED_예외가_발생한다() {
+		// given
+		User user = createUser();
+		user.reject();
+		UUID callerId = UUID.randomUUID();
+		ReflectionTestUtils.setField(user, "id", callerId);
+		when(userCommandRepository.findById(callerId)).thenReturn(Optional.of(user));
+
+		// when & then
+		assertThatThrownBy(() -> callerResolver.resolve(callerId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	private User createUser() {
+		return User.builder()
+				.username("kim123")
+				.password("encoded-password")
+				.name("김철수")
+				.slackId("U0123456789")
+				.role(Role.MASTER)
+				.build();
 	}
 }
