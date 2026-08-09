@@ -45,7 +45,7 @@ class AiHistoryCommandServiceTest {
     private AiPromptGenerator aiPromptGenerator;
 
     @Mock
-    private AiHistoryPersistenceService aiHistoryPersistenceService;
+    private AiHistoryStatusCommandService aiHistoryPersistenceService;
 
     @InjectMocks
     private AiHistoryCommandService aiHistoryCommandService;

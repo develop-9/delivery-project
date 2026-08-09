@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class AiHistoryPersistenceService {
+public class AiHistoryStatusCommandService {
 
     private final AiHistoryCommandRepository aiHistoryCommandRepository;
 

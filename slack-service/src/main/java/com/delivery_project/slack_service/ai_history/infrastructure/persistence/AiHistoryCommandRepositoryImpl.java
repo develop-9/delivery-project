@@ -5,9 +5,6 @@ import com.delivery_project.slack_service.ai_history.domain.repository.AiHistory
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @Repository
 @RequiredArgsConstructor
 public class AiHistoryCommandRepositoryImpl
@@ -20,12 +17,5 @@ public class AiHistoryCommandRepositoryImpl
             AiHistory aiHistory
     ) {
         return springDataAiHistoryRepository.save(aiHistory);
-    }
-
-    @Override
-    public Optional<AiHistory> findById(
-            UUID aiHistoryId
-    ) {
-        return springDataAiHistoryRepository.findById(aiHistoryId);
     }
 }
