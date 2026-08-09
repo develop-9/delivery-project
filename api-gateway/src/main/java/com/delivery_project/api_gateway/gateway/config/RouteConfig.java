@@ -20,4 +20,19 @@ public class RouteConfig {
 						.uri("lb://USER-SERVICE"))
 				.build();
 	}
+
+	@Bean
+	public RouteLocator deliveryServiceRoutes(
+			RouteLocatorBuilder builder
+	) {
+		return builder.routes()
+				.route("delivery-service", r -> r
+						.path(
+								"/api/v1/delivery-managers/**",
+								"/api/v1/deliveries/**",
+								"/api/v1/delivery-routes/**"
+						)
+						.uri("lb://DELIVERY-SERVICE"))
+				.build();
+	}
 }
