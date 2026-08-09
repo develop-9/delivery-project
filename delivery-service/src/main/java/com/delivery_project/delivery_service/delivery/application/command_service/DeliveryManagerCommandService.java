@@ -11,8 +11,10 @@ import com.delivery_project.delivery_service.delivery.application.result.Deliver
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerSequenceCommandRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import jakarta.transaction.Transactional;
@@ -29,10 +31,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class DeliveryManagerCommandService {
-    private final DeliveryManagerCommandRepository
-            deliveryManagerCommandRepository;
-    private final DeliveryManagerSequenceCommandRepository
-            deliveryManagerSequenceCommandRepository;
+    private final DeliveryManagerCommandRepository deliveryManagerCommandRepository;
+    private final DeliveryManagerSequenceCommandRepository deliveryManagerSequenceCommandRepository;
+    private final DeliveryCommandRepository deliveryCommandRepository;
+    private final DeliveryRouteCommandRepository deliveryRouteCommandRepository;
+
     @Value("${system.id}")
     private UUID systemId;
 
@@ -201,8 +204,8 @@ public class DeliveryManagerCommandService {
                                         ErrorCode.DELIVERY_MANAGER_NOT_FOUND
                                 )
                         );
-        // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
-        // 존재하면 ACTIVE_DELIVERY_EXISTS 예외 발생
+
+        validateNoActiveAssignment(deliveryManager);
 
         deliveryManager.deleteManager(command.deletedBy());
 
@@ -220,11 +223,7 @@ public class DeliveryManagerCommandService {
                                 )
                         );
 
-        /*
-         * TODO:
-         * Delivery / DeliveryRoute 구현 후
-         * 진행 중인 배송 배정 여부 검증
-         */
+        validateNoActiveAssignment(deliveryManager);
 
         deliveryManager.deleteManager(systemId);
 
@@ -258,5 +257,34 @@ public class DeliveryManagerCommandService {
         return new BusinessException(
                 ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
         );
+    }
+
+    private void validateNoActiveAssignment(
+            DeliveryManager deliveryManager
+    ) {
+        boolean activeAssignmentExists;
+
+        if (deliveryManager.getType()
+                == DeliveryManagerType.COMPANY_DELIVERY) {
+
+            activeAssignmentExists =
+                    deliveryCommandRepository
+                            .existsActiveByCompanyDeliveryManagerId(
+                                    deliveryManager.getId()
+                            );
+
+        } else {
+            activeAssignmentExists =
+                    deliveryRouteCommandRepository
+                            .existsInTransitByDeliveryManagerId(
+                                    deliveryManager.getId()
+                            );
+        }
+
+        if (activeAssignmentExists) {
+            throw new BusinessException(
+                    ErrorCode.ACTIVE_DELIVERY_EXISTS
+            );
+        }
     }
 }

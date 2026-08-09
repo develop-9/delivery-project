@@ -16,11 +16,10 @@ public class DeliveryRouteCommandRepositoryImpl
         implements DeliveryRouteCommandRepository {
 
     private final SpringDataDeliveryRouteRepository springDataRepository;
-    private final SpringDataDeliveryRouteRepository springDataDeliveryRouteRepository;
 
     @Override
     public DeliveryRoute save(DeliveryRoute route) {
-        return springDataDeliveryRouteRepository.save(route);
+        return springDataRepository.save(route);
     }
 
     @Override
@@ -32,7 +31,7 @@ public class DeliveryRouteCommandRepositoryImpl
 
     @Override
     public Optional<DeliveryRoute> findById(UUID routeId) {
-        return springDataDeliveryRouteRepository
+        return springDataRepository
                 .findByIdAndDeletedAtIsNull(routeId);
     }
 
@@ -63,7 +62,7 @@ public class DeliveryRouteCommandRepositoryImpl
 
     @Override
     public Optional<DeliveryRoute> findLastByDeliveryId(UUID deliveryId){
-        return springDataDeliveryRouteRepository
+        return springDataRepository
                 .findFirstByDeliveryIdAndDeletedAtIsNullOrderBySequenceDesc(
                         deliveryId
                 );
@@ -83,5 +82,16 @@ public class DeliveryRouteCommandRepositoryImpl
     ) {
         return springDataRepository
                 .findByIdForUpdate(routeId);
+    }
+
+    @Override
+    public boolean existsInTransitByDeliveryManagerId(
+            UUID managerId
+    ) {
+        return springDataRepository
+                .existsByDeliveryManagerIdAndStatusAndDeletedAtIsNull(
+                        managerId,
+                        DeliveryRouteStatus.IN_TRANSIT
+                );
     }
 }

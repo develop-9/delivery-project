@@ -50,4 +50,9 @@ public interface SpringDataDeliveryRouteRepository
     Optional<DeliveryRoute> findByIdForUpdate(
             @Param("routeId") UUID routeId
     );
+
+    boolean existsByDeliveryManagerIdAndStatusAndDeletedAtIsNull(
+            UUID deliveryManagerId,
+            DeliveryRouteStatus status
+    );
 }

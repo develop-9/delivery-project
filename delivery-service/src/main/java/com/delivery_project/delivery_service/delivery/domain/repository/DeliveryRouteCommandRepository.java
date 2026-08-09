@@ -34,4 +34,8 @@ public interface DeliveryRouteCommandRepository {
     Optional<DeliveryRoute> findByIdForUpdate(
             UUID routeId
     );
+
+    boolean existsInTransitByDeliveryManagerId(
+            UUID managerId
+    );
 }
