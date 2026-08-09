@@ -1,7 +1,6 @@
 package com.delivery_project.order_service.order.presentation.internal_controller;
 
 import com.delivery_project.order_service.order.application.command_service.InventoryCommandService;
-import com.delivery_project.order_service.order.application.query_service.InventoryQueryService;
 import com.delivery_project.order_service.order.application.result.InventoryInternalSummaryResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -12,13 +11,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,9 +32,6 @@ class InventoryInternalControllerTest {
 
 	@MockitoBean
 	private InventoryCommandService inventoryCommandService;
-
-	@MockitoBean
-	private InventoryQueryService inventoryQueryService;
 
 	private final UUID productId = UUID.randomUUID();
 	private final UUID hubId = UUID.randomUUID();
@@ -79,24 +73,4 @@ class InventoryInternalControllerTest {
 				.andExpect(jsonPath("$.success").value(false));
 	}
 
-	@Test
-	@DisplayName("상품별 배치 조회는 재고가 있는 것만 배열로 돌려주고 선점 수량은 내보내지 않는다")
-	void getByProducts() throws Exception {
-		// given — 2건 요청, 재고가 있는 1건만 존재
-		UUID missingProductId = UUID.randomUUID();
-		given(inventoryQueryService.getInventoriesByProducts(any()))
-				.willReturn(List.of(new InventoryInternalSummaryResult(
-						UUID.randomUUID(), productId, hubId, 500, 450)));
-
-		// when & then
-		mockMvc.perform(get("/internal/v1/inventories/by-products")
-						.param("ids", productId.toString(), missingProductId.toString()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.length()").value(1))
-				.andExpect(jsonPath("$.data[0].productId").value(productId.toString()))
-				.andExpect(jsonPath("$.data[0].quantity").value(500))
-				.andExpect(jsonPath("$.data[0].availableQuantity").value(450))
-				// 선점 수량은 order 내부 사정이라 내려주지 않는다 — 이 계약을 코드로 고정한다
-				.andExpect(jsonPath("$.data[0].reservedQuantity").doesNotExist());
-	}
 }

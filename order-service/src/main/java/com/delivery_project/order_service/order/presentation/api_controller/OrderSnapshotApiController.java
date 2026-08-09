@@ -30,7 +30,7 @@ import java.util.UUID;
  * <p>클래스 레벨 {@code @RequestMapping} 을 두지 않는다. API 명세상 두 조회가
  * <b>서로 다른 리소스 계층</b>에 있어서 공통 prefix 로 묶을 수 없다.
  * <ul>
- *   <li>타임라인 — {@code /api/v1/orders/{orderId}/snapshots} : 특정 주문에 종속된 하위 리소스</li>
+ *   <li>타임라인 — {@code /api/v1/orders/{orderId}/order-snapshots} : 특정 주문에 종속된 하위 리소스</li>
  *   <li>단건 — {@code /api/v1/order-snapshots/{orderSnapshotId}} : 독립 리소스</li>
  * </ul>
  */
@@ -47,7 +47,7 @@ public class OrderSnapshotApiController {
 			@ApiResponse(responseCode = "200", description = "조회 성공"),
 			@ApiResponse(responseCode = "404", description = "주문 없음 · 삭제됨")
 	})
-	@GetMapping("/api/v1/orders/{orderId}/snapshots")
+	@GetMapping("/api/v1/orders/{orderId}/order-snapshots")
 	public ResponseEntity<SuccessResponse<PageResponse<OrderSnapshotResponse>>> getSnapshots(
 			@PathVariable UUID orderId,
 			@RequestParam(required = false) EventType eventType,

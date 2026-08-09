@@ -48,14 +48,14 @@ class OrderSnapshotApiControllerTest {
 	}
 
 	@Test
-	@DisplayName("타임라인은 주문 하위 경로(/api/v1/orders/{orderId}/snapshots)로 매핑된다")
+	@DisplayName("타임라인은 주문 하위 경로(/api/v1/orders/{orderId}/order-snapshots)로 매핑된다")
 	void timelineIsNestedUnderOrder() throws Exception {
 		// given
 		given(orderSnapshotQueryService.getSnapshots(any(), any(), any()))
 				.willReturn(emptyPage());
 
 		// when & then
-		mockMvc.perform(get("/api/v1/orders/{orderId}/snapshots", orderId))
+		mockMvc.perform(get("/api/v1/orders/{orderId}/order-snapshots", orderId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));
 	}
@@ -77,7 +77,7 @@ class OrderSnapshotApiControllerTest {
 	@DisplayName("주문 하위에 중첩된 단건 경로는 더 이상 존재하지 않는다")
 	void nestedDetailPathIsGone() throws Exception {
 		// given & when & then — 명세 이전 경로. 남아 있으면 명세 불일치가 되살아난 것이다.
-		mockMvc.perform(get("/api/v1/orders/{orderId}/snapshots/{snapshotId}", orderId, orderSnapshotId))
+		mockMvc.perform(get("/api/v1/orders/{orderId}/order-snapshots/{orderSnapshotId}", orderId, orderSnapshotId))
 				.andExpect(status().isNotFound());
 	}
 

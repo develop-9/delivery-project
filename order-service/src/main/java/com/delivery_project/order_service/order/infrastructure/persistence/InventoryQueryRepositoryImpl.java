@@ -8,8 +8,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,8 +27,4 @@ public class InventoryQueryRepositoryImpl implements InventoryQueryRepository {
 		return springDataInventoryRepository.findAll(InventorySpecifications.from(condition), pageable);
 	}
 
-	@Override
-	public List<Inventory> findAllByProductIds(Collection<UUID> productIds) {
-		return springDataInventoryRepository.findByProductIdInAndDeletedAtIsNull(productIds);
-	}
 }

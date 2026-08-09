@@ -3,6 +3,7 @@ package com.delivery_project.order_service.order.application.query_service;
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
 import com.delivery_project.order_service.global.util.PageableUtil;
+import com.delivery_project.order_service.order.application.result.OrderInternalDetailResult;
 import com.delivery_project.order_service.order.application.result.OrderResult;
 import com.delivery_project.order_service.order.application.result.OrderSummaryResult;
 import com.delivery_project.order_service.order.domain.entity.Order;
@@ -34,6 +35,21 @@ public class OrderQueryService {
 				orderId, order.getStatus(), order.getItems().size());
 
 		return OrderResult.from(order);
+	}
+
+	/**
+	 * 주문 상세 조회 (내부 API — slack-service 의 AI 파트가 발송 시한 산출에 쓴다).
+	 *
+	 * 외부 조회와 같은 행을 읽지만 반환 필드가 다르다. 타 서비스에는 "무엇을 몇 개 주문했나"만
+	 * 주고 상태·감사 필드는 내보내지 않는다.
+	 */
+	public OrderInternalDetailResult getOrderForInternal(UUID orderId) {
+		Order order = orderQueryRepository.findDetailById(orderId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+		log.info("[주문] 상세 조회(내부) : [{}] itemCount={}", orderId, order.getItems().size());
+
+		return OrderInternalDetailResult.from(order);
 	}
 
 	/**
