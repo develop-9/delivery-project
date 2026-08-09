@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record SlackMessageQueryResult(
-        UUID id,
+        UUID slackMessageId,
         UUID senderUserId,
         SenderType senderType,
         UUID receiverUserId,
@@ -19,10 +19,14 @@ public record SlackMessageQueryResult(
         int retryCount,
         String failureMessage,
         Instant createdAt,
-        Instant updatedAt
+        UUID createdBy,
+        Instant updatedAt,
+        UUID updatedBy
 ) {
 
-    public static SlackMessageQueryResult from(SlackMessage slackMessage) {
+    public static SlackMessageQueryResult from(
+            SlackMessage slackMessage
+    ) {
         return new SlackMessageQueryResult(
                 slackMessage.getId(),
                 slackMessage.getSenderUserId(),
@@ -35,7 +39,9 @@ public record SlackMessageQueryResult(
                 slackMessage.getRetryCount(),
                 slackMessage.getFailureMessage(),
                 slackMessage.getCreatedAt(),
-                slackMessage.getUpdatedAt()
+                slackMessage.getCreatedBy(),
+                slackMessage.getUpdatedAt(),
+                slackMessage.getUpdatedBy()
         );
     }
 }

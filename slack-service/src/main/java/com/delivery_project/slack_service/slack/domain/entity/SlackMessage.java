@@ -1,7 +1,14 @@
 package com.delivery_project.slack_service.slack.domain.entity;
 
 import com.delivery_project.slack_service.global.common.BaseDeletableEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,6 +23,8 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SlackMessage extends BaseDeletableEntity {
+
+    private static final int MAX_RETRY_COUNT = 3;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -95,7 +104,22 @@ public class SlackMessage extends BaseDeletableEntity {
 
     public void markAsFailed(String failureMessage) {
         this.status = SlackMessageStatus.FAILED;
-        this.retryCount++;
         this.failureMessage = failureMessage;
+    }
+
+    public void prepareRetry() {
+        if (!canRetry()) {
+            throw new IllegalStateException(
+                    "Slack 메시지의 최대 재시도 횟수를 초과했습니다."
+            );
+        }
+
+        this.retryCount++;
+        this.status = SlackMessageStatus.PENDING;
+        this.failureMessage = null;
+    }
+
+    public boolean canRetry() {
+        return retryCount < MAX_RETRY_COUNT;
     }
 }
