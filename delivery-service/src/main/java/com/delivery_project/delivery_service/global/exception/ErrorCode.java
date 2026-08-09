@@ -25,6 +25,10 @@ public enum ErrorCode {
     DELIVERY_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 취소할 수 없습니다.", "DELIVERY_CANCEL_NOT_ALLOWED"),
     DELIVERY_ALREADY_STARTED(HttpStatus.CONFLICT, "이미 시작된 배송은 수정할 수 없습니다." ,"DELIVERY_ALREADY_STARTED"),
     DELIVERY_DELETE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 삭제할 수 없습니다.", "DELIVERY_DELETE_NOT_ALLOWED"),
+    UPDATE_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 수정 권한이 없습니다.", "UPDATE_DELIVERY_FORBIDDEN"),
+    DELETE_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 삭제 권한이 없습니다.", "DELETE_DELIVERY_FORBIDDEN"),
+    READ_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 조회 권한이 없습니다.", "READ_DELIVERY_FORBIDDEN"),
+
 
     // DeliveryRoute ErrorCode
     DELIVERY_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 경로를 찾을 수 없습니다.", "DELIVERY_ROUTE_NOT_FOUND"),
@@ -36,6 +40,7 @@ public enum ErrorCode {
     COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED(HttpStatus.CONFLICT, "업체 배송 담당자가 배정되지 않았습니다.", "COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED"),
     DELIVERY_ROUTE_ALREADY_IN_TRANSIT(HttpStatus.CONFLICT, "이미 진행 중인 배송 경로가 존재합니다.", "DELIVERY_ROUTE_ALREADY_IN_TRANSIT"),
     DELIVERY_MANAGER_NOT_AVAILABLE(HttpStatus.CONFLICT, "배정 가능한 배송 담당자가 아닙니다.", "DELIVERY_MANAGER_NOT_AVAILABLE"),
+    READ_DELIVERY_ROUTE_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 경로 조회 권한이 없습니다.", "READ_DELIVERY_ROUTE_FORBIDDEN"),
 
     //Delivery Manager ErrorCode
     DELIVERY_MANAGER_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 담당자를 찾을 수 없습니다.", "DELIVERY_MANAGER_NOT_FOUND"),

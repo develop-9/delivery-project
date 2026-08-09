@@ -1,6 +1,7 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryRouteCommandService;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryRouteQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteStatusUpdateResult;
@@ -50,11 +51,19 @@ public class DeliveryRouteApiController {
     @GetMapping("/{routeId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryRouteDetailResponse> getDeliveryRoute(
-            @PathVariable UUID routeId
+            @PathVariable UUID routeId,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
+        DeliveryRouteGetQuery query =
+                DeliveryRouteGetQuery.from(
+                        routeId,
+                        principal.userId(),
+                        principal.role()
+                );
+
         DeliveryRouteDetailResult result =
                 deliveryRouteQueryService
-                        .getDeliveryRoute(routeId);
+                        .getDeliveryRoute(query);
 
         return SuccessResponse.success(
                 DeliveryRouteDetailResponse.from(result)

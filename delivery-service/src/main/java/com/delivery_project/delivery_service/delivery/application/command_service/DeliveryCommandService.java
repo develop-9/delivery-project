@@ -150,6 +150,8 @@ public class DeliveryCommandService {
                                 )
                         );
 
+        validateUpdatePermission(command, delivery);
+
         ReceiverInfo receiver = null;
 
         if(command.receiverUserId() != null){
@@ -182,6 +184,9 @@ public class DeliveryCommandService {
                                         ErrorCode.DELIVERY_NOT_FOUND
                                 )
                         );
+
+        validateDeletePermission(command, delivery);
+
         // PENDING / CANCELED 상태만 삭제 가능
         delivery.validateDeletable();
 
@@ -433,5 +438,46 @@ public class DeliveryCommandService {
                 manager.releaseFromDelivery();
             }
         }
+    }
+
+    private void validateUpdatePermission(
+            DeliveryUpdateCommand command,
+            Delivery delivery
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            // TODO: 담당 Hub 기준 검증 추가
+            return;
+        }
+
+        if (command.requesterRole() == Role.COMPANY_MANAGER) {
+            // TODO: 담당 업체 기준 검증 추가
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+        );
+    }
+
+    private void validateDeletePermission(
+            DeliveryDeleteCommand command,
+            Delivery delivery
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            // TODO: 담당 Hub 기준 권한 검증 추가
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.DELETE_DELIVERY_FORBIDDEN
+        );
     }
 }

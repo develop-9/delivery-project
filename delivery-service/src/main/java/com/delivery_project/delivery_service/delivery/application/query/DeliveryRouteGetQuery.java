@@ -4,18 +4,18 @@ import com.delivery_project.delivery_service.global.security.Role;
 
 import java.util.UUID;
 
-public record DeliveryGetQuery(
-        UUID deliveryId,
+public record DeliveryRouteGetQuery(
+        UUID routeId,
         UUID requesterId,
         Role requesterRole
 ) {
-    public static DeliveryGetQuery from(
-            UUID deliveryId,
+    public static DeliveryRouteGetQuery from(
+            UUID routeId,
             UUID requesterId,
             Role requesterRole
     ){
-        return new DeliveryGetQuery(
-                deliveryId,
+        return new DeliveryRouteGetQuery(
+                routeId,
                 requesterId,
                 requesterRole
         );

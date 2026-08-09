@@ -1,6 +1,7 @@
 package com.delivery_project.delivery_service.delivery.application.query;
 
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
+import com.delivery_project.delivery_service.global.security.Role;
 
 import java.util.UUID;
 
@@ -13,7 +14,9 @@ public record DeliveryListQuery(
         int page,
         int size,
         String sortBy,
-        String direction
+        String direction,
+        UUID requesterId,
+        Role requesterRole
 ) {
 
     public static DeliveryListQuery of(
@@ -25,7 +28,9 @@ public record DeliveryListQuery(
             int page,
             int size,
             String sortBy,
-            String direction
+            String direction,
+            UUID requesterId,
+            Role requesterRole
     ) {
         return new DeliveryListQuery(
                 orderId,
@@ -36,7 +41,9 @@ public record DeliveryListQuery(
                 page,
                 size,
                 sortBy,
-                direction
+                direction,
+                requesterId,
+                requesterRole
         );
     }
 }

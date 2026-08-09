@@ -1,8 +1,6 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
@@ -712,5 +710,118 @@ class DeliveryCommandServiceTest {
                 ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN,
                 exception.getErrorCode()
         );
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 배송 정보를 수정할 수 없다")
+    void updateDeliveryDeliveryManagerForbidden() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 주소",
+                        null,
+                        UUID.randomUUID(),
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.update(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(delivery, never())
+                .update(any(), any(), any());
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 배송을 삭제할 수 없다")
+    void deleteDeliveryCompanyManagerForbidden() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryDeleteCommand command =
+                new DeliveryDeleteCommand(
+                        deliveryId,
+                        UUID.randomUUID(),
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.delete(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELETE_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(delivery, never())
+                .validateDeletable();
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 배송을 삭제할 수 없다")
+    void deleteDeliveryDeliveryManagerForbidden() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryDeleteCommand command =
+                new DeliveryDeleteCommand(
+                        deliveryId,
+                        UUID.randomUUID(),
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.delete(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELETE_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(delivery, never())
+                .validateDeletable();
     }
 }

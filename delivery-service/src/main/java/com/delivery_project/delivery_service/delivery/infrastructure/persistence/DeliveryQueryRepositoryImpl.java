@@ -4,8 +4,10 @@ import com.delivery_project.delivery_service.delivery.application.query.Delivery
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryQueryRepository;
+import com.delivery_project.delivery_service.global.security.Role;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.delivery_project.delivery_service.delivery.domain.entity.QDelivery.delivery;
+import static com.delivery_project.delivery_service.delivery.domain.entity.QDeliveryRoute.deliveryRoute;
 
 @Repository
 @RequiredArgsConstructor
@@ -46,7 +49,8 @@ public class DeliveryQueryRepositoryImpl
     @Override
     public Page<Delivery> search(
             DeliveryListQuery query,
-            Pageable pageable
+            Pageable pageable,
+            UUID requesterManagerId
     ){
         List<Delivery> content =
                 queryFactory
@@ -59,6 +63,10 @@ public class DeliveryQueryRepositoryImpl
                                 destinationHubIdEq(query.destinationHubId()),
                                 companyDeliveryManagerIdEq(
                                         query.companyDeliveryManagerId()
+                                ),
+                                deliveryManagerScope(
+                                        query.requesterRole(),
+                                        requesterManagerId
                                 )
                         )
                         .orderBy(
@@ -83,6 +91,10 @@ public class DeliveryQueryRepositoryImpl
                                 destinationHubIdEq(query.destinationHubId()),
                                 companyDeliveryManagerIdEq(
                                         query.companyDeliveryManagerId()
+                                ),
+                                deliveryManagerScope(
+                                        query.requesterRole(),
+                                        requesterManagerId
                                 )
                         )
                         .fetchOne();
@@ -152,5 +164,35 @@ public class DeliveryQueryRepositoryImpl
         return ascending
                 ? delivery.createdAt.asc()
                 : delivery.createdAt.desc();
+    }
+
+    private BooleanExpression deliveryManagerScope(
+            Role requesterRole,
+            UUID requesterManagerId
+    ) {
+        if (requesterRole != Role.DELIVERY_MANAGER) {
+            return null;
+        }
+
+        if (requesterManagerId == null) {
+            return delivery.id.isNull();
+        }
+
+        BooleanExpression companyDeliveryAssigned =
+                delivery.companyDeliveryManagerId
+                        .eq(requesterManagerId);
+
+        BooleanExpression hubRouteAssigned =
+                JPAExpressions
+                        .selectOne()
+                        .from(deliveryRoute)
+                        .where(
+                                deliveryRoute.deliveryId.eq(delivery.id),
+                                deliveryRoute.deliveryManagerId.eq(requesterManagerId),
+                                deliveryRoute.deletedAt.isNull()
+                        )
+                        .exists();
+
+        return companyDeliveryAssigned.or(hubRouteAssigned);
     }
 }

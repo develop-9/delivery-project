@@ -4,6 +4,7 @@ import com.delivery_project.delivery_service.delivery.application.command.Delive
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryCommandService;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryQueryService;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryRouteQueryService;
 import com.delivery_project.delivery_service.delivery.application.result.*;
@@ -55,10 +56,15 @@ public class DeliveryApiController {
     @GetMapping("/{deliveryId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryDetailResponse> getDelivery(
-            @PathVariable UUID deliveryId
+            @PathVariable UUID deliveryId,
+            @AuthenticationPrincipal JwtPrincipal principal
     ) {
         DeliveryGetQuery query =
-                DeliveryGetQuery.from(deliveryId);
+                DeliveryGetQuery.from(
+                        deliveryId,
+                        principal.userId(),
+                        principal.role()
+                );
 
         DeliveryDetailResult result =
                 deliveryQueryService.getDelivery(query);
@@ -79,7 +85,8 @@ public class DeliveryApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction
+            @RequestParam(defaultValue = "desc") String direction,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryListQuery query =
                 DeliveryListQuery.of(
@@ -91,7 +98,9 @@ public class DeliveryApiController {
                         page,
                         size,
                         sortBy,
-                        direction
+                        direction,
+                        principal.userId(),
+                        principal.role()
                 );
 
         Page<DeliveryListResult> result =
@@ -109,11 +118,19 @@ public class DeliveryApiController {
     @GetMapping("/{deliveryId}/delivery-routes")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<List<DeliveryRouteDetailResponse>> getDeliveryRoutes(
-            @PathVariable UUID deliveryId
+            @PathVariable UUID deliveryId,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
+        DeliveryRoutesGetQuery query =
+                DeliveryRoutesGetQuery.from(
+                        deliveryId,
+                        principal.userId(),
+                        principal.role()
+                );
+
         List<DeliveryRouteDetailResult> results =
                 deliveryRouteQueryService
-                        .getDeliveryRoutes(deliveryId);
+                        .getDeliveryRoutes(query);
 
         List<DeliveryRouteDetailResponse> response =
                 results.stream()
@@ -127,11 +144,16 @@ public class DeliveryApiController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryUpdateResponse> updateDelivery(
             @PathVariable UUID deliveryId,
-            @RequestBody DeliveryUpdateRequest request
+            @RequestBody DeliveryUpdateRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryUpdateResult result =
                 deliveryCommandService.update(
-                        request.toCommand(deliveryId)
+                        request.toCommand(
+                                deliveryId,
+                                principal.userId(),
+                                principal.role()
+                        )
                 );
 
         return SuccessResponse.success(
@@ -148,7 +170,8 @@ public class DeliveryApiController {
         DeliveryDeleteCommand command =
                 new DeliveryDeleteCommand(
                         deliveryId,
-                        principal.userId()
+                        principal.userId(),
+                        principal.role()
                 );
         DeliveryDeleteResult result =
                 deliveryCommandService.delete(command);
