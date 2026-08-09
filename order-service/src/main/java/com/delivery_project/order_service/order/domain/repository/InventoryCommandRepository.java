@@ -2,6 +2,7 @@ package com.delivery_project.order_service.order.domain.repository;
 
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,11 +19,18 @@ public interface InventoryCommandRepository {
 	Optional<Inventory> findById(UUID inventoryId);
 
 	/**
-	 * 상품으로 재고 행을 찾는다.
-	 * 팀문서 p_inventories 는 product_id 가 UNIQUE 라 상품 하나에 재고 행도 하나다.
-	 * 주문 줄의 inventory_id(선점 대상)를 정할 때 쓴다.
+	 * 상품의 재고 행을 <b>모두</b> 찾는다. 주문 줄의 inventory_id(선점 대상)를 정할 때 쓴다.
+	 *
+	 * <p>8/3~8/4 회의에서 재고를 {@code product_id + hub_id} 로 관리하기로 해
+	 * 상품 하나에 허브 수만큼 행이 생긴다. 단건({@code Optional})으로 받으면
+	 * 여러 행 중 무엇이 뽑혔는지 호출부가 알 수 없어 목록으로 돌려준다.
+	 *
+	 * <p>어느 허브를 고를지는 호출부 책임이다. 선택 기준은 아직 팀 합의 전이라
+	 * {@code OrderCommandService#selectInventory} 의 잠정 규칙을 따른다.
+	 *
+	 * @return hub_id 오름차순. 없으면 빈 목록
 	 */
-	Optional<Inventory> findByProductId(UUID productId);
+	List<Inventory> findAllByProductId(UUID productId);
 
 	Optional<Inventory> findByProductIdAndHubId(UUID productId, UUID hubId);
 

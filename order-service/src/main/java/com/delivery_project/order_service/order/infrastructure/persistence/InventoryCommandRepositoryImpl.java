@@ -5,6 +5,7 @@ import com.delivery_project.order_service.order.domain.repository.InventoryComma
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,8 +26,8 @@ public class InventoryCommandRepositoryImpl implements InventoryCommandRepositor
 	}
 
 	@Override
-	public Optional<Inventory> findByProductId(UUID productId) {
-		return springDataInventoryRepository.findByProductIdAndDeletedAtIsNull(productId);
+	public List<Inventory> findAllByProductId(UUID productId) {
+		return springDataInventoryRepository.findByProductIdAndDeletedAtIsNullOrderByHubIdAsc(productId);
 	}
 
 	@Override
