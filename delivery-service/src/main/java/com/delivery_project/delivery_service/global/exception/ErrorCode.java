@@ -23,6 +23,7 @@ public enum ErrorCode {
     DELIVERY_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "배송 생성에 실패했습니다.", "DELIVERY_CREATE_FAILED"),
     DELIVERY_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 배송입니다.", "DELIVERY_ALREADY_CANCELED"),
     DELIVERY_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 취소할 수 없습니다.", "DELIVERY_CANCEL_NOT_ALLOWED"),
+    DELIVERY_ALREADY_STARTED(HttpStatus.CONFLICT, "이미 시작된 배송은 수정할 수 없습니다." ,"DELIVERY_ALREADY_STARTED"),
 
     // DeliveryRoute ErrorCode
     DELIVERY_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 경로를 찾을 수 없습니다.", "DELIVERY_ROUTE_NOT_FOUND"),

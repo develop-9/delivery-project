@@ -3,6 +3,7 @@ package com.delivery_project.delivery_service.delivery.application.command_servi
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.*;
@@ -137,6 +138,39 @@ public class DeliveryCommandService {
                 savedDelivery.getCompanyDeliveryManagerId(),
                 savedDelivery.getUpdatedAt()
         );
+    }
+
+    @Transactional
+    public DeliveryUpdateResult update(
+            DeliveryUpdateCommand command
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+
+        ReceiverInfo receiver = null;
+
+        if(command.receiverUserId() != null){
+            receiver = userPort.getReceiver(
+                    command.receiverUserId()
+            );
+        }
+
+        delivery.update(
+                command.deliveryAddress(),
+                receiver != null ? receiver.name() : null,
+                receiver != null ? receiver.slackId() : null
+        );
+
+        Delivery savedDelivery =
+                deliveryCommandRepository.save(delivery);
+
+        return DeliveryUpdateResult.from(savedDelivery);
     }
 
     private void validateDuplicateOrder(

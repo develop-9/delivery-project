@@ -5,16 +5,11 @@ import com.delivery_project.delivery_service.delivery.application.query.Delivery
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryQueryService;
 import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryRouteQueryService;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryDetailResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryListResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryStatusUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryStatusUpdateRequest;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryDetailResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryListResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryRouteDetailResponse;
-import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryStatusUpdateResponse;
+import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryUpdateRequest;
+import com.delivery_project.delivery_service.delivery.presentation.response.*;
 import com.delivery_project.delivery_service.global.response.PageResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import com.delivery_project.delivery_service.global.security.JwtPrincipal;
@@ -125,6 +120,22 @@ public class DeliveryApiController {
                         .toList();
 
         return SuccessResponse.success(response);
+    }
+
+    @PatchMapping("/{deliveryId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryUpdateResponse> updateDelivery(
+            @PathVariable UUID deliveryId,
+            @RequestBody DeliveryUpdateRequest request
+    ){
+        DeliveryUpdateResult result =
+                deliveryCommandService.update(
+                        request.toCommand(deliveryId)
+                );
+
+        return SuccessResponse.success(
+                DeliveryUpdateResponse.from(result)
+        );
     }
 
 }
