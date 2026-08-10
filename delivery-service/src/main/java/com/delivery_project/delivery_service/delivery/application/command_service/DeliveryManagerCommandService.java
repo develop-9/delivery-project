@@ -4,6 +4,7 @@ import com.delivery_project.delivery_service.delivery.application.command.Delive
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.port.HubPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDeleteResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
@@ -36,6 +37,7 @@ public class DeliveryManagerCommandService {
     private final DeliveryManagerSequenceCommandRepository deliveryManagerSequenceCommandRepository;
     private final DeliveryCommandRepository deliveryCommandRepository;
     private final DeliveryRouteCommandRepository deliveryRouteCommandRepository;
+    private final HubPort hubPort;
 
     @Value("${system.id}")
     private UUID systemId;
@@ -44,6 +46,10 @@ public class DeliveryManagerCommandService {
             DeliveryManagerCreateCommand command
     ){
         validateManagePermission(command.requesterRole());
+
+        if (command.type() == DeliveryManagerType.COMPANY_DELIVERY) {
+            hubPort.validateHubExists(command.hubId());
+        }
 
         validateDuplicateUser(command);
 
@@ -102,9 +108,9 @@ public class DeliveryManagerCommandService {
                         updatedHubId
                 );
 
-        // TODO: COMPANY_DELIVERY인 경우 Hub Service에서
-        //       updatedHubId 존재 여부를 검증한다.
-        //       존재하지 않으면 BusinessException(ErrorCode.HUB_NOT_FOUND) 발생
+        if (updatedType == DeliveryManagerType.COMPANY_DELIVERY) {
+            hubPort.validateHubExists(updatedHubId);
+        }
 
         deliveryManager.update(
                 updatedHubId,

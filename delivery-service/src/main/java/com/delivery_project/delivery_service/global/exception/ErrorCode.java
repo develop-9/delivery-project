@@ -60,14 +60,14 @@ public enum ErrorCode {
     READ_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 조회 권한이 없습니다.", "READ_DELIVERY_MANAGER_FORBIDDEN"),
     MANAGE_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 관리 권한이 없습니다.", "MANAGE_DELIVERY_MANAGER_FORBIDDEN"),
 
-    // User service Errorcode
+    // external service
     USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "User Service를 사용할 수 없습니다.", "USER_SERVICE_UNAVAILABLE"),
-
     HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Hub Service를 사용할 수 없습니다.", "HUB_SERVICE_UNAVAILABLE"),
 
-    // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
     HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
+    HUB_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "허브 간 배송 경로를 찾을 수 없습니다.", "HUB_ROUTE_NOT_FOUND"),
+
     // 검증
     UPDATE_DELIVERY_ROUTE_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 경로 수정 권한이 없습니다.", "UPDATE_DELIVERY_ROUTE_FORBIDDEN"),
     UPDATE_DELIVERY_STATUS_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 상태 변경 권한이 없습니다.", "UPDATE_DELIVERY_STATUS_FORBIDDEN"),
