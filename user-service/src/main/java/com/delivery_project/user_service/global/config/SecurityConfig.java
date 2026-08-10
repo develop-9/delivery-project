@@ -44,7 +44,8 @@ public class SecurityConfig {
 								"/api/v1/auth/signup",
 								"/api/v1/auth/login",
 								"/api/v1/auth/refresh",
-								// 내부 서비스 간 호출은 게이트웨이를 거치지 않고 별도 인증 방식(팀 결정 필요)이라 범위 밖
+								// 내부 서비스 간 호출은 Gateway를 거치지 않고 Docker 내부망 안에서만 도달 가능해서
+								// 별도의 서비스 신원 검증(key/mTLS) 없이 네트워크 격리에만 의존하기로 팀 확정됨
 								"/internal/v1/**",
 								"/actuator/**",
 								"/swagger-ui/**",

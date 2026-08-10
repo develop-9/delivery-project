@@ -54,6 +54,21 @@ class DeliveryManagerFeignAdapterTest {
 	}
 
 	@Test
+	void 진행_중인_배송이_있으면_DELIVERY_MANAGER_HAS_ACTIVE_DELIVERY로_변환한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		Request request = fakeDeleteRequest(userId);
+		Mockito.doThrow(new FeignException.Conflict("Conflict", request, null, Collections.emptyMap()))
+				.when(deliveryManagerClient).deleteByUserId(userId);
+
+		// when & then
+		assertThatThrownBy(() -> deliveryManagerFeignAdapter.deleteByUserId(userId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_MANAGER_HAS_ACTIVE_DELIVERY);
+	}
+
+	@Test
 	void 그_외_실패는_DELIVERY_SERVICE_UNAVAILABLE로_변환한다() {
 		// given
 		UUID userId = UUID.randomUUID();
