@@ -11,7 +11,6 @@ public record ProductDeleteRequest(
     public ProductDeleteCommand toCommand(JwtPrincipal jwtPrincipal, UUID productId) {
         return new ProductDeleteCommand(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 productId
         );
     }

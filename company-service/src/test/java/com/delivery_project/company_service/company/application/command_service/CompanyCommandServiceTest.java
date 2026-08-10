@@ -62,7 +62,6 @@ class CompanyCommandServiceTest {
 
             CompanyCreateCommand command = new CompanyCreateCommand(
                     callerId,
-                    Role.MASTER,
                     hubId,
                     CompanyType.PRODUCER,
                     "테스트 업체",
@@ -127,7 +126,6 @@ class CompanyCommandServiceTest {
 
             CompanyCreateCommand command = new CompanyCreateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     hubId,
                     CompanyType.RECEIVER,
                     "테스트 업체",
@@ -194,7 +192,6 @@ class CompanyCommandServiceTest {
 
             CompanyCreateCommand command = new CompanyCreateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     hubId,
                     CompanyType.PRODUCER,
                     "테스트 업체",
@@ -240,7 +237,6 @@ class CompanyCommandServiceTest {
 
             CompanyCreateCommand command = new CompanyCreateCommand(
                     callerId,
-                    Role.MASTER,
                     hubId,
                     CompanyType.PRODUCER,
                     "테스트 업체",
@@ -303,7 +299,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     companyId,
                     updatedHubId,
                     CompanyType.RECEIVER,
@@ -378,7 +373,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     companyId,
                     hubId,
                     CompanyType.RECEIVER,
@@ -456,7 +450,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.COMPANY_MANAGER,
                     companyId,
                     hubId,
                     CompanyType.RECEIVER,
@@ -526,7 +519,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     companyId,
                     hubId,
                     CompanyType.PRODUCER,
@@ -571,7 +563,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     companyId,
                     hubId,
                     CompanyType.RECEIVER,
@@ -630,7 +621,6 @@ class CompanyCommandServiceTest {
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     companyId,
                     hubId,
                     CompanyType.RECEIVER,
@@ -690,7 +680,6 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(
                             callerId,
-                            Role.MASTER,
                             companyId
                     );
 
@@ -758,7 +747,6 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(
                             callerId,
-                            Role.HUB_MANAGER,
                             companyId
                     );
 
@@ -828,7 +816,6 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(
                             callerId,
-                            Role.MASTER,
                             companyId
                     );
 
@@ -863,7 +850,6 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(
                             callerId,
-                            Role.HUB_MANAGER,
                             companyId
                     );
 
@@ -922,7 +908,6 @@ class CompanyCommandServiceTest {
             CompanyDeleteCommand command =
                     new CompanyDeleteCommand(
                             callerId,
-                            Role.COMPANY_MANAGER,
                             companyId
                     );
 

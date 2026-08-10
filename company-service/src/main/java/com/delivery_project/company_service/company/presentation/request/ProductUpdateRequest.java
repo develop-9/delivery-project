@@ -25,7 +25,6 @@ public record ProductUpdateRequest(
     public ProductUpdateCommand toCommand(JwtPrincipal jwtPrincipal, UUID productId) {
         return new ProductUpdateCommand(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 productId,
                 companyId,
                 name,

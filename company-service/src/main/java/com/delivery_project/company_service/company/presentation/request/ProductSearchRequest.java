@@ -20,7 +20,6 @@ public record ProductSearchRequest(
     ) {
         return new ProductSearchQuery(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 page,
                 size,
                 sort,

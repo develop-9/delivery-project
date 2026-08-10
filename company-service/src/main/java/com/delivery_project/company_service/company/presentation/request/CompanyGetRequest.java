@@ -11,7 +11,6 @@ public record CompanyGetRequest(
     public CompanyGetQuery toQuery(JwtPrincipal jwtPrincipal, UUID companyId) {
         return new CompanyGetQuery(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 companyId
         );
     }

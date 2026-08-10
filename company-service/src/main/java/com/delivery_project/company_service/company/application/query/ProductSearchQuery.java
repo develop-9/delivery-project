@@ -7,7 +7,6 @@ import java.util.UUID;
 public record ProductSearchQuery(
 
         UUID callerId,
-        Role role,
         Integer page,
         Integer size,
         String sort,

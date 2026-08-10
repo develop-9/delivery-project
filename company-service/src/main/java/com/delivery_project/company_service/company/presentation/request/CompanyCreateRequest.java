@@ -28,7 +28,6 @@ public record CompanyCreateRequest(
         public CompanyCreateCommand toCommand(JwtPrincipal jwtPrincipal) {
                 return new CompanyCreateCommand(
                         jwtPrincipal.userId(),
-                        jwtPrincipal.role(),
                         this.hubId,
                         this.type,
                         this.name,

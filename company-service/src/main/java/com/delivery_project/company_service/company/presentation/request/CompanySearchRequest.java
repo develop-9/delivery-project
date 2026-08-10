@@ -12,7 +12,6 @@ public record CompanySearchRequest(
     public CompanySearchQuery toQuery(JwtPrincipal jwtPrincipal, Integer page, Integer size, String sort, String name, CompanyType type, UUID hubId) {
         return new CompanySearchQuery(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 page,
                 size,
                 sort,

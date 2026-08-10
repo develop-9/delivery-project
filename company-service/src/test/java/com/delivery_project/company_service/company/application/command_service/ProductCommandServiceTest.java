@@ -64,7 +64,6 @@ class ProductCommandServiceTest {
 
             ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    Role.MASTER,
                     companyId,
                     "테스트 상품",
                     10000
@@ -144,7 +143,6 @@ class ProductCommandServiceTest {
 
             ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     companyId,
                     "테스트 상품",
                     10000
@@ -227,7 +225,6 @@ class ProductCommandServiceTest {
 
             ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    Role.COMPANY_MANAGER,
                     companyId,
                     "테스트 상품",
                     10000
@@ -308,7 +305,6 @@ class ProductCommandServiceTest {
 
             ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    Role.MASTER,
                     companyId,
                     "테스트 상품",
                     10000
@@ -347,7 +343,6 @@ class ProductCommandServiceTest {
 
             ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     companyId,
                     "테스트 상품",
                     10000
@@ -418,7 +413,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     productId,
                     newCompanyId,
                     "수정된 상품",
@@ -504,7 +498,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     productId,
                     newCompanyId,
                     "수정된 상품",
@@ -592,7 +585,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.COMPANY_MANAGER,
                     productId,
                     companyId,
                     "수정된 상품",
@@ -679,7 +671,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     productId,
                     companyId,
                     "수정된 상품",
@@ -721,7 +712,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.HUB_MANAGER,
                     productId,
                     companyId,
                     "수정된 상품",
@@ -787,7 +777,6 @@ class ProductCommandServiceTest {
 
             ProductUpdateCommand command = new ProductUpdateCommand(
                     callerId,
-                    Role.MASTER,
                     productId,
                     companyId,
                     "수정된 상품",
@@ -860,7 +849,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.MASTER,
                             productId
                     );
 
@@ -940,7 +928,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.HUB_MANAGER,
                             productId
                     );
 
@@ -1021,7 +1008,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.HUB_MANAGER,
                             productId
                     );
 
@@ -1060,7 +1046,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.MASTER,
                             productId
                     );
 
@@ -1118,7 +1103,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.HUB_MANAGER,
                             productId
                     );
 
@@ -1194,7 +1178,6 @@ class ProductCommandServiceTest {
             ProductDeleteCommand command =
                     new ProductDeleteCommand(
                             callerId,
-                            Role.COMPANY_MANAGER,
                             productId
                     );
 

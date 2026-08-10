@@ -58,7 +58,6 @@ class CompanyQueryServiceTest {
             CompanyGetQuery command =
                     new CompanyGetQuery(
                             callerId,
-                            Role.MASTER,
                             companyId
                     );
 
@@ -114,7 +113,6 @@ class CompanyQueryServiceTest {
             CompanyGetQuery command =
                     new CompanyGetQuery(
                             callerId,
-                            Role.MASTER,
                             companyId
                     );
 
@@ -159,7 +157,6 @@ class CompanyQueryServiceTest {
 
             CompanySearchQuery command = new CompanySearchQuery(
                     callerId,
-                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",
@@ -240,7 +237,6 @@ class CompanyQueryServiceTest {
 
             CompanySearchQuery command = new CompanySearchQuery(
                     callerId,
-                    Role.MASTER,
                     page,
                     10,
                     "createdAt,desc",

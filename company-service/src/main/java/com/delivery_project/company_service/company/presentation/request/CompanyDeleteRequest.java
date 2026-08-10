@@ -11,7 +11,6 @@ public record CompanyDeleteRequest(
     public CompanyDeleteCommand toCommand(JwtPrincipal jwtPrincipal, UUID companyId) {
         return new CompanyDeleteCommand(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 companyId
         );
     }

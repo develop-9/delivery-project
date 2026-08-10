@@ -11,7 +11,6 @@ public record ProductGetRequest(
     public ProductGetQuery toQuery(JwtPrincipal jwtPrincipal, UUID productId) {
         return new ProductGetQuery(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 productId
         );
     }

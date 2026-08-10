@@ -8,7 +8,6 @@ import java.util.UUID;
 public record CompanyUpdateCommand(
 
         UUID callerId,
-        Role role,
         UUID companyId,
         UUID hubId,
         CompanyType type,

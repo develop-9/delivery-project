@@ -7,7 +7,6 @@ import java.util.UUID;
 public record CompanyGetQuery(
 
         UUID callerId,
-        Role role,
         UUID companyId
 ) {
 }

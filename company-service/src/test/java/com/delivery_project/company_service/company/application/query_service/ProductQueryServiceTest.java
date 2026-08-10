@@ -60,7 +60,6 @@ class ProductQueryServiceTest {
             ProductGetQuery productGetQuery =
                     new ProductGetQuery(
                             callerId,
-                            Role.MASTER,
                             productId
                     );
 
@@ -90,7 +89,6 @@ class ProductQueryServiceTest {
             ProductGetQuery productGetQuery =
                     new ProductGetQuery(
                             callerId,
-                            Role.MASTER,
                             productId
                     );
 
@@ -134,7 +132,6 @@ class ProductQueryServiceTest {
 
             ProductSearchQuery command = new ProductSearchQuery(
                     callerId,
-                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",
@@ -217,7 +214,6 @@ class ProductQueryServiceTest {
 
             ProductSearchQuery command = new ProductSearchQuery(
                     callerId,
-                    Role.MASTER,
                     page,
                     10,
                     "createdAt,desc",
@@ -270,7 +266,6 @@ class ProductQueryServiceTest {
 
             ProductSearchQuery command = new ProductSearchQuery(
                     callerId,
-                    Role.MASTER,
                     page,
                     size,
                     "createdAt,desc",

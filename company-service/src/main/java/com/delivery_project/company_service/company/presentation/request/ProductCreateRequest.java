@@ -22,7 +22,6 @@ public record ProductCreateRequest(
     public ProductCreateCommand toCommand(JwtPrincipal jwtPrincipal) {
         return new ProductCreateCommand(
                 jwtPrincipal.userId(),
-                jwtPrincipal.role(),
                 companyId,
                 name,
                 price

@@ -7,7 +7,6 @@ import java.util.UUID;
 public record ProductDeleteCommand(
 
         UUID callerId,
-        Role role,
         UUID productId
 ) {
 }

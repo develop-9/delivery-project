@@ -7,7 +7,6 @@ import java.util.UUID;
 public record CompanyDeleteCommand(
 
         UUID callerId,
-        Role role,
         UUID companyId
 ) {
 }

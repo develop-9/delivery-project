@@ -7,7 +7,6 @@ import java.util.UUID;
 public record ProductGetQuery(
 
         UUID callerId,
-        Role role,
         UUID productId
 ) {
 }

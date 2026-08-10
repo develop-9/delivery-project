@@ -28,7 +28,6 @@ public record CompanyUpdateRequest(
         public CompanyUpdateCommand toCommand(JwtPrincipal jwtPrincipal, UUID companyId) {
                 return new CompanyUpdateCommand(
                         jwtPrincipal.userId(),
-                        jwtPrincipal.role(),
                         companyId,
                         this.hubId,
                         this.type,

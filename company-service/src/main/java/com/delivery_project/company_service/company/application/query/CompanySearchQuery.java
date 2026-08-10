@@ -8,7 +8,6 @@ import java.util.UUID;
 public record CompanySearchQuery(
 
         UUID callerId,
-        Role role,
         Integer page,
         Integer size,
         String sort,

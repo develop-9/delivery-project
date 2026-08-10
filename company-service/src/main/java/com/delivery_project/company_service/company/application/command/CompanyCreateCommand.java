@@ -8,7 +8,6 @@ import java.util.UUID;
 public record CompanyCreateCommand(
 
         UUID callerId,
-        Role role,
         UUID hubId,
         CompanyType type,
         String name,

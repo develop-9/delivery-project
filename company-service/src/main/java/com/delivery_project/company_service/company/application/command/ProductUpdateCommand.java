@@ -7,7 +7,6 @@ import java.util.UUID;
 public record ProductUpdateCommand(
 
         UUID callerId,
-        Role role,
         UUID productId,
         UUID companyId,
         String name,
