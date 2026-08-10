@@ -3,10 +3,14 @@ package com.delivery_project.slack_service.ai_history.application.command_servic
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
 import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
 import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubManagerClient;
 import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubBatchResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubManagerResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
@@ -26,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +42,12 @@ class AiHistoryCommandServiceTest {
 
     @Mock
     private DeliveryRouteClient deliveryRouteClient;
+
+    @Mock
+    private HubClient hubClient;
+
+    @Mock
+    private HubManagerClient hubManagerClient;
 
     @Mock
     private AiGenerationClient aiGenerationClient;
@@ -56,21 +67,56 @@ class AiHistoryCommandServiceTest {
         // given
         UUID orderId = UUID.randomUUID();
         UUID aiHistoryId = UUID.randomUUID();
+
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID hubManagerUserId = UUID.randomUUID();
+
         String prompt = "test prompt";
-        Instant deadline = Instant.parse("2026-08-09T12:00:00Z");
+
+        Instant deadline =
+                Instant.parse("2026-08-09T12:00:00Z");
 
         AiHistoryCreateCommand command =
                 new AiHistoryCreateCommand(orderId);
 
-        OrderSummaryResult orderSummary = mock(OrderSummaryResult.class);
-        DeliveryRouteResult deliveryRoute = mock(DeliveryRouteResult.class);
+        OrderSummaryResult orderSummary =
+                mock(OrderSummaryResult.class);
+
+        DeliveryRouteResult deliveryRoute =
+                mock(DeliveryRouteResult.class);
 
         DeliveryRouteResult.RouteResult route =
                 new DeliveryRouteResult.RouteResult(
                         1,
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        departureHubId,
+                        arrivalHubId,
                         60
+                );
+
+        HubBatchResult hubBatch =
+                new HubBatchResult(
+                        List.of(
+                                new HubBatchResult.HubResult(
+                                        departureHubId,
+                                        "출발 허브",
+                                        "출발 허브 주소"
+                                ),
+                                new HubBatchResult.HubResult(
+                                        arrivalHubId,
+                                        "도착 허브",
+                                        "도착 허브 주소"
+                                )
+                        ),
+                        List.of()
+                );
+
+        HubManagerResult hubManager =
+                new HubManagerResult(
+                        hubManagerUserId,
+                        "허브 관리자",
+                        "HUB_MANAGER",
+                        departureHubId
                 );
 
         when(deliveryRoute.routes())
@@ -82,8 +128,17 @@ class AiHistoryCommandServiceTest {
         when(deliveryRouteClient.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
-        when(aiPromptGenerator.generate(orderSummary, deliveryRoute))
-                .thenReturn(prompt);
+        when(hubClient.getHubs(anyList()))
+                .thenReturn(hubBatch);
+
+        when(hubManagerClient.getHubManager(departureHubId))
+                .thenReturn(hubManager);
+
+        when(aiPromptGenerator.generate(
+                orderSummary,
+                deliveryRoute,
+                hubBatch
+        )).thenReturn(prompt);
 
         when(aiHistoryPersistenceService.createPending(
                 eq(orderId),
@@ -91,7 +146,8 @@ class AiHistoryCommandServiceTest {
                 any(Instant.class)
         )).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient.generateFinalDispatchDeadline(prompt))
+        when(aiGenerationClient
+                .generateFinalDispatchDeadline(prompt))
                 .thenReturn(
                         new AiGenerationResult(
                                 "gemini-2.5-flash",
@@ -99,7 +155,8 @@ class AiHistoryCommandServiceTest {
                         )
                 );
 
-        AiHistory completedHistory = mock(AiHistory.class);
+        AiHistory completedHistory =
+                mock(AiHistory.class);
 
         when(completedHistory.getStatus())
                 .thenReturn(AiHistoryStatus.SUCCESS);
@@ -118,21 +175,47 @@ class AiHistoryCommandServiceTest {
         // then
         assertThat(result).isNotNull();
 
-        verify(orderSummaryClient).getOrderSummary(orderId);
-        verify(deliveryRouteClient).getRoutesByOrderId(orderId);
-        verify(aiPromptGenerator).generate(orderSummary, deliveryRoute);
-        verify(aiHistoryPersistenceService).createPending(
-                eq(orderId),
-                eq(prompt),
-                any(Instant.class)
+        verify(orderSummaryClient)
+                .getOrderSummary(orderId);
+
+        verify(deliveryRouteClient)
+                .getRoutesByOrderId(orderId);
+
+        verify(hubClient).getHubs(
+                argThat(hubIds ->
+                        hubIds.size() == 2
+                                && hubIds.contains(departureHubId)
+                                && hubIds.contains(arrivalHubId)
+                )
         );
-        verify(aiGenerationClient).generateFinalDispatchDeadline(prompt);
-        verify(aiHistoryPersistenceService).complete(
-                eq(aiHistoryId),
-                eq("gemini-2.5-flash"),
-                eq(deadline),
-                any(Instant.class)
+
+        verify(hubManagerClient)
+                .getHubManager(departureHubId);
+
+        verify(aiPromptGenerator).generate(
+                orderSummary,
+                deliveryRoute,
+                hubBatch
         );
+
+        verify(aiHistoryPersistenceService)
+                .createPending(
+                        eq(orderId),
+                        eq(prompt),
+                        any(Instant.class)
+                );
+
+        verify(aiGenerationClient)
+                .generateFinalDispatchDeadline(prompt);
+
+        verify(aiHistoryPersistenceService)
+                .complete(
+                        eq(aiHistoryId),
+                        eq("gemini-2.5-flash"),
+                        eq(deadline),
+                        any(Instant.class)
+                );
+
         verify(aiHistoryPersistenceService, never())
                 .fail(any(), any(), any());
     }
@@ -143,20 +226,53 @@ class AiHistoryCommandServiceTest {
         // given
         UUID orderId = UUID.randomUUID();
         UUID aiHistoryId = UUID.randomUUID();
+
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID hubManagerUserId = UUID.randomUUID();
+
         String prompt = "test prompt";
 
         AiHistoryCreateCommand command =
                 new AiHistoryCreateCommand(orderId);
 
-        OrderSummaryResult orderSummary = mock(OrderSummaryResult.class);
-        DeliveryRouteResult deliveryRoute = mock(DeliveryRouteResult.class);
+        OrderSummaryResult orderSummary =
+                mock(OrderSummaryResult.class);
+
+        DeliveryRouteResult deliveryRoute =
+                mock(DeliveryRouteResult.class);
 
         DeliveryRouteResult.RouteResult route =
                 new DeliveryRouteResult.RouteResult(
                         1,
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        departureHubId,
+                        arrivalHubId,
                         60
+                );
+
+        HubBatchResult hubBatch =
+                new HubBatchResult(
+                        List.of(
+                                new HubBatchResult.HubResult(
+                                        departureHubId,
+                                        "출발 허브",
+                                        "출발 허브 주소"
+                                ),
+                                new HubBatchResult.HubResult(
+                                        arrivalHubId,
+                                        "도착 허브",
+                                        "도착 허브 주소"
+                                )
+                        ),
+                        List.of()
+                );
+
+        HubManagerResult hubManager =
+                new HubManagerResult(
+                        hubManagerUserId,
+                        "허브 관리자",
+                        "HUB_MANAGER",
+                        departureHubId
                 );
 
         when(deliveryRoute.routes())
@@ -168,8 +284,17 @@ class AiHistoryCommandServiceTest {
         when(deliveryRouteClient.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
-        when(aiPromptGenerator.generate(orderSummary, deliveryRoute))
-                .thenReturn(prompt);
+        when(hubClient.getHubs(anyList()))
+                .thenReturn(hubBatch);
+
+        when(hubManagerClient.getHubManager(departureHubId))
+                .thenReturn(hubManager);
+
+        when(aiPromptGenerator.generate(
+                orderSummary,
+                deliveryRoute,
+                hubBatch
+        )).thenReturn(prompt);
 
         when(aiHistoryPersistenceService.createPending(
                 eq(orderId),
@@ -177,7 +302,8 @@ class AiHistoryCommandServiceTest {
                 any(Instant.class)
         )).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient.generateFinalDispatchDeadline(prompt))
+        when(aiGenerationClient
+                .generateFinalDispatchDeadline(prompt))
                 .thenThrow(
                         new BusinessException(
                                 ErrorCode.AI_REQUEST_FAILED
@@ -190,14 +316,23 @@ class AiHistoryCommandServiceTest {
         )
                 .isInstanceOf(BusinessException.class);
 
-        verify(aiHistoryPersistenceService).fail(
-                eq(aiHistoryId),
-                isNull(),
-                any(Instant.class)
-        );
+        verify(hubManagerClient)
+                .getHubManager(departureHubId);
+
+        verify(aiHistoryPersistenceService)
+                .fail(
+                        eq(aiHistoryId),
+                        isNull(),
+                        any(Instant.class)
+                );
 
         verify(aiHistoryPersistenceService, never())
-                .complete(any(), any(), any(), any());
+                .complete(
+                        any(),
+                        any(),
+                        any(),
+                        any()
+                );
     }
 
     @Test
@@ -209,8 +344,11 @@ class AiHistoryCommandServiceTest {
         AiHistoryCreateCommand command =
                 new AiHistoryCreateCommand(orderId);
 
-        OrderSummaryResult orderSummary = mock(OrderSummaryResult.class);
-        DeliveryRouteResult deliveryRoute = mock(DeliveryRouteResult.class);
+        OrderSummaryResult orderSummary =
+                mock(OrderSummaryResult.class);
+
+        DeliveryRouteResult deliveryRoute =
+                mock(DeliveryRouteResult.class);
 
         when(orderSummaryClient.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
@@ -227,11 +365,21 @@ class AiHistoryCommandServiceTest {
         )
                 .isInstanceOf(BusinessException.class);
 
+        verify(hubClient, never())
+                .getHubs(anyList());
+
+        verify(hubManagerClient, never())
+                .getHubManager(any());
+
         verify(aiPromptGenerator, never())
-                .generate(any(), any());
+                .generate(any(), any(), any());
 
         verify(aiHistoryPersistenceService, never())
-                .createPending(any(), any(), any());
+                .createPending(
+                        any(),
+                        any(),
+                        any()
+                );
 
         verify(aiGenerationClient, never())
                 .generateFinalDispatchDeadline(any());

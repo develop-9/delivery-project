@@ -1,20 +1,20 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
-import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
-import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
-import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.port.*;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubBatchResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +22,8 @@ public class AiHistoryCommandService {
 
     private final OrderSummaryClient orderSummaryClient;
     private final DeliveryRouteClient deliveryRouteClient;
+    private final HubClient hubClient;
+    private final HubManagerClient hubManagerClient;
     private final AiGenerationClient aiGenerationClient;
     private final AiPromptGenerator aiPromptGenerator;
     private final AiHistoryStatusCommandService aiHistoryStatusCommandService;
@@ -41,10 +43,26 @@ public class AiHistoryCommandService {
 
         validateDeliveryRoute(deliveryRoute);
 
+        List<UUID> hubIds =
+                extractHubIds(deliveryRoute);
+
+        HubBatchResult hubBatch =
+                hubClient.getHubs(hubIds);
+
+        validateHubBatch(hubBatch);
+
+        UUID firstDepartureHubId =
+                getFirstDepartureHubId(deliveryRoute);
+
+        hubManagerClient.getHubManager(
+                firstDepartureHubId
+        );
+
         String prompt =
                 aiPromptGenerator.generate(
                         orderSummary,
-                        deliveryRoute
+                        deliveryRoute,
+                        hubBatch
                 );
 
         Instant requestedAt = Instant.now();
@@ -71,6 +89,7 @@ public class AiHistoryCommandService {
             );
 
             throw exception;
+
         } catch (Exception exception) {
             saveFailedHistory(
                     aiHistoryId,
@@ -101,6 +120,63 @@ public class AiHistoryCommandService {
         ) {
             throw new BusinessException(
                     ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+            );
+        }
+    }
+
+    private List<UUID> extractHubIds(
+            DeliveryRouteResult deliveryRoute
+    ) {
+        return deliveryRoute.routes()
+                .stream()
+                .flatMap(route ->
+                        Stream.of(
+                                route.departureHubId(),
+                                route.arrivalHubId()
+                        )
+                )
+                .distinct()
+                .toList();
+    }
+
+    private UUID getFirstDepartureHubId(
+            DeliveryRouteResult deliveryRoute
+    ) {
+        return deliveryRoute.routes()
+                .stream()
+                .min(
+                        java.util.Comparator.comparing(
+                                DeliveryRouteResult.RouteResult::sequence
+                        )
+                )
+                .map(
+                        DeliveryRouteResult.RouteResult::departureHubId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                        )
+                );
+    }
+
+    private void validateHubBatch(
+            HubBatchResult hubBatch
+    ) {
+        if (
+                hubBatch == null
+                        || hubBatch.hubs() == null
+        ) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
+            );
+        }
+
+        if (
+                hubBatch.notFoundHubIds() != null
+                        && !hubBatch.notFoundHubIds().isEmpty()
+        ) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
             );
         }
     }

@@ -14,6 +14,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Component
 public class GeminiAiGenerationClient
@@ -42,9 +43,10 @@ public class GeminiAiGenerationClient
             @Value("${gemini.model:gemini-2.5-flash}")
             String modelName
     ) {
-        this.restClient = restClientBuilder
-                .baseUrl(baseUrl)
-                .build();
+        this.restClient =
+                restClientBuilder
+                        .baseUrl(baseUrl)
+                        .build();
 
         this.apiKey = apiKey;
         this.modelName = modelName;
@@ -70,18 +72,20 @@ public class GeminiAiGenerationClient
         GeminiResponse response;
 
         try {
-            response = restClient.post()
-                    .uri(
-                            "/v1beta/models/{model}:generateContent",
-                            modelName
-                    )
-                    .header(
-                            "x-goog-api-key",
-                            apiKey
-                    )
-                    .body(request)
-                    .retrieve()
-                    .body(GeminiResponse.class);
+            response =
+                    restClient.post()
+                            .uri(
+                                    "/v1beta/models/{model}:generateContent",
+                                    modelName
+                            )
+                            .header(
+                                    "x-goog-api-key",
+                                    apiKey
+                            )
+                            .body(request)
+                            .retrieve()
+                            .body(GeminiResponse.class);
+
         } catch (RestClientException exception) {
             throw new BusinessException(
                     ErrorCode.AI_REQUEST_FAILED
@@ -92,7 +96,9 @@ public class GeminiAiGenerationClient
                 extractResponseText(response);
 
         Instant finalDispatchDeadline =
-                parseFinalDispatchDeadline(responseText);
+                parseFinalDispatchDeadline(
+                        responseText
+                );
 
         return new AiGenerationResult(
                 modelName,
@@ -101,7 +107,10 @@ public class GeminiAiGenerationClient
     }
 
     private void validateApiKey() {
-        if (apiKey == null || apiKey.isBlank()) {
+        if (
+                apiKey == null
+                        || apiKey.isBlank()
+        ) {
             throw new BusinessException(
                     ErrorCode.AI_REQUEST_FAILED
             );
@@ -143,21 +152,27 @@ public class GeminiAiGenerationClient
                                 value != null
                                         && !value.isBlank()
                         )
-                        .findFirst()
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.AI_RESPONSE_PARSE_FAILED
-                                )
-                        );
+                        .collect(
+                                Collectors.joining()
+                        )
+                        .trim();
 
-        return text.trim();
+        if (text.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.AI_RESPONSE_PARSE_FAILED
+            );
+        }
+
+        return text;
     }
 
     private Instant parseFinalDispatchDeadline(
             String responseText
     ) {
         Matcher matcher =
-                INSTANT_PATTERN.matcher(responseText);
+                INSTANT_PATTERN.matcher(
+                        responseText
+                );
 
         if (!matcher.find()) {
             throw new BusinessException(
@@ -169,6 +184,7 @@ public class GeminiAiGenerationClient
             return Instant.parse(
                     matcher.group()
             );
+
         } catch (DateTimeParseException exception) {
             throw new BusinessException(
                     ErrorCode.AI_RESPONSE_PARSE_FAILED

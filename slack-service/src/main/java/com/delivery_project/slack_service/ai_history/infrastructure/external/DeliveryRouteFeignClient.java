@@ -4,7 +4,6 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,10 +19,7 @@ public interface DeliveryRouteFeignClient {
 
     record DeliveryRouteApiResponse(
             boolean success,
-            String code,
-            String message,
-            DeliveryRouteData data,
-            Instant timestamp
+            DeliveryRouteData data
     ) {
     }
 
