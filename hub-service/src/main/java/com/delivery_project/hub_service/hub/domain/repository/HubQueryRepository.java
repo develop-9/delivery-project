@@ -36,4 +36,12 @@ public interface HubQueryRepository {
 	 * <p>일부만 존재해도 에러가 아니다. 찾은 것만 담아 돌려주고 없는 ID 판정은 Service 가 한다.
 	 */
 	List<Hub> findAllByIds(Collection<UUID> hubIds);
+
+	/**
+	 * 살아 있는 허브의 ID 전체 (내부 15번).
+	 *
+	 * <p>엔티티가 아니라 ID 만 돌려주는 유일한 조회다. 호출 측(Company)이 쓰는 값이 ID 뿐인데
+	 * 엔티티를 통째로 읽으면 영속성 컨텍스트에 쓰지 않을 객체가 쌓인다.
+	 */
+	List<UUID> findAllIds();
 }
