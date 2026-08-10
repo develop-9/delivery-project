@@ -171,6 +171,11 @@ public class UserCommandService {
 	 * delivery-service가 느리거나 다운되면 DB 커넥션을 붙잡은 채로 대기하게 되어 커넥션 풀
 	 * 고갈로 이어질 수 있고, Feign은 성공했는데 이후 DB 커밋이 실패하면 두 서비스 데이터가
 	 * 어긋난다. 실제 DB 쓰기(commitDelete)만 TransactionTemplate으로 별도 트랜잭션에 담는다.
+	 *
+	 * TODO: Feign 성공 후 DB 커밋 실패 시의 정합성 위반 가능성은 지금 감수 중인 트레이드오프다
+	 * (커넥션 풀 고갈이라는 더 나쁜 대안 대신 택함). 발생 확률은 낮지만 없앨 수는 있다 — Access
+	 * Token 무효화에 쓴 것과 같은 아웃박스 패턴을 이 Feign 호출에도 적용해서, DB 커밋을 먼저
+	 * 확정시키고 Delivery Service 삭제 요청은 커밋 후 비동기로 안정적으로 보내는 방향을 검토.
 	 */
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public UserDeleteResult delete(UUID callerId, UserDeleteCommand command) {

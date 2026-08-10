@@ -69,6 +69,12 @@ public class UserTableSchemaInitializer implements ApplicationRunner {
 	 * ApprovalStatus에 SUSPENDED를 추가했을 때(User.suspend() 참고) Hibernate가 기존 제약을
 	 * 고쳐주지 않아, SUSPENDED 이전에 한 번이라도 떠 있던 스키마에서는 정지 처리 시
 	 * DataIntegrityViolationException으로 실패한다.
+	 *
+	 * TODO: DROP은 IF EXISTS라 멱등하지만 Postgres는 ADD CONSTRAINT IF NOT EXISTS를 지원하지
+	 * 않아서, 두 인스턴스가 동시에 이 메서드를 실행하면 하나는 성공하고 하나는 "constraint
+	 * already exists" 에러로 죽는다(직접 재현 확인). 지금은 User Service를 다중 인스턴스로
+	 * 띄우는 설정이 없어 발동 조건 자체가 없지만, 스케일아웃하게 되면 DO $$ ... EXCEPTION WHEN
+	 * duplicate_object THEN NULL; END $$; 같은 방어를 추가해야 한다.
 	 */
 	private void fixApprovalStatusCheckConstraint(String table) {
 		jdbcTemplate.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS p_users_approval_status_check");
