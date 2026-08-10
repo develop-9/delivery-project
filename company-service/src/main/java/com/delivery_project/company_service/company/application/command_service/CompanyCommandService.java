@@ -130,17 +130,17 @@ public class CompanyCommandService {
             );
         }
 
-        // 업체를 조회
-        Company company = companyPersistenceService
-                .getCompanyById(companyUpdateCommand.companyId())
-                // 조회된 업체가 없는 경우
-                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
-
         /*
          * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
          * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
          */
         HubInfo hubInfo = hubPort.getHub(companyUpdateCommand.hubId());
+
+        // 업체를 조회
+        Company company = companyPersistenceService
+                .getCompanyById(companyUpdateCommand.companyId())
+                // 조회된 업체가 없는 경우
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 실제 DB 수정 시점부터 트랜잭션 시작
         return companyPersistenceService.updateCompany(
@@ -203,6 +203,12 @@ public class CompanyCommandService {
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
+
+        /*
+         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
+         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
+         */
+        HubInfo hubInfo = hubPort.getHub(company.getHubId());
 
         // 실제 DB 논리 삭제 시점부터 트랜잭션 시작
         return companyPersistenceService.deleteCompany(

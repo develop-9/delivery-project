@@ -5,8 +5,10 @@ import com.delivery_project.company_service.company.application.command.ProductD
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
 import com.delivery_project.company_service.company.application.pesistence_service.ProductPersistenceService;
+import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
+import com.delivery_project.company_service.company.application.port.dto.HubInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
@@ -29,6 +31,7 @@ public class ProductCommandService {
     private final CompanyPersistenceService companyPersistenceService;
     private final ProductPersistenceService productPersistenceService;
     private final UserPort userPort;
+    private final HubPort hubPort;
 
     // [외부] 상품 생성 비즈니스 로직
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
@@ -86,6 +89,12 @@ public class ProductCommandService {
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
+
+        /*
+         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
+         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
+         */
+        HubInfo hubInfo = hubPort.getHub(company.getHubId());
 
         // 실제 DB 저장 시점부터 트랜잭션 시작
         return productPersistenceService.saveProduct(
@@ -150,6 +159,12 @@ public class ProductCommandService {
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
+
+        /*
+         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
+         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
+         */
+        HubInfo hubInfo = hubPort.getHub(company.getHubId());
 
         // 상품을 조회
         Product product = productPersistenceService
@@ -223,6 +238,12 @@ public class ProductCommandService {
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
+
+        /*
+         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
+         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
+         */
+        HubInfo hubInfo = hubPort.getHub(company.getHubId());
 
         // 실제 DB 삭제 시점부터 트랜잭션 시작
         return productPersistenceService.deleteProduct(
