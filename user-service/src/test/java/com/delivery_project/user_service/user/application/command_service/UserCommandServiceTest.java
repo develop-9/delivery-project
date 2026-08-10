@@ -580,13 +580,19 @@ class UserCommandServiceTest {
 	}
 
 	private User createUser(String username, Role role, UUID companyId) {
+		// COMPANY_MANAGER는 companyId가 도메인 불변식(User 생성자)이라, 호출부가 null을
+		// 넘겨도 역할 검증 자체가 관심사가 아닌 테스트가 깨지지 않도록 여기서 채워준다.
+		UUID resolvedCompanyId = (role == Role.COMPANY_MANAGER && companyId == null)
+				? UUID.randomUUID()
+				: companyId;
+
 		User user = User.builder()
 				.username(username)
 				.password("encoded-password")
 				.name("테스트유저")
 				.slackId("U" + UUID.randomUUID().toString().substring(0, 10))
 				.role(role)
-				.companyId(companyId)
+				.companyId(resolvedCompanyId)
 				.build();
 		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
 		return user;

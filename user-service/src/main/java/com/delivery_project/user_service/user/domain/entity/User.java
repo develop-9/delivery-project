@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.delivery_project.user_service.global.common.BaseDeletableEntity;
+import com.delivery_project.user_service.global.exception.BusinessException;
+import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.infrastructure.persistence.converter.NameConverter;
 import com.delivery_project.user_service.user.infrastructure.persistence.converter.SlackIdConverter;
 
@@ -78,6 +80,8 @@ public class User extends BaseDeletableEntity {
 	@Builder
 	private User(String username, String password, String name, String slackId,
 			Role role, UUID hubId, UUID companyId) {
+		validateHubOrCompanyRequired(role, hubId, companyId);
+
 		this.username = username;
 		this.password = password;
 		this.name = name;
@@ -86,6 +90,17 @@ public class User extends BaseDeletableEntity {
 		this.approvalStatus = ApprovalStatus.PENDING;
 		this.hubId = hubId;
 		this.companyId = companyId;
+	}
+
+	// 역할별 필수 소속 정보(hubId/companyId)는 도메인 불변식이라, 이 값이 빠진 User는
+	// 애초에 만들어질 수 없게 생성 시점에 강제한다.
+	private static void validateHubOrCompanyRequired(Role role, UUID hubId, UUID companyId) {
+		if ((role == Role.HUB_MANAGER || role == Role.DELIVERY_MANAGER) && hubId == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+		}
+		if (role == Role.COMPANY_MANAGER && companyId == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+		}
 	}
 
 	public void approve(UUID approvedBy) {

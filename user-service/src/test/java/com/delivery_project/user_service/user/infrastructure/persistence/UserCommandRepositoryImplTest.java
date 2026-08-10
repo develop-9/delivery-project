@@ -330,6 +330,7 @@ class UserCommandRepositoryImplTest {
 				.name("테스트유저")
 				.slackId(slackId)
 				.role(Role.COMPANY_MANAGER)
+				.companyId(UUID.randomUUID())
 				.build();
 	}
 

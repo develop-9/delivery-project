@@ -64,8 +64,6 @@ public class AuthCommandService {
 	public UserSignupResult signup(UserSignupCommand command) {
 		log.info("[Auth] 회원가입 시도 username={}", command.username());
 
-		validateHubOrCompanyRequired(command);
-
 		if (userCommandRepository.existsByUsername(command.username())) {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_USERNAME);
 		}
@@ -202,17 +200,6 @@ public class AuthCommandService {
 		String refreshToken = tokenProvider.generateRefreshToken(user.getId());
 		refreshTokenRepository.save(user.getId(), refreshToken, Duration.ofMillis(tokenProvider.getRefreshTokenExpirationMillis()));
 		return new TokenPair(accessToken, refreshToken);
-	}
-
-	private void validateHubOrCompanyRequired(UserSignupCommand command) {
-		Role role = command.role();
-
-		if ((role == Role.HUB_MANAGER || role == Role.DELIVERY_MANAGER) && command.hubId() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-		}
-		if (role == Role.COMPANY_MANAGER && command.companyId() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-		}
 	}
 
 	private record TokenPair(String accessToken, String refreshToken) {
