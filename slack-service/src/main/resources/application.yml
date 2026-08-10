@@ -78,5 +78,5 @@ springdoc:
     path: /v3/api-docs
 
 slack:
-  api-url: ${SLACK_API_URL:https://slack.com/api/chat.postMessage}
+  base-url: ${SLACK_BASE_URL:https://slack.com/api}
   bot-token: ${SLACK_BOT_TOKEN:}
