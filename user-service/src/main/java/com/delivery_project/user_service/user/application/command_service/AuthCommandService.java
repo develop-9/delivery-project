@@ -18,6 +18,7 @@ import com.delivery_project.user_service.user.application.command.UserRefreshCom
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
 import com.delivery_project.user_service.user.application.port.CompanyPort;
 import com.delivery_project.user_service.user.application.port.HubPort;
+import com.delivery_project.user_service.user.application.port.MasterBootstrapLockPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -45,6 +46,7 @@ public class AuthCommandService {
 	private final TokenProvider tokenProvider;
 	private final HubPort hubPort;
 	private final CompanyPort companyPort;
+	private final MasterBootstrapLockPort masterBootstrapLockPort;
 
 	/**
 	 * hubId/companyId 존재 검증(Hub/Company Service Feign 호출)을 DB 쓰기보다 먼저 수행한다 —
@@ -90,8 +92,16 @@ public class AuthCommandService {
 
 		// 활성 MASTER가 한 명도 없으면 아무도 승인해줄 수 없어 첫 MASTER 가입자가 영구히
 		// PENDING에 머무르는 부트스트랩 데드락이 생긴다. 이 경우에 한해 가입과 동시에 자동 승인한다.
-		if (command.role() == Role.MASTER && userCommandRepository.countActiveMasters() == 0) {
-			user.approveAsInitialMaster();
+		//
+		// 이미 있는 MASTER 행에 거는 비관적 락(countActiveMastersForUpdate)은 "아직 MASTER가
+		// 한 명도 없는" 이 상황엔 못 쓴다 — 잠글 행 자체가 없어서, 두 명이 동시에 최초 MASTER로
+		// 가입하면 둘 다 count()==0을 보고 둘 다 자동 승인될 수 있다. advisory lock으로 이
+		// 확인~승인 구간 자체를 직렬화해서 막는다(트랜잭션이 끝나면 자동 해제).
+		if (command.role() == Role.MASTER) {
+			masterBootstrapLockPort.lock();
+			if (userCommandRepository.countActiveMasters() == 0) {
+				user.approveAsInitialMaster();
+			}
 		}
 
 		User saved = saveUser(user);

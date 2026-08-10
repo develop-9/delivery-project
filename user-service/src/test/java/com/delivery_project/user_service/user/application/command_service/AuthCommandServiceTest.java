@@ -26,6 +26,7 @@ import com.delivery_project.user_service.user.application.command.UserRefreshCom
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
 import com.delivery_project.user_service.user.application.port.CompanyPort;
 import com.delivery_project.user_service.user.application.port.HubPort;
+import com.delivery_project.user_service.user.application.port.MasterBootstrapLockPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -61,6 +62,9 @@ class AuthCommandServiceTest {
 	@Mock
 	private CompanyPort companyPort;
 
+	@Mock
+	private MasterBootstrapLockPort masterBootstrapLockPort;
+
 	@InjectMocks
 	private AuthCommandService authCommandService;
 
@@ -83,6 +87,7 @@ class AuthCommandServiceTest {
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
+		org.mockito.Mockito.verify(masterBootstrapLockPort, org.mockito.Mockito.never()).lock();
 	}
 
 	@Test
@@ -226,6 +231,7 @@ class AuthCommandServiceTest {
 
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
+		org.mockito.Mockito.verify(masterBootstrapLockPort).lock();
 	}
 
 	@Test
