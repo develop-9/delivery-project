@@ -28,14 +28,16 @@ class UserTest {
 	}
 
 	@Test
-	void 이미_처리된_사용자를_다시_승인하려하면_IllegalStateException이_발생한다() {
+	void 이미_처리된_사용자를_다시_승인하려하면_USER_ALREADY_PROCESSED_예외가_발생한다() {
 		// given
 		User user = createUser();
 		user.approve(UUID.randomUUID());
 
 		// when & then
 		assertThatThrownBy(() -> user.approve(UUID.randomUUID()))
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
 	}
 
 	@Test
@@ -76,14 +78,16 @@ class UserTest {
 	}
 
 	@Test
-	void 이미_처리된_사용자를_다시_거절하려하면_IllegalStateException이_발생한다() {
+	void 이미_처리된_사용자를_다시_거절하려하면_USER_ALREADY_PROCESSED_예외가_발생한다() {
 		// given
 		User user = createUser();
 		user.reject();
 
 		// when & then
 		assertThatThrownBy(user::reject)
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
 	}
 
 	@Test

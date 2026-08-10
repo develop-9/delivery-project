@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,9 +23,13 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.delivery_project.user_service.global.config.JpaConfig;
 import com.delivery_project.user_service.global.config.UserTableSchemaInitializer;
@@ -53,6 +58,9 @@ class UserCommandRepositoryImplTest {
 
 	@Autowired
 	private DataSource dataSource;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
 	/**
 	 * @DataJpaTest는 ApplicationRunner를 실행시키지 않는 슬라이스 테스트라, 부분 유니크
@@ -320,6 +328,69 @@ class UserCommandRepositoryImplTest {
 			executor.shutdownNow();
 			// 이 메서드는 트랜잭션 감싸기를 껐으니 save()가 이미 커밋됐다 — 직접 지운다.
 			jdbcTemplate.update("DELETE FROM public.p_users WHERE username = 'master-lock-3'");
+		}
+	}
+
+	/**
+	 * User.approve()는 승인 직전에 approvalStatus가 PENDING인지 먼저 확인하지만, 두 요청이
+	 * 그 확인을 완전히 동시에 통과해버리면(둘 다 커밋 전이라 서로의 변경을 못 봄) 이 확인만으로는
+	 * 막을 수 없다 — 실제로 이를 막는 건 User.version 필드의 @Version 낙관적 락이다. 두 개의
+	 * 완전히 독립된 트랜잭션(PROPAGATION_REQUIRES_NEW)에서 같은 행을 각자 읽고, 두 트랜잭션
+	 * 모두 읽기를 마칠 때까지 기다렸다가 동시에 승인을 진행시켜서, 정확히 한 쪽만 성공하고
+	 * 나머지는 버전 충돌로 실패하는지 검증한다.
+	 *
+	 * 클래스 레벨 트랜잭션 감싸기를 이 메서드에서 껐다 — 각 스레드가 스스로 독립된 새 트랜잭션을
+	 * 열어야 해서, 테스트 메서드 자체의 트랜잭션이 남아있으면 그 안에서 열리는 REQUIRES_NEW
+	 * 트랜잭션들과 뒤엉킨다.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void 두_요청이_동시에_같은_사용자를_승인하면_한_쪽만_성공하고_다른_쪽은_버전_충돌로_실패한다() throws Exception {
+		// given
+		User saved = userCommandRepository.save(createUser("version-race", "U100021"));
+		UUID targetId = saved.getId();
+
+		TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+		txTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+		CountDownLatch bothLoaded = new CountDownLatch(2);
+		CountDownLatch proceed = new CountDownLatch(1);
+
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Callable<Boolean> approveTask = () -> {
+				try {
+					return Boolean.TRUE.equals(txTemplate.execute(status -> {
+						User target = userCommandRepository.findById(targetId).orElseThrow();
+						bothLoaded.countDown();
+						try {
+							proceed.await(5, TimeUnit.SECONDS);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+						target.approve(UUID.randomUUID());
+						userCommandRepository.save(target);
+						return true;
+					}));
+				} catch (OptimisticLockingFailureException e) {
+					return false;
+				}
+			};
+
+			Future<Boolean> resultA = executor.submit(approveTask);
+			Future<Boolean> resultB = executor.submit(approveTask);
+
+			assertThat(bothLoaded.await(5, TimeUnit.SECONDS)).isTrue();
+			proceed.countDown();
+
+			boolean successA = resultA.get(5, TimeUnit.SECONDS);
+			boolean successB = resultB.get(5, TimeUnit.SECONDS);
+
+			// then: 정확히 한 쪽만 성공해야 한다
+			assertThat(successA ^ successB).isTrue();
+		} finally {
+			executor.shutdownNow();
+			jdbcTemplate.update("DELETE FROM public.p_users WHERE username = 'version-race'");
 		}
 	}
 

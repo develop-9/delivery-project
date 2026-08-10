@@ -81,10 +81,6 @@ public class UserCommandService {
 
 		validatePermission(caller, target, ErrorCode.APPROVE_USER_FORBIDDEN);
 
-		if (target.getApprovalStatus() != ApprovalStatus.PENDING) {
-			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
-		}
-
 		target.approve(caller.getId());
 		log.info("[User] 회원가입 승인 완료 targetUserId={} approvedBy={}", command.targetUserId(), caller.getId());
 
@@ -97,10 +93,6 @@ public class UserCommandService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		validatePermission(caller, target, ErrorCode.REJECT_USER_FORBIDDEN);
-
-		if (target.getApprovalStatus() != ApprovalStatus.PENDING) {
-			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
-		}
 
 		target.reject();
 		log.info("[User] 회원가입 거절 완료 targetUserId={} rejectedBy={}", command.targetUserId(), caller.getId());

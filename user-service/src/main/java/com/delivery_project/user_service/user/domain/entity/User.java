@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -77,6 +78,13 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "company_id")
 	private UUID companyId;
 
+	// 승인/거절/정지/정지해제처럼 "현재 상태를 보고 판단해서 바꾸는" 갱신이 여러 관리자에게서
+	// 동시에 들어올 수 있다. approvalStatus를 미리 확인하는 것만으로는 두 요청이 거의 동시에
+	// 같은 값을 읽어버리는 경우(예: 둘 다 PENDING을 보고 통과)를 못 막아서, 커밋 시점에
+	// 값이 조회 당시와 같은지 한 번 더 강제로 확인하는 낙관적 락을 둔다.
+	@Version
+	private Long version;
+
 	@Builder
 	private User(String username, String password, String name, String slackId,
 			Role role, UUID hubId, UUID companyId) {
@@ -105,7 +113,7 @@ public class User extends BaseDeletableEntity {
 
 	public void approve(UUID approvedBy) {
 		if (this.approvalStatus != ApprovalStatus.PENDING) {
-			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
 		}
 		this.approvalStatus = ApprovalStatus.APPROVED;
 		this.approvedAt = Instant.now();
@@ -128,7 +136,7 @@ public class User extends BaseDeletableEntity {
 
 	public void reject() {
 		if (this.approvalStatus != ApprovalStatus.PENDING) {
-			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
 		}
 		this.approvalStatus = ApprovalStatus.REJECTED;
 	}
