@@ -49,12 +49,15 @@ class CompanyInternalControllerTest {
         void getCompany_success() throws Exception {
             // given
             UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
 
             InternalCompanyGetResult result =
                     new InternalCompanyGetResult(
                             companyId,
                             "테스트 업체",
-                            CompanyType.PRODUCER
+                            CompanyType.PRODUCER,
+                            hubId,
+                            "서울특별시 강남구 테헤란로 123"
                     );
 
             given(companyQueryService.getCompanyForInternal(
@@ -73,7 +76,9 @@ class CompanyInternalControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.companyId").value(companyId.toString()))
                     .andExpect(jsonPath("$.data.name").value("테스트 업체"))
-                    .andExpect(jsonPath("$.data.type").value("PRODUCER"));
+                    .andExpect(jsonPath("$.data.type").value("PRODUCER"))
+                    .andExpect(jsonPath("$.data.hubId").value(hubId.toString()))
+                    .andExpect(jsonPath("$.data.address").value("서울특별시 강남구 테헤란로 123"));
 
             then(companyQueryService)
                     .should()
