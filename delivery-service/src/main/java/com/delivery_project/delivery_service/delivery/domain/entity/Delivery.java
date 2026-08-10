@@ -102,4 +102,59 @@ public class Delivery extends BaseDeletableEntity {
         this.status = DeliveryStatus.CANCELED;
     }
 
+    public void startHubMoving(){
+        if(this.status != DeliveryStatus.PENDING){
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+        this.status = DeliveryStatus.HUB_MOVING;
+    }
+
+    public void arriveAtDestinationHub(){
+        if(this.status != DeliveryStatus.HUB_MOVING){
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+        this.status = DeliveryStatus.HUB_ARRIVED;
+    }
+
+    public void assignCompanyDeliveryManager(
+            UUID managerId
+    ) {
+        if (this.status != DeliveryStatus.HUB_ARRIVED) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+
+        this.companyDeliveryManagerId = managerId;
+    }
+
+    public void startCompanyDelivery(){
+        if(this.status != DeliveryStatus.HUB_ARRIVED){
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+
+        if(this.companyDeliveryManagerId == null){
+            throw new BusinessException(
+                    ErrorCode.COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED
+            );
+        }
+
+        this.status = DeliveryStatus.DELIVERING;
+    }
+
+    public void complete(){
+        if(this.status != DeliveryStatus.DELIVERING){
+            throw new BusinessException(
+                    ErrorCode.INVALID_DELIVERY_STATUS_TRANSITION
+            );
+        }
+
+        this.status = DeliveryStatus.COMPLETED;
+    }
 }

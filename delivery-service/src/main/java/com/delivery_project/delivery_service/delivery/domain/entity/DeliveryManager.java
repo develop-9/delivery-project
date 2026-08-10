@@ -127,4 +127,16 @@ public class DeliveryManager extends BaseDeletableEntity {
             );
         }
     }
+
+    public void assignToDelivery() {
+        if (this.status != DeliveryManagerStatus.AVAILABLE) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_AVAILABLE
+            );
+        }
+
+        this.status = DeliveryManagerStatus.DELIVERING;
+    }
+
+
 }

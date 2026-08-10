@@ -1,6 +1,7 @@
 package com.delivery_project.delivery_service.delivery.infrastructure.persistence;
 
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerStatus;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,20 +40,49 @@ public class DeliveryManagerCommandRepositoryImpl
     }
 
     @Override
-    public Optional<Integer> findMaxSequenceByType(
-            DeliveryManagerType type
-    ) {
-        return springDataRepository.findMaxSequenceByType(type);
+    public Optional<DeliveryManager> findNextAvailableHubManager(
+            Integer lastAssignedSequence
+    ){
+        return springDataRepository
+                .findFirstByTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        DeliveryManagerType.HUB_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE,
+                        lastAssignedSequence
+                );
     }
 
     @Override
-    public Optional<Integer> findMaxSequenceByHubIdAndType(
+    public Optional<DeliveryManager> findFirstAvailableHubManager(){
+        return springDataRepository
+                .findFirstByTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        DeliveryManagerType.HUB_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE
+                );
+    }
+
+    @Override
+    public Optional<DeliveryManager> findNextAvailableCompanyManager(
             UUID hubId,
-            DeliveryManagerType type
+            Integer lastAssignedSequence
+    ){
+        return springDataRepository
+                .findFirstByHubIdAndTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        hubId,
+                        DeliveryManagerType.COMPANY_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE,
+                        lastAssignedSequence
+                );
+    }
+
+    @Override
+    public Optional<DeliveryManager> findFirstAvailableCompanyManager(
+            UUID hubId
     ) {
-        return springDataRepository.findMaxSequenceByHubIdAndType(
-                hubId,
-                type
-        );
+        return springDataRepository
+                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                        hubId,
+                        DeliveryManagerType.COMPANY_DELIVERY,
+                        DeliveryManagerStatus.AVAILABLE
+                );
     }
 }
