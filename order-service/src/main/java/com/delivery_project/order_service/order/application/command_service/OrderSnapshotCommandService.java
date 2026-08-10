@@ -46,6 +46,12 @@ public class OrderSnapshotCommandService {
 		return snapshot;
 	}
 
+	/** 같은 사건이 이미 남아 있는지. 외부 서비스가 같은 통보를 두 번 보내는 경우를 거른다 */
+	@Transactional(readOnly = true)
+	public boolean alreadyCaptured(UUID orderId, EventType eventType) {
+		return orderSnapshotCommandRepository.existsByOrderIdAndEventType(orderId, eventType);
+	}
+
 	private UUID currentUserId() {
 		return auditorAware.getCurrentAuditor()
 				.orElseThrow(() -> new IllegalStateException("감사자를 확인할 수 없습니다."));

@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.presentation.internal_controller;
 
 import com.delivery_project.order_service.global.response.SuccessResponse;
+import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.presentation.response.OrderInternalDetailResponse;
 
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,6 +35,7 @@ import java.util.UUID;
 public class OrderInternalController {
 
 	private final OrderQueryService orderQueryService;
+	private final OrderCommandService orderCommandService;
 
 	@Operation(summary = "주문 상세 조회",
 			description = "AI 발송 시한 산출에 필요한 주문 정보를 반환한다. "
@@ -48,5 +51,24 @@ public class OrderInternalController {
 		OrderInternalDetailResponse response = OrderInternalDetailResponse.from(
 				orderQueryService.getOrderForInternal(orderId));
 		return ResponseEntity.ok(SuccessResponse.success(response));
+	}
+
+	@Operation(summary = "배송 완료 통보",
+			description = "배송이 끝났음을 알린다. 주문이 선점하고 있던 재고를 실물 차감으로 확정하고 "
+					+ "주문 이력에 ORDER_COMPLETED 를 남긴다. 주문 상태는 CONFIRMED 그대로다 — "
+					+ "배송 완료는 주문 상태가 아니라 배송 상태이기 때문이다. "
+					+ "같은 주문에 여러 번 호출해도 재고는 한 번만 차감된다.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "완료 처리됨 · 이미 완료된 주문"),
+			@ApiResponse(responseCode = "400", description = "배송이 생성되지 않은 주문"),
+			@ApiResponse(responseCode = "404", description = "주문 없음 · 삭제됨")
+	})
+	@PostMapping("/{orderId}/complete")
+	public ResponseEntity<SuccessResponse<Void>> complete(
+			@PathVariable UUID orderId
+	) {
+		// 통보에 대한 응답이라 본문을 돌려주지 않는다. delivery 는 성공 여부만 알면 된다
+		orderCommandService.complete(orderId);
+		return ResponseEntity.ok(SuccessResponse.empty());
 	}
 }

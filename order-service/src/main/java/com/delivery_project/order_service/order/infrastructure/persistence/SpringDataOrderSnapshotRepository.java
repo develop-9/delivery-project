@@ -28,4 +28,6 @@ public interface SpringDataOrderSnapshotRepository extends JpaRepository<OrderSn
 	Optional<OrderSnapshot> findByIdAndDeletedAtIsNull(UUID id);
 
 	List<OrderSnapshot> findByOrderIdAndDeletedAtIsNull(UUID orderId);
+
+	boolean existsByOrderIdAndEventTypeAndDeletedAtIsNull(UUID orderId, EventType eventType);
 }

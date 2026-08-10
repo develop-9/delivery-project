@@ -1,5 +1,6 @@
 package com.delivery_project.order_service.order.presentation.internal_controller;
 
+import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.application.result.OrderInternalDetailResult;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,9 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +37,9 @@ class OrderInternalControllerTest {
 
 	@MockitoBean
 	private OrderQueryService orderQueryService;
+
+	@MockitoBean
+	private OrderCommandService orderCommandService;
 
 	private final UUID orderId = UUID.randomUUID();
 	private final UUID productId = UUID.randomUUID();
@@ -62,5 +68,16 @@ class OrderInternalControllerTest {
 				// 주문 진행 상태와 감사 필드는 order 내부 관심사라 내보내지 않는다
 				.andExpect(jsonPath("$.data.status").doesNotExist())
 				.andExpect(jsonPath("$.data.createdBy").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("배송 완료 통보를 받으면 주문 완료 처리로 넘긴다")
+	void completeOrder() throws Exception {
+		// when & then — 통보에 대한 응답이라 본문은 비운다
+		mockMvc.perform(post("/internal/v1/orders/{orderId}/complete", orderId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+		then(orderCommandService).should().complete(orderId);
 	}
 }

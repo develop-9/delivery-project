@@ -10,6 +10,7 @@ import com.delivery_project.order_service.order.domain.entity.EventType;
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderItem;
+import com.delivery_project.order_service.order.domain.entity.OrderStatus;
 import com.delivery_project.order_service.order.domain.repository.InventoryCommandRepository;
 import com.delivery_project.order_service.order.domain.repository.OrderCommandRepository;
 import lombok.RequiredArgsConstructor;
@@ -124,9 +125,24 @@ public class OrderCommandService {
 	/**
 	 * 배송이 끝났다. 선점을 실물 차감으로 확정한다.
 	 * 주문 상태는 CONFIRMED 그대로 두고 이력만 남긴다(팀문서 p_orders.status 정의).
+	 *
+	 * <p><b>여러 번 불려도 한 번만 차감한다.</b> delivery 가 통보에 실패해 재시도하면
+	 * 두 번째 호출에서 재고가 또 깎여 실제보다 적어진다. 주문 상태로는 완료 여부를 알 수 없어
+	 * ({@code CONFIRMED} 그대로다) 이력에 ORDER_COMPLETED 가 있는지로 판단한다.
 	 */
 	public OrderResult complete(UUID orderId) {
 		Order order = findActive(orderId);
+
+		if (orderSnapshotCommandService.alreadyCaptured(orderId, EventType.ORDER_COMPLETED)) {
+			log.info("[주문] 이미 완료 처리된 주문 : [{}] 재차감하지 않는다", orderId);
+			return OrderResult.from(order);
+		}
+
+		// 배송이 만들어지지 않은 주문에 완료 통보가 오면 잘못된 호출이다
+		if (order.getStatus() != OrderStatus.CONFIRMED) {
+			throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS,
+					String.format("%s 상태의 주문은 완료 처리할 수 없습니다.", order.getStatus()));
+		}
 
 		order.getItems().forEach(item -> inventoryCommandRepository.findById(item.getInventoryId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND))
