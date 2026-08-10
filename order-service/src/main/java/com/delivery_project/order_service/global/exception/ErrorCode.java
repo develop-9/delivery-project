@@ -38,6 +38,7 @@ public enum ErrorCode {
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "업체를 찾을 수 없습니다.", "COMPANY_NOT_FOUND"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
     RECEIVER_COMPANY_MISMATCH(HttpStatus.FORBIDDEN, "본인이 속한 업체로만 주문할 수 있습니다.", "RECEIVER_COMPANY_MISMATCH"),
+    DUPLICATE_ORDER_REQUEST(HttpStatus.CONFLICT, "같은 요청이 처리 중입니다. 잠시 후 다시 시도해 주세요.", "DUPLICATE_ORDER_REQUEST"),
     DELIVERY_CREATE_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "배송 생성에 실패했습니다.", "DELIVERY_CREATE_FAILED"),
     DELIVERY_CANCEL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "배송 취소에 실패했습니다.", "DELIVERY_CANCEL_FAILED"),
     ;

@@ -58,6 +58,14 @@ eureka:
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
+order:
+  idempotency:
+    # 처리 중 표시가 남는 시간. 서버가 죽어 정리를 못 해도 이 시간이 지나면 풀린다.
+    # 주문 한 건 처리(업체·사용자·배송 호출)보다 넉넉해야 하고, 너무 길면 재시도가 막힌다.
+    in-progress-ttl-seconds: ${ORDER_IDEMPOTENCY_IN_PROGRESS_TTL:300}
+    # 완료 기록이 남는 시간. 이 안에 같은 키로 오면 만들어진 주문을 그대로 돌려준다.
+    completed-ttl-hours: ${ORDER_IDEMPOTENCY_COMPLETED_TTL:24}
+
 # 게이트웨이가 검증한 토큰을 이 서비스에서 다시 파싱한다.
 # 전 서비스가 같은 비밀키를 써야 하므로 루트 .env 의 JWT_SECRET 을 그대로 받는다.
 jwt:

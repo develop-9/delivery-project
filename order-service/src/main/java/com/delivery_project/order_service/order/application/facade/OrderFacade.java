@@ -2,11 +2,14 @@ package com.delivery_project.order_service.order.application.facade;
 
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.order.application.command.OrderCreateCommand;
 import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
 import com.delivery_project.order_service.order.application.port.CompanyPort;
 import com.delivery_project.order_service.order.application.port.DeliveryPort;
+import com.delivery_project.order_service.order.application.port.IdempotencyPort;
 import com.delivery_project.order_service.order.application.port.UserPort;
+import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.application.result.OrderResult;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,8 @@ public class OrderFacade {
 	private final CompanyPort companyPort;
 	private final DeliveryPort deliveryPort;
 	private final UserPort userPort;
+	private final IdempotencyPort idempotencyPort;
+	private final OrderQueryService orderQueryService;
 
 	/**
 	 * 주문을 접수하고 배송까지 만든다.
@@ -52,7 +57,49 @@ public class OrderFacade {
 	 * <p>검증(0·1)을 저장(2)보다 앞에 두는 것이 규칙이다. 저장 뒤에 알게 되면 되돌려야 하는데,
 	 * 되돌리는 코드는 실패했을 때 확인할 방법이 마땅치 않다.
 	 */
-	public OrderResult create(OrderCreateCommand command) {
+	public OrderResult create(OrderCreateCommand command, String idempotencyKey, JwtPrincipal principal) {
+		if (idempotencyKey == null || idempotencyKey.isBlank()) {
+			// 키를 안 보내는 클라이언트도 주문은 할 수 있어야 한다. 대신 중복은 막지 못한다
+			log.debug("[주문] 멱등 키 없이 접수 : receiverUserId={}", command.receiverUserId());
+			return doCreate(command);
+		}
+
+		String key = scopedKey(command.receiverUserId(), idempotencyKey);
+		IdempotencyPort.Reservation reservation = idempotencyPort.begin(key);
+
+		if (reservation.isInProgress()) {
+			// 같은 요청이 아직 처리 중이다. 지금 진행하면 재고를 두 번 잡는다
+			throw new BusinessException(ErrorCode.DUPLICATE_ORDER_REQUEST);
+		}
+
+		if (reservation.completedOrderId() != null) {
+			// 이미 만든 주문을 그대로 돌려준다. 재요청을 오류로 만들면 클라이언트가 계속 재시도한다.
+			// 키가 사용자별로 나뉘어 있어 남의 주문이 나올 일은 없지만, 인가를 건너뛰지는 않는다
+			return orderQueryService.getOrder(reservation.completedOrderId(), principal);
+		}
+
+		try {
+			OrderResult created = doCreate(command);
+			idempotencyPort.complete(key, created.orderId());
+			return created;
+
+		} catch (RuntimeException exception) {
+			// 실패한 요청까지 막아두면 정상적인 재시도가 영영 안 된다
+			idempotencyPort.release(key);
+			throw exception;
+		}
+	}
+
+	/**
+	 * 멱등 키는 <b>사용자별로 범위를 나눈다.</b>
+	 * 클라이언트가 순번이나 짧은 문자열을 키로 쓰면 다른 사용자와 겹칠 수 있고,
+	 * 그러면 남의 주문이 내 요청의 응답으로 돌아간다.
+	 */
+	private String scopedKey(UUID receiverUserId, String idempotencyKey) {
+		return receiverUserId + ":" + idempotencyKey;
+	}
+
+	private OrderResult doCreate(OrderCreateCommand command) {
 		// 0. 수령인이 실존하는지, 그 사람이 그 업체 소속인지 확인한다
 		validateReceiver(command);
 
@@ -132,8 +179,8 @@ public class OrderFacade {
 	 * 반대 순서(배송 먼저)로 하면 배송만 사라지고 주문은 살아 있는 더 나쁜 어긋남이 생긴다.
 	 * 배송 쪽 실패는 예외로 드러내 재시도할 수 있게 둔다.
 	 */
-	public OrderResult cancel(UUID orderId) {
-		OrderResult canceled = orderCommandService.cancel(orderId);
+	public OrderResult cancel(UUID orderId, JwtPrincipal principal) {
+		OrderResult canceled = orderCommandService.cancel(orderId, principal);
 
 		deliveryPort.cancelDelivery(orderId);
 

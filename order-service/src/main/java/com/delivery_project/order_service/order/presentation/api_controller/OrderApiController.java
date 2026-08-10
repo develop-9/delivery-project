@@ -47,19 +47,26 @@ public class OrderApiController {
 	@Value("${system.id}")
 	private UUID systemUserId;
 
-	@Operation(summary = "주문 접수", description = "상품 여러 종을 한 주문에 담는다. 수신자는 인증 주체에서 온다.")
+	@Operation(summary = "주문 접수",
+			description = "상품 여러 종을 한 주문에 담는다. 수신자는 인증 주체에서 온다. "
+					+ "Idempotency-Key 헤더에 요청마다 새로 만든 값(UUID 권장)을 담으면 "
+					+ "같은 요청이 두 번 처리되지 않는다. 응답을 못 받아 재요청할 때 같은 키를 보내면 "
+					+ "처음 만들어진 주문을 그대로 돌려받는다. 헤더가 없으면 중복 방지는 동작하지 않는다.")
 	@ApiResponses({
-			@ApiResponse(responseCode = "201", description = "접수 성공"),
+			@ApiResponse(responseCode = "201", description = "접수 성공 · 같은 키의 재요청(기존 주문 반환)"),
 			@ApiResponse(responseCode = "400", description = "입력값 오류 · 중복 상품"),
-			@ApiResponse(responseCode = "404", description = "재고가 등록되지 않은 상품")
+			@ApiResponse(responseCode = "403", description = "본인 소속이 아닌 업체로 주문"),
+			@ApiResponse(responseCode = "404", description = "재고가 등록되지 않은 상품"),
+			@ApiResponse(responseCode = "409", description = "같은 키의 요청이 아직 처리 중")
 	})
 	@PostMapping
 	public ResponseEntity<SuccessResponse<OrderResponse>> create(
 			@AuthenticationPrincipal JwtPrincipal principal,
+			@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
 			@Valid @RequestBody OrderCreateRequest request
 	) {
 		OrderCreateCommand command = OrderCreateCommand.from(receiverOrSystem(principal), request);
-		OrderResponse response = OrderResponse.from(orderFacade.create(command));
+		OrderResponse response = OrderResponse.from(orderFacade.create(command, idempotencyKey, principal));
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
 	}
 
@@ -73,9 +80,10 @@ public class OrderApiController {
 	})
 	@DeleteMapping("/{orderId}")
 	public ResponseEntity<SuccessResponse<OrderResponse>> cancel(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID orderId
 	) {
-		OrderResponse response = OrderResponse.from(orderFacade.cancel(orderId));
+		OrderResponse response = OrderResponse.from(orderFacade.cancel(orderId, principal));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
@@ -86,9 +94,10 @@ public class OrderApiController {
 	})
 	@GetMapping("/{orderId}")
 	public ResponseEntity<SuccessResponse<OrderResponse>> getOrder(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID orderId
 	) {
-		OrderResponse response = OrderResponse.from(orderQueryService.getOrder(orderId));
+		OrderResponse response = OrderResponse.from(orderQueryService.getOrder(orderId, principal));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
@@ -96,11 +105,12 @@ public class OrderApiController {
 	@ApiResponses(@ApiResponse(responseCode = "200", description = "조회 성공"))
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PageResponse<OrderSummaryResponse>>> searchOrders(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@ModelAttribute OrderSearchCondition condition,
 			Pageable pageable
 	) {
 		PageResponse<OrderSummaryResponse> response = PageResponse.of(
-				orderQueryService.searchOrders(condition, pageable), OrderSummaryResponse::from);
+				orderQueryService.searchOrders(condition, pageable, principal), OrderSummaryResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
@@ -112,11 +122,12 @@ public class OrderApiController {
 	})
 	@PatchMapping("/{orderId}")
 	public ResponseEntity<SuccessResponse<OrderResponse>> update(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID orderId,
 			@Valid @RequestBody OrderUpdateRequest request
 	) {
 		OrderUpdateCommand command = OrderUpdateCommand.from(orderId, request);
-		OrderResponse response = OrderResponse.from(orderCommandService.update(command));
+		OrderResponse response = OrderResponse.from(orderCommandService.update(command, principal));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
