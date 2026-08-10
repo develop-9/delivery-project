@@ -1,10 +1,12 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesByOrderQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesGetQuery;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRoutesByOrderResult;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class DeliveryRouteQueryService {
     private final DeliveryQueryRepository deliveryQueryRepository;
     private final DeliveryManagerQueryRepository deliveryManagerQueryRepository;
     private final DeliveryRouteQueryRepository deliveryRouteQueryRepository;
+    private final UserPort userPort;
 
     public DeliveryRoutesByOrderResult getRoutesByOrder(
             DeliveryRoutesByOrderQuery query
@@ -120,7 +124,10 @@ public class DeliveryRouteQueryService {
         }
 
         if (query.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 기준 검증
+            validateHubManagerRouteReadPermission(
+                    query.requesterId(),
+                    route
+            );
             return;
         }
 
@@ -177,7 +184,10 @@ public class DeliveryRouteQueryService {
         }
 
         if (query.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 기준 검증
+            validateHubManagerRoutesReadPermission(
+                    query.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -219,5 +229,64 @@ public class DeliveryRouteQueryService {
         throw new BusinessException(
                 ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
         );
+    }
+
+    private void validateHubManagerRouteReadPermission(
+            UUID requesterId,
+            DeliveryRoute route
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+
+        boolean relatedRoute =
+                requesterHubId.equals(route.getDepartureHubId())
+                        || requesterHubId.equals(route.getArrivalHubId());
+
+        if (!relatedRoute) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+    }
+
+    private void validateHubManagerRoutesReadPermission(
+            UUID requesterId,
+            Delivery delivery
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+
+        boolean relatedDelivery =
+                deliveryRouteQueryRepository
+                        .existsByDeliveryIdAndHubId(
+                                delivery.getId(),
+                                requesterHubId
+                        );
+
+        if (!relatedDelivery) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
     }
 }
