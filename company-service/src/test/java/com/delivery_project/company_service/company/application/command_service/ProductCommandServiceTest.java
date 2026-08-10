@@ -3,16 +3,18 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
+import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
+import com.delivery_project.company_service.company.application.pesistence_service.ProductPersistenceService;
+import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
+import com.delivery_project.company_service.company.application.port.dto.HubInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.entity.Product;
-import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
-import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import com.delivery_project.company_service.global.security.Role;
@@ -29,34 +31,38 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ProductCommandServiceTest {
 
     @Mock
-    private ProductCommandRepository productCommandRepository;
+    private CompanyPersistenceService companyPersistenceService;
 
     @Mock
-    private CompanyQueryRepository companyQueryRepository;
+    private ProductPersistenceService productPersistenceService;
 
     @Mock
     private UserPort userPort;
+
+    @Mock
+    private HubPort hubPort;
 
     @InjectMocks
     private ProductCommandService productCommandService;
 
     @Nested
-    @DisplayName("상품 생성 비즈니스 로직 테스트")
-    class CreateProduct {
+    @DisplayName("상품 생성 외부 비즈니스 로직 테스트")
+    class CreateProductCommand {
 
         @Test
         @DisplayName("Master가 상품 생성에 성공한다.")
         void createProduct_success_whenMaster() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
@@ -84,19 +90,10 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
+            ProductCreateResult createResult =
+                    new ProductCreateResult(productId);
 
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
-
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -105,37 +102,52 @@ class ProductCommandServiceTest {
             given(callerInfo.role())
                     .willReturn(Role.MASTER);
 
-            given(productCommandRepository.save(any(Product.class)))
-                    .willReturn(savedProduct);
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
 
-            // when
+            given(productPersistenceService.saveProduct(
+                    companyId,
+                    "테스트 상품",
+                    10000
+            ))
+                    .willReturn(createResult);
+
+            // When
             ProductCreateResult result =
                     productCommandService.createProduct(command);
 
-            // then
+            // Then
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .save(any(Product.class));
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .saveProduct(
+                            companyId,
+                            "테스트 상품",
+                            10000
+                    );
         }
 
         @Test
         @DisplayName("담당 Hub Manager가 상품 생성에 성공한다.")
         void createProduct_success_whenHubManager() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
@@ -163,19 +175,10 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
+            ProductCreateResult createResult =
+                    new ProductCreateResult(productId);
 
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
-
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -187,37 +190,52 @@ class ProductCommandServiceTest {
             given(callerInfo.hubId())
                     .willReturn(hubId);
 
-            given(productCommandRepository.save(any(Product.class)))
-                    .willReturn(savedProduct);
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
 
-            // when
+            given(productPersistenceService.saveProduct(
+                    companyId,
+                    "테스트 상품",
+                    10000
+            ))
+                    .willReturn(createResult);
+
+            // When
             ProductCreateResult result =
                     productCommandService.createProduct(command);
 
-            // then
+            // Then
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .save(any(Product.class));
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .saveProduct(
+                            companyId,
+                            "테스트 상품",
+                            10000
+                    );
         }
 
         @Test
         @DisplayName("담당 Company Manager가 상품 생성에 성공한다.")
         void createProduct_success_whenCompanyManager() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
@@ -245,19 +263,10 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
+            ProductCreateResult createResult =
+                    new ProductCreateResult(productId);
 
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
-
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -269,37 +278,52 @@ class ProductCommandServiceTest {
             given(callerInfo.companyId())
                     .willReturn(companyId);
 
-            given(productCommandRepository.save(any(Product.class)))
-                    .willReturn(savedProduct);
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
 
-            // when
+            given(productPersistenceService.saveProduct(
+                    companyId,
+                    "테스트 상품",
+                    10000
+            ))
+                    .willReturn(createResult);
+
+            // When
             ProductCreateResult result =
                     productCommandService.createProduct(command);
 
-            // then
+            // Then
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .save(any(Product.class));
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .saveProduct(
+                            companyId,
+                            "테스트 상품",
+                            10000
+                    );
         }
 
         @Test
-        @DisplayName("존재하지 않는 업체의 상품을 생성하면 COMPANY_NOT_FOUND 예외가 발생한다.")
+        @DisplayName("존재하지 않는 업체의 상품을 생성하면 AUTH_FORBIDDEN 예외가 발생한다.")
         void createProduct_fail_whenCompanyNotFound() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
@@ -310,33 +334,36 @@ class ProductCommandServiceTest {
                     10000
             );
 
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.empty());
 
-            // when & then
+            // When & Then
             BusinessException exception = catchThrowableOfType(
                     () -> productCommandService.createProduct(command),
                     BusinessException.class
             );
 
             assertThat(exception.getErrorCode())
-                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .shouldHaveNoInteractions();
 
-            then(productCommandRepository)
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
                     .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("상품 생성 권한이 없으면 AUTH_FORBIDDEN 예외가 발생한다.")
         void createProduct_fail_whenForbidden() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
@@ -363,7 +390,7 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -375,7 +402,7 @@ class ProductCommandServiceTest {
             given(callerInfo.hubId())
                     .willReturn(UUID.randomUUID());
 
-            // when & then
+            // When & Then
             BusinessException exception = catchThrowableOfType(
                     () -> productCommandService.createProduct(command),
                     BusinessException.class
@@ -384,39 +411,34 @@ class ProductCommandServiceTest {
             assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
                     .shouldHaveNoInteractions();
         }
-    }
-
-    @Nested
-    @DisplayName("상품 수정 비즈니스 로직 테스트")
-    class UpdateProduct {
 
         @Test
-        @DisplayName("Master가 상품 정보를 정상적으로 수정한다.")
-        void updateProduct_success_whenMaster() {
-            // given
+        @DisplayName("존재하지 않는 Hub의 업체에 상품을 생성하면 HUB_NOT_FOUND 예외가 발생한다.")
+        void createProduct_fail_whenHubNotFound() {
+            // Given
             UUID callerId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
-            UUID newCompanyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
-            ProductUpdateCommand command = new ProductUpdateCommand(
+            ProductCreateCommand command = new ProductCreateCommand(
                     callerId,
-                    productId,
-                    newCompanyId,
-                    "수정된 상품",
-                    20000
+                    companyId,
+                    "테스트 상품",
+                    10000
             );
 
             Company company = Company.builder()
@@ -429,19 +451,12 @@ class ProductCommandServiceTest {
             ReflectionTestUtils.setField(
                     company,
                     "id",
-                    newCompanyId
+                    companyId
             );
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            Product product = new Product(
-                    productId,
-                    companyId,
-                    "기존 상품",
-                    10000
-            );
-
-            given(companyQueryRepository.findById(newCompanyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -450,46 +465,45 @@ class ProductCommandServiceTest {
             given(callerInfo.role())
                     .willReturn(Role.MASTER);
 
-            given(productCommandRepository.findById(productId))
-                    .willReturn(Optional.of(product));
+            given(hubPort.getHub(hubId))
+                    .willThrow(
+                            new BusinessException(ErrorCode.HUB_NOT_FOUND)
+                    );
 
-            // when
-            ProductUpdateResult result =
-                    productCommandService.updateProduct(command);
+            // When & Then
+            BusinessException exception = catchThrowableOfType(
+                    () -> productCommandService.createProduct(command),
+                    BusinessException.class
+            );
 
-            // then
-            assertThat(result)
-                    .isNotNull();
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.HUB_NOT_FOUND);
 
-            assertThat(result.productId())
-                    .isEqualTo(productId);
-
-            assertThat(product.getCompanyId())
-                    .isEqualTo(newCompanyId);
-
-            assertThat(product.getName())
-                    .isEqualTo("수정된 상품");
-
-            assertThat(product.getPrice())
-                    .isEqualTo(20000);
-
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(newCompanyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .findById(productId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .shouldHaveNoInteractions();
         }
+    }
+
+    @Nested
+    @DisplayName("상품 수정 외부 비즈니스 로직 테스트")
+    class UpdateProductCommand {
 
         @Test
-        @DisplayName("담당 Hub Manager가 상품 정보를 정상적으로 수정한다.")
-        void updateProduct_success_whenHubManager() {
-            // given
+        @DisplayName("Master가 상품 정보를 정상적으로 수정한다.")
+        void updateProduct_success_whenMaster() {
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -526,7 +540,113 @@ class ProductCommandServiceTest {
                     10000
             );
 
-            given(companyQueryRepository.findById(newCompanyId))
+            ProductUpdateResult updateResult =
+                    new ProductUpdateResult(productId);
+
+            given(companyPersistenceService.getCompanyById(newCompanyId))
+                    .willReturn(Optional.of(company));
+
+            given(userPort.getCaller(callerId))
+                    .willReturn(callerInfo);
+
+            given(callerInfo.role())
+                    .willReturn(Role.MASTER);
+
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
+
+            given(productPersistenceService.getProductById(productId))
+                    .willReturn(Optional.of(product));
+
+            given(productPersistenceService.updateProduct(
+                    product,
+                    newCompanyId,
+                    "수정된 상품",
+                    20000
+            ))
+                    .willReturn(updateResult);
+
+            // When
+            ProductUpdateResult result =
+                    productCommandService.updateProduct(command);
+
+            // Then
+            assertThat(result)
+                    .isNotNull();
+
+            assertThat(result.productId())
+                    .isEqualTo(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(newCompanyId);
+
+            then(userPort)
+                    .should()
+                    .getCaller(callerId);
+
+            then(hubPort)
+                    .should()
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .getProductById(productId);
+
+            then(productPersistenceService)
+                    .should()
+                    .updateProduct(
+                            product,
+                            newCompanyId,
+                            "수정된 상품",
+                            20000
+                    );
+        }
+
+        @Test
+        @DisplayName("담당 Hub Manager가 상품 정보를 정상적으로 수정한다.")
+        void updateProduct_success_whenHubManager() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID newCompanyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            ProductUpdateCommand command = new ProductUpdateCommand(
+                    callerId,
+                    productId,
+                    newCompanyId,
+                    "수정된 상품",
+                    20000
+            );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    newCompanyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            Product product = new Product(
+                    productId,
+                    companyId,
+                    "기존 상품",
+                    10000
+            );
+
+            ProductUpdateResult updateResult =
+                    new ProductUpdateResult(productId);
+
+            given(companyPersistenceService.getCompanyById(newCompanyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -538,46 +658,61 @@ class ProductCommandServiceTest {
             given(callerInfo.hubId())
                     .willReturn(hubId);
 
-            given(productCommandRepository.findById(productId))
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
+
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
 
-            // when
+            given(productPersistenceService.updateProduct(
+                    product,
+                    newCompanyId,
+                    "수정된 상품",
+                    20000
+            ))
+                    .willReturn(updateResult);
+
+            // When
             ProductUpdateResult result =
                     productCommandService.updateProduct(command);
 
-            // then
+            // Then
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            assertThat(product.getCompanyId())
-                    .isEqualTo(newCompanyId);
-
-            assertThat(product.getName())
-                    .isEqualTo("수정된 상품");
-
-            assertThat(product.getPrice())
-                    .isEqualTo(20000);
-
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(newCompanyId);
+                    .getCompanyById(newCompanyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .findById(productId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .getProductById(productId);
+
+            then(productPersistenceService)
+                    .should()
+                    .updateProduct(
+                            product,
+                            newCompanyId,
+                            "수정된 상품",
+                            20000
+                    );
         }
 
         @Test
         @DisplayName("담당 Company Manager가 상품 정보를 정상적으로 수정한다.")
         void updateProduct_success_whenCompanyManager() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -613,7 +748,10 @@ class ProductCommandServiceTest {
                     10000
             );
 
-            given(companyQueryRepository.findById(companyId))
+            ProductUpdateResult updateResult =
+                    new ProductUpdateResult(productId);
+
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -625,46 +763,61 @@ class ProductCommandServiceTest {
             given(callerInfo.companyId())
                     .willReturn(companyId);
 
-            given(productCommandRepository.findById(productId))
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
+
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
 
-            // when
+            given(productPersistenceService.updateProduct(
+                    product,
+                    companyId,
+                    "수정된 상품",
+                    20000
+            ))
+                    .willReturn(updateResult);
+
+            // When
             ProductUpdateResult result =
                     productCommandService.updateProduct(command);
 
-            // then
+            // Then
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            assertThat(product.getCompanyId())
-                    .isEqualTo(companyId);
-
-            assertThat(product.getName())
-                    .isEqualTo("수정된 상품");
-
-            assertThat(product.getPrice())
-                    .isEqualTo(20000);
-
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .findById(productId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .getProductById(productId);
+
+            then(productPersistenceService)
+                    .should()
+                    .updateProduct(
+                            product,
+                            companyId,
+                            "수정된 상품",
+                            20000
+                    );
         }
 
         @Test
-        @DisplayName("존재하지 않는 업체로 상품을 수정하면 COMPANY_NOT_FOUND 예외가 발생한다.")
+        @DisplayName("존재하지 않는 업체로 상품을 수정하면 AUTH_FORBIDDEN 예외가 발생한다.")
         void updateProduct_fail_whenCompanyNotFound() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -677,33 +830,36 @@ class ProductCommandServiceTest {
                     20000
             );
 
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.empty());
 
-            // when & then
+            // When & Then
             BusinessException exception = catchThrowableOfType(
                     () -> productCommandService.updateProduct(command),
                     BusinessException.class
             );
 
             assertThat(exception.getErrorCode())
-                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .shouldHaveNoInteractions();
 
-            then(productCommandRepository)
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
                     .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("상품 수정 권한이 없으면 AUTH_FORBIDDEN 예외가 발생한다.")
         void updateProduct_fail_whenForbidden() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -733,7 +889,7 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -745,7 +901,7 @@ class ProductCommandServiceTest {
             given(callerInfo.hubId())
                     .willReturn(callerHubId);
 
-            // when & then
+            // When & Then
             BusinessException exception = catchThrowableOfType(
                     () -> productCommandService.updateProduct(command),
                     BusinessException.class
@@ -754,22 +910,25 @@ class ProductCommandServiceTest {
             assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
                     .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("존재하지 않는 상품을 수정하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
         void updateProduct_fail_whenProductNotFound() {
-            // given
+            // Given
             UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -798,7 +957,7 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
@@ -807,10 +966,13 @@ class ProductCommandServiceTest {
             given(callerInfo.role())
                     .willReturn(Role.MASTER);
 
-            given(productCommandRepository.findById(productId))
+            given(hubPort.getHub(hubId))
+                    .willReturn(mock(HubInfo.class));
+
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.empty());
 
-            // when & then
+            // When & Then
             BusinessException exception = catchThrowableOfType(
                     () -> productCommandService.updateProduct(command),
                     BusinessException.class
@@ -819,23 +981,255 @@ class ProductCommandServiceTest {
             assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
 
-            then(companyQueryRepository)
+            then(companyPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(productCommandRepository)
+            then(hubPort)
                     .should()
-                    .findById(productId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .getProductById(productId);
+
+            then(productPersistenceService)
+                    .should(never())
+                    .updateProduct(
+                            any(Product.class),
+                            any(UUID.class),
+                            anyString(),
+                            anyInt()
+                    );
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 Hub의 업체로 상품을 수정하면 HUB_NOT_FOUND 예외가 발생한다.")
+        void updateProduct_fail_whenHubNotFound() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            ProductUpdateCommand command = new ProductUpdateCommand(
+                    callerId,
+                    productId,
+                    companyId,
+                    "수정된 상품",
+                    20000
+            );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(userPort.getCaller(callerId))
+                    .willReturn(callerInfo);
+
+            given(callerInfo.role())
+                    .willReturn(Role.MASTER);
+
+            given(hubPort.getHub(hubId))
+                    .willThrow(
+                            new BusinessException(ErrorCode.HUB_NOT_FOUND)
+                    );
+
+            // When & Then
+            BusinessException exception = catchThrowableOfType(
+                    () -> productCommandService.updateProduct(command),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.HUB_NOT_FOUND);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
+
+            then(userPort)
+                    .should()
+                    .getCaller(callerId);
+
+            then(hubPort)
+                    .should()
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should(never())
+                    .getProductById(any(UUID.class));
+
+            then(productPersistenceService)
+                    .should(never())
+                    .updateProduct(
+                            any(Product.class),
+                            any(UUID.class),
+                            anyString(),
+                            anyInt()
+                    );
+        }
+
+        @Test
+        @DisplayName("담당하지 않는 Hub의 업체를 Hub Manager가 수정하면 AUTH_FORBIDDEN 예외가 발생한다.")
+        void updateProduct_fail_whenHubManagerOfDifferentHub() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID companyHubId = UUID.randomUUID();
+            UUID callerHubId = UUID.randomUUID();
+
+            ProductUpdateCommand command = new ProductUpdateCommand(
+                    callerId,
+                    productId,
+                    companyId,
+                    "수정된 상품",
+                    20000
+            );
+
+            Company company = Company.builder()
+                    .hubId(companyHubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(userPort.getCaller(callerId))
+                    .willReturn(callerInfo);
+
+            given(callerInfo.role())
+                    .willReturn(Role.HUB_MANAGER);
+
+            given(callerInfo.hubId())
+                    .willReturn(callerHubId);
+
+            // When & Then
+            BusinessException exception = catchThrowableOfType(
+                    () -> productCommandService.updateProduct(command),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
+
+            then(userPort)
+                    .should()
+                    .getCaller(callerId);
+
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("담당하지 않는 업체를 Company Manager가 수정하면 AUTH_FORBIDDEN 예외가 발생한다.")
+        void updateProduct_fail_whenCompanyManagerOfDifferentCompany() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID callerCompanyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            ProductUpdateCommand command = new ProductUpdateCommand(
+                    callerId,
+                    productId,
+                    companyId,
+                    "수정된 상품",
+                    20000
+            );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(userPort.getCaller(callerId))
+                    .willReturn(callerInfo);
+
+            given(callerInfo.role())
+                    .willReturn(Role.COMPANY_MANAGER);
+
+            given(callerInfo.companyId())
+                    .willReturn(callerCompanyId);
+
+            // When & Then
+            BusinessException exception = catchThrowableOfType(
+                    () -> productCommandService.updateProduct(command),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
+
+            then(userPort)
+                    .should()
+                    .getCaller(callerId);
+
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
+                    .shouldHaveNoInteractions();
         }
     }
 
     @Nested
-    @DisplayName("상품 삭제 비즈니스 로직 테스트")
-    class DeleteProduct {
+    @DisplayName("상품 삭제 외부 비즈니스 로직 테스트")
+    class DeleteProductCommand {
 
         @Test
         @DisplayName("Master가 상품을 정상적으로 논리 삭제한다.")
@@ -873,9 +1267,16 @@ class ProductCommandServiceTest {
             );
 
             CallerInfo callerInfo = mock(CallerInfo.class);
+            HubInfo hubInfo = mock(HubInfo.class);
 
-            given(productCommandRepository.findById(productId))
+            ProductDeleteResult deleteResult =
+                    mock(ProductDeleteResult.class);
+
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
                     .willReturn(callerInfo);
@@ -883,8 +1284,17 @@ class ProductCommandServiceTest {
             given(callerInfo.role())
                     .willReturn(Role.MASTER);
 
-            given(companyQueryRepository.findById(companyId))
-                    .willReturn(Optional.of(company));
+            given(hubPort.getHub(hubId))
+                    .willReturn(hubInfo);
+
+            given(productPersistenceService.deleteProduct(
+                    product,
+                    callerId
+            ))
+                    .willReturn(deleteResult);
+
+            given(deleteResult.productId())
+                    .willReturn(productId);
 
             // when
             ProductDeleteResult result =
@@ -897,23 +1307,28 @@ class ProductCommandServiceTest {
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            assertThat(product.getDeletedAt())
-                    .isNotNull();
-
-            assertThat(product.getDeletedBy())
-                    .isEqualTo(callerId);
-
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(companyQueryRepository)
+            then(hubPort)
                     .should()
-                    .findById(companyId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .deleteProduct(
+                            product,
+                            callerId
+                    );
         }
 
         @Test
@@ -952,9 +1367,16 @@ class ProductCommandServiceTest {
             );
 
             CallerInfo callerInfo = mock(CallerInfo.class);
+            HubInfo hubInfo = mock(HubInfo.class);
 
-            given(productCommandRepository.findById(productId))
+            ProductDeleteResult deleteResult =
+                    mock(ProductDeleteResult.class);
+
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
                     .willReturn(callerInfo);
@@ -965,8 +1387,17 @@ class ProductCommandServiceTest {
             given(callerInfo.hubId())
                     .willReturn(hubId);
 
-            given(companyQueryRepository.findById(companyId))
-                    .willReturn(Optional.of(company));
+            given(hubPort.getHub(hubId))
+                    .willReturn(hubInfo);
+
+            given(productPersistenceService.deleteProduct(
+                    product,
+                    callerId
+            ))
+                    .willReturn(deleteResult);
+
+            given(deleteResult.productId())
+                    .willReturn(productId);
 
             // when
             ProductDeleteResult result =
@@ -979,27 +1410,32 @@ class ProductCommandServiceTest {
             assertThat(result.productId())
                     .isEqualTo(productId);
 
-            assertThat(product.getDeletedAt())
-                    .isNotNull();
-
-            assertThat(product.getDeletedBy())
-                    .isEqualTo(callerId);
-
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(companyQueryRepository)
+            then(hubPort)
                     .should()
-                    .findById(companyId);
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should()
+                    .deleteProduct(
+                            product,
+                            callerId
+                    );
         }
 
         @Test
-        @DisplayName("존재하지 않는 상품을 삭제하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
+        @DisplayName("존재하지 않는 상품을 삭제하면 AUTH_FORBIDDEN 예외가 발생한다.")
         void deleteProduct_fail_whenProductNotFound() {
             // given
             UUID callerId = UUID.randomUUID();
@@ -1011,7 +1447,7 @@ class ProductCommandServiceTest {
                             productId
                     );
 
-            given(productCommandRepository.findById(productId))
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.empty());
 
             // when & then
@@ -1022,21 +1458,24 @@ class ProductCommandServiceTest {
             );
 
             assertThat(exception.getErrorCode())
-                    .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .shouldHaveNoInteractions();
 
             then(userPort)
                     .shouldHaveNoInteractions();
 
-            then(companyQueryRepository)
+            then(hubPort)
                     .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("상품을 관리하는 업체가 존재하지 않으면 COMPANY_NOT_FOUND 예외가 발생한다.")
+        @DisplayName("상품을 관리하는 업체가 존재하지 않으면 AUTH_FORBIDDEN 예외가 발생한다.")
         void deleteProduct_fail_whenCompanyNotFound() {
             // given
             UUID callerId = UUID.randomUUID();
@@ -1056,15 +1495,10 @@ class ProductCommandServiceTest {
                     10000
             );
 
-            CallerInfo callerInfo = mock(CallerInfo.class);
-
-            given(productCommandRepository.findById(productId))
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
 
-            given(userPort.getCaller(callerId))
-                    .willReturn(callerInfo);
-
-            given(companyQueryRepository.findById(companyId))
+            given(companyPersistenceService.getCompanyById(companyId))
                     .willReturn(Optional.empty());
 
             // when & then
@@ -1075,19 +1509,21 @@ class ProductCommandServiceTest {
             );
 
             assertThat(exception.getErrorCode())
-                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+                    .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
 
             then(userPort)
-                    .should()
-                    .getCaller(callerId);
+                    .shouldHaveNoInteractions();
 
-            then(companyQueryRepository)
-                    .should()
-                    .findById(companyId);
+            then(hubPort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
@@ -1128,8 +1564,11 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            given(productCommandRepository.findById(productId))
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
                     .willReturn(callerInfo);
@@ -1139,9 +1578,6 @@ class ProductCommandServiceTest {
 
             given(callerInfo.hubId())
                     .willReturn(callerHubId);
-
-            given(companyQueryRepository.findById(companyId))
-                    .willReturn(Optional.of(company));
 
             // when & then
             BusinessException exception = catchThrowableOfType(
@@ -1153,17 +1589,27 @@ class ProductCommandServiceTest {
             assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(companyQueryRepository)
-                    .should()
-                    .findById(companyId);
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
+                    .should(never())
+                    .deleteProduct(
+                            any(Product.class),
+                            any(UUID.class)
+                    );
         }
 
         @Test
@@ -1203,17 +1649,17 @@ class ProductCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            given(productCommandRepository.findById(productId))
+            given(productPersistenceService.getProductById(productId))
                     .willReturn(Optional.of(product));
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
 
             given(userPort.getCaller(callerId))
                     .willReturn(callerInfo);
 
             given(callerInfo.role())
                     .willReturn(Role.COMPANY_MANAGER);
-
-            given(companyQueryRepository.findById(companyId))
-                    .willReturn(Optional.of(company));
 
             // when & then
             BusinessException exception = catchThrowableOfType(
@@ -1225,17 +1671,115 @@ class ProductCommandServiceTest {
             assertThat(exception.getErrorCode())
                     .isEqualTo(ErrorCode.AUTH_FORBIDDEN);
 
-            then(productCommandRepository)
+            then(productPersistenceService)
                     .should()
-                    .findById(productId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
 
             then(userPort)
                     .should()
                     .getCaller(callerId);
 
-            then(companyQueryRepository)
+            then(hubPort)
+                    .shouldHaveNoInteractions();
+
+            then(productPersistenceService)
+                    .should(never())
+                    .deleteProduct(
+                            any(Product.class),
+                            any(UUID.class)
+                    );
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 Hub로 상품을 삭제하면 HUB_NOT_FOUND 예외가 발생한다.")
+        void deleteProduct_fail_whenHubNotFound() {
+            // given
+            UUID callerId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            ProductDeleteCommand command =
+                    new ProductDeleteCommand(
+                            callerId,
+                            productId
+                    );
+
+            Product product = new Product(
+                    productId,
+                    companyId,
+                    "테스트 상품",
+                    10000
+            );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            given(productPersistenceService.getProductById(productId))
+                    .willReturn(Optional.of(product));
+
+            given(companyPersistenceService.getCompanyById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(userPort.getCaller(callerId))
+                    .willReturn(callerInfo);
+
+            given(callerInfo.role())
+                    .willReturn(Role.MASTER);
+
+            given(hubPort.getHub(hubId))
+                    .willThrow(
+                            new BusinessException(ErrorCode.HUB_NOT_FOUND)
+                    );
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () ->
+                            productCommandService.deleteProduct(command),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.HUB_NOT_FOUND);
+
+            then(productPersistenceService)
                     .should()
-                    .findById(companyId);
+                    .getProductById(productId);
+
+            then(companyPersistenceService)
+                    .should()
+                    .getCompanyById(companyId);
+
+            then(userPort)
+                    .should()
+                    .getCaller(callerId);
+
+            then(hubPort)
+                    .should()
+                    .getHub(hubId);
+
+            then(productPersistenceService)
+                    .should(never())
+                    .deleteProduct(
+                            any(Product.class),
+                            any(UUID.class)
+                    );
         }
     }
 }

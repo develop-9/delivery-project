@@ -30,7 +30,7 @@ public class CompanyCommandService {
     private final UserPort userPort;
     private final HubPort hubPort;
 
-    // [외부] 업체 저장 비즈니스 로직
+    // [외부] 업체 생성 비즈니스 로직
     public CompanyCreateResult createCompany(CompanyCreateCommand companyCreateCommand) {
 
         log.info(

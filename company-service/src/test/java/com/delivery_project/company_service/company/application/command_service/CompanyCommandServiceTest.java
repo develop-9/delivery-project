@@ -3,6 +3,7 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
+import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
 import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
@@ -37,6 +38,9 @@ import static org.mockito.Mockito.*;
 class CompanyCommandServiceTest {
 
     @Mock
+    private CompanyPersistenceService companyPersistenceService;
+
+    @Mock
     private CompanyCommandRepository companyCommandRepository;
 
     @Mock
@@ -49,7 +53,7 @@ class CompanyCommandServiceTest {
     private CompanyCommandService companyCommandService;
 
     @Nested
-    @DisplayName("업체 생성 비즈니스 로직 테스트")
+    @DisplayName("업체 생성 외부 비즈니스 로직 테스트")
     class CreateCompanyCommand {
 
         @Test
@@ -79,21 +83,16 @@ class CompanyCommandServiceTest {
             when(hubPort.getHub(hubId))
                     .thenReturn(mock(HubInfo.class));
 
-            Company savedCompany = Company.builder()
-                    .hubId(hubId)
-                    .type(CompanyType.PRODUCER)
-                    .name("테스트 업체")
-                    .address("서울특별시 강남구")
-                    .build();
+            CompanyCreateResult expectedResult =
+                    CompanyCreateResult.from(companyId);
 
-            ReflectionTestUtils.setField(
-                    savedCompany,
-                    "id",
-                    companyId
-            );
-
-            when(companyCommandRepository.save(any(Company.class)))
-                    .thenReturn(savedCompany);
+            when(companyPersistenceService.createCompany(
+                    hubId,
+                    CompanyType.PRODUCER,
+                    "테스트 업체",
+                    "서울특별시 강남구"
+            ))
+                    .thenReturn(expectedResult);
 
             // When
             CompanyCreateResult result =
@@ -112,8 +111,15 @@ class CompanyCommandServiceTest {
             verify(hubPort)
                     .getHub(hubId);
 
-            verify(companyCommandRepository)
-                    .save(any(Company.class));
+            verify(companyPersistenceService)
+                    .createCompany(
+                            hubId,
+                            CompanyType.PRODUCER,
+                            "테스트 업체",
+                            "서울특별시 강남구"
+                    );
+
+            verifyNoInteractions(companyCommandRepository);
         }
 
         @Test
@@ -146,21 +152,16 @@ class CompanyCommandServiceTest {
             when(hubPort.getHub(hubId))
                     .thenReturn(mock(HubInfo.class));
 
-            Company savedCompany = Company.builder()
-                    .hubId(hubId)
-                    .type(CompanyType.RECEIVER)
-                    .name("테스트 업체")
-                    .address("서울특별시 강남구")
-                    .build();
+            CompanyCreateResult expectedResult =
+                    CompanyCreateResult.from(companyId);
 
-            ReflectionTestUtils.setField(
-                    savedCompany,
-                    "id",
-                    companyId
-            );
-
-            when(companyCommandRepository.save(any(Company.class)))
-                    .thenReturn(savedCompany);
+            when(companyPersistenceService.createCompany(
+                    hubId,
+                    CompanyType.RECEIVER,
+                    "테스트 업체",
+                    "서울특별시 강남구"
+            ))
+                    .thenReturn(expectedResult);
 
             // When
             CompanyCreateResult result =
@@ -179,8 +180,15 @@ class CompanyCommandServiceTest {
             verify(hubPort)
                     .getHub(hubId);
 
-            verify(companyCommandRepository)
-                    .save(any(Company.class));
+            verify(companyPersistenceService)
+                    .createCompany(
+                            hubId,
+                            CompanyType.RECEIVER,
+                            "테스트 업체",
+                            "서울특별시 강남구"
+                    );
+
+            verifyNoInteractions(companyCommandRepository);
         }
 
         @Test
@@ -225,6 +233,7 @@ class CompanyCommandServiceTest {
             verify(hubPort, never())
                     .getHub(any());
 
+            verifyNoInteractions(companyPersistenceService);
             verifyNoInteractions(companyCommandRepository);
         }
 
@@ -253,7 +262,9 @@ class CompanyCommandServiceTest {
 
             when(hubPort.getHub(hubId))
                     .thenThrow(
-                            new BusinessException(ErrorCode.HUB_NOT_FOUND)
+                            new BusinessException(
+                                    ErrorCode.HUB_NOT_FOUND
+                            )
                     );
 
             // When & Then
@@ -272,12 +283,13 @@ class CompanyCommandServiceTest {
             verify(hubPort)
                     .getHub(hubId);
 
+            verifyNoInteractions(companyPersistenceService);
             verifyNoInteractions(companyCommandRepository);
         }
     }
 
     @Nested
-    @DisplayName("업체 수정 비즈니스 로직 테스트")
+    @DisplayName("업체 수정 외부 비즈니스 로직 테스트")
     class UpdateCompanyCommand {
 
         @Test
@@ -308,8 +320,8 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
-                    .thenReturn(Optional.of(company));
+            CompanyUpdateResult updateResult =
+                    new CompanyUpdateResult(companyId);
 
             when(userPort.getCaller(callerId))
                     .thenReturn(callerInfo);
@@ -319,6 +331,18 @@ class CompanyCommandServiceTest {
 
             when(hubPort.getHub(updatedHubId))
                     .thenReturn(mock(HubInfo.class));
+
+            when(companyPersistenceService.getCompanyById(companyId))
+                    .thenReturn(Optional.of(company));
+
+            when(companyPersistenceService.updateCompany(
+                    company,
+                    updatedHubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            ))
+                    .thenReturn(updateResult);
 
             // When
             CompanyUpdateResult result =
@@ -331,28 +355,23 @@ class CompanyCommandServiceTest {
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            assertThat(company.getHubId())
-                    .isEqualTo(updatedHubId);
-
-            assertThat(company.getType())
-                    .isEqualTo(CompanyType.RECEIVER);
-
-            assertThat(company.getName())
-                    .isEqualTo("수정 업체");
-
-            assertThat(company.getAddress())
-                    .isEqualTo("수정 주소");
-
-            verify(companyCommandRepository)
-                    .findById(companyId);
-
             verify(userPort)
                     .getCaller(callerId);
 
             verify(hubPort)
                     .getHub(updatedHubId);
 
-            verifyNoMoreInteractions(companyCommandRepository);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
+
+            verify(companyPersistenceService)
+                    .updateCompany(
+                            company,
+                            updatedHubId,
+                            CompanyType.RECEIVER,
+                            "수정 업체",
+                            "수정 주소"
+                    );
         }
 
         @Test
@@ -382,8 +401,8 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
-                    .thenReturn(Optional.of(company));
+            CompanyUpdateResult updateResult =
+                    new CompanyUpdateResult(companyId);
 
             when(userPort.getCaller(callerId))
                     .thenReturn(callerInfo);
@@ -397,6 +416,18 @@ class CompanyCommandServiceTest {
             when(hubPort.getHub(hubId))
                     .thenReturn(mock(HubInfo.class));
 
+            when(companyPersistenceService.getCompanyById(companyId))
+                    .thenReturn(Optional.of(company));
+
+            when(companyPersistenceService.updateCompany(
+                    company,
+                    hubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            ))
+                    .thenReturn(updateResult);
+
             // When
             CompanyUpdateResult result =
                     companyCommandService.updateCompany(command);
@@ -408,28 +439,23 @@ class CompanyCommandServiceTest {
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            assertThat(company.getHubId())
-                    .isEqualTo(hubId);
-
-            assertThat(company.getType())
-                    .isEqualTo(CompanyType.RECEIVER);
-
-            assertThat(company.getName())
-                    .isEqualTo("수정 업체");
-
-            assertThat(company.getAddress())
-                    .isEqualTo("수정 주소");
-
-            verify(companyCommandRepository)
-                    .findById(companyId);
-
             verify(userPort)
                     .getCaller(callerId);
 
             verify(hubPort)
                     .getHub(hubId);
 
-            verifyNoMoreInteractions(companyCommandRepository);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
+
+            verify(companyPersistenceService)
+                    .updateCompany(
+                            company,
+                            hubId,
+                            CompanyType.RECEIVER,
+                            "수정 업체",
+                            "수정 주소"
+                    );
         }
 
         @Test
@@ -459,8 +485,8 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
-                    .thenReturn(Optional.of(company));
+            CompanyUpdateResult updateResult =
+                    new CompanyUpdateResult(companyId);
 
             when(userPort.getCaller(callerId))
                     .thenReturn(callerInfo);
@@ -474,6 +500,18 @@ class CompanyCommandServiceTest {
             when(hubPort.getHub(hubId))
                     .thenReturn(mock(HubInfo.class));
 
+            when(companyPersistenceService.getCompanyById(companyId))
+                    .thenReturn(Optional.of(company));
+
+            when(companyPersistenceService.updateCompany(
+                    company,
+                    hubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            ))
+                    .thenReturn(updateResult);
+
             // When
             CompanyUpdateResult result =
                     companyCommandService.updateCompany(command);
@@ -485,28 +523,23 @@ class CompanyCommandServiceTest {
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            assertThat(company.getHubId())
-                    .isEqualTo(hubId);
-
-            assertThat(company.getType())
-                    .isEqualTo(CompanyType.RECEIVER);
-
-            assertThat(company.getName())
-                    .isEqualTo("수정 업체");
-
-            assertThat(company.getAddress())
-                    .isEqualTo("수정 주소");
-
-            verify(companyCommandRepository)
-                    .findById(companyId);
-
             verify(userPort)
                     .getCaller(callerId);
 
             verify(hubPort)
                     .getHub(hubId);
 
-            verifyNoMoreInteractions(companyCommandRepository);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
+
+            verify(companyPersistenceService)
+                    .updateCompany(
+                            company,
+                            hubId,
+                            CompanyType.RECEIVER,
+                            "수정 업체",
+                            "수정 주소"
+                    );
         }
 
         @Test
@@ -526,7 +559,18 @@ class CompanyCommandServiceTest {
                     "수정 주소"
             );
 
-            when(companyCommandRepository.findById(companyId))
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            when(userPort.getCaller(callerId))
+                    .thenReturn(callerInfo);
+
+            when(callerInfo.role())
+                    .thenReturn(Role.MASTER);
+
+            when(hubPort.getHub(hubId))
+                    .thenReturn(mock(HubInfo.class));
+
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.empty());
 
             // When & Then
@@ -539,11 +583,23 @@ class CompanyCommandServiceTest {
                             ErrorCode.COMPANY_NOT_FOUND
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(userPort)
+                    .getCaller(callerId);
 
-            verifyNoInteractions(userPort);
-            verifyNoInteractions(hubPort);
+            verify(hubPort)
+                    .getHub(hubId);
+
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
+
+            verify(companyPersistenceService, never())
+                    .updateCompany(
+                            any(),
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                    );
         }
 
         @Test
@@ -554,26 +610,7 @@ class CompanyCommandServiceTest {
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
-            Company company = Company.builder()
-                    .hubId(hubId)
-                    .type(CompanyType.PRODUCER)
-                    .name("기존 업체")
-                    .address("기존 주소")
-                    .build();
-
-            CompanyUpdateCommand command = new CompanyUpdateCommand(
-                    callerId,
-                    companyId,
-                    hubId,
-                    CompanyType.RECEIVER,
-                    "수정 업체",
-                    "수정 주소"
-            );
-
             CallerInfo callerInfo = mock(CallerInfo.class);
-
-            when(companyCommandRepository.findById(companyId))
-                    .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
                     .thenReturn(callerInfo);
@@ -583,6 +620,15 @@ class CompanyCommandServiceTest {
 
             when(callerInfo.hubId())
                     .thenReturn(UUID.randomUUID());
+
+            CompanyUpdateCommand command = new CompanyUpdateCommand(
+                    callerId,
+                    companyId,
+                    hubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            );
 
             // When & Then
             assertThatThrownBy(() ->
@@ -594,14 +640,11 @@ class CompanyCommandServiceTest {
                             ErrorCode.AUTH_FORBIDDEN
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
-
             verify(userPort)
                     .getCaller(callerId);
 
-            verify(hubPort, never())
-                    .getHub(any());
+            verifyNoInteractions(hubPort);
+            verifyNoInteractions(companyPersistenceService);
         }
 
         @Test
@@ -611,13 +654,6 @@ class CompanyCommandServiceTest {
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
-
-            Company company = Company.builder()
-                    .hubId(hubId)
-                    .type(CompanyType.PRODUCER)
-                    .name("기존 업체")
-                    .address("기존 주소")
-                    .build();
 
             CompanyUpdateCommand command = new CompanyUpdateCommand(
                     callerId,
@@ -629,9 +665,6 @@ class CompanyCommandServiceTest {
             );
 
             CallerInfo callerInfo = mock(CallerInfo.class);
-
-            when(companyCommandRepository.findById(companyId))
-                    .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
                     .thenReturn(callerInfo);
@@ -654,19 +687,110 @@ class CompanyCommandServiceTest {
                             ErrorCode.HUB_NOT_FOUND
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
-
             verify(userPort)
                     .getCaller(callerId);
 
             verify(hubPort)
                     .getHub(hubId);
+
+            verifyNoInteractions(companyPersistenceService);
+        }
+
+        @Test
+        @DisplayName("담당하지 않는 Hub의 업체를 Hub Manager가 수정하면 예외가 발생한다.")
+        void updateCompany_fail_whenHubManagerOfDifferentHub() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID companyHubId = UUID.randomUUID();
+            UUID callerHubId = UUID.randomUUID();
+
+            CompanyUpdateCommand command = new CompanyUpdateCommand(
+                    callerId,
+                    companyId,
+                    companyHubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            when(userPort.getCaller(callerId))
+                    .thenReturn(callerInfo);
+
+            when(callerInfo.role())
+                    .thenReturn(Role.HUB_MANAGER);
+
+            when(callerInfo.hubId())
+                    .thenReturn(callerHubId);
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    companyCommandService.updateCompany(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.AUTH_FORBIDDEN
+                    );
+
+            verify(userPort)
+                    .getCaller(callerId);
+
+            verifyNoInteractions(hubPort);
+            verifyNoInteractions(companyPersistenceService);
+        }
+
+        @Test
+        @DisplayName("담당하지 않는 업체를 Company Manager가 수정하면 예외가 발생한다.")
+        void updateCompany_fail_whenCompanyManagerOfDifferentCompany() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID callerCompanyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            CompanyUpdateCommand command = new CompanyUpdateCommand(
+                    callerId,
+                    companyId,
+                    hubId,
+                    CompanyType.RECEIVER,
+                    "수정 업체",
+                    "수정 주소"
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            when(userPort.getCaller(callerId))
+                    .thenReturn(callerInfo);
+
+            when(callerInfo.role())
+                    .thenReturn(Role.COMPANY_MANAGER);
+
+            when(callerInfo.companyId())
+                    .thenReturn(callerCompanyId);
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    companyCommandService.updateCompany(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.AUTH_FORBIDDEN
+                    );
+
+            verify(userPort)
+                    .getCaller(callerId);
+
+            verifyNoInteractions(hubPort);
+            verifyNoInteractions(companyPersistenceService);
         }
     }
 
     @Nested
-    @DisplayName("업체 삭제 비즈니스 로직 테스트")
+    @DisplayName("업체 삭제 외부 비즈니스 로직 테스트")
     class DeleteCompanyCommand {
 
         @Test
@@ -698,7 +822,13 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
+            CompanyDeleteResult deleteResult =
+                    new CompanyDeleteResult(
+                            companyId,
+                            null
+                    );
+
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
@@ -707,33 +837,40 @@ class CompanyCommandServiceTest {
             when(callerInfo.role())
                     .thenReturn(Role.MASTER);
 
+            when(hubPort.getHub(hubId))
+                    .thenReturn(mock(HubInfo.class));
+
+            when(companyPersistenceService.deleteCompany(
+                    company,
+                    callerId
+            ))
+                    .thenReturn(deleteResult);
+
             // When
             CompanyDeleteResult result =
                     companyCommandService.deleteCompany(command);
 
             // Then
-            assertThat(company.getDeletedAt())
-                    .isNotNull();
-
-            assertThat(company.getDeletedBy())
-                    .isEqualTo(callerId);
-
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            assertThat(result.deletedAt())
-                    .isEqualTo(company.getDeletedAt());
-
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
 
             verify(userPort)
                     .getCaller(callerId);
 
-            verifyNoMoreInteractions(companyCommandRepository);
+            verify(hubPort)
+                    .getHub(hubId);
+
+            verify(companyPersistenceService)
+                    .deleteCompany(
+                            company,
+                            callerId
+                    );
         }
 
         @Test
@@ -765,7 +902,13 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
+            CompanyDeleteResult deleteResult =
+                    new CompanyDeleteResult(
+                            companyId,
+                            null
+                    );
+
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
@@ -777,37 +920,44 @@ class CompanyCommandServiceTest {
             when(callerInfo.hubId())
                     .thenReturn(hubId);
 
+            when(hubPort.getHub(hubId))
+                    .thenReturn(mock(HubInfo.class));
+
+            when(companyPersistenceService.deleteCompany(
+                    company,
+                    callerId
+            ))
+                    .thenReturn(deleteResult);
+
             // When
             CompanyDeleteResult result =
                     companyCommandService.deleteCompany(command);
 
             // Then
-            assertThat(company.getDeletedAt())
-                    .isNotNull();
-
-            assertThat(company.getDeletedBy())
-                    .isEqualTo(callerId);
-
             assertThat(result)
                     .isNotNull();
 
             assertThat(result.companyId())
                     .isEqualTo(companyId);
 
-            assertThat(result.deletedAt())
-                    .isEqualTo(company.getDeletedAt());
-
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
 
             verify(userPort)
                     .getCaller(callerId);
 
-            verifyNoMoreInteractions(companyCommandRepository);
+            verify(hubPort)
+                    .getHub(hubId);
+
+            verify(companyPersistenceService)
+                    .deleteCompany(
+                            company,
+                            callerId
+                    );
         }
 
         @Test
-        @DisplayName("존재하지 않는 업체를 삭제하면 예외가 발생한다.")
+        @DisplayName("존재하지 않는 업체를 삭제하면 권한 오류가 발생한다.")
         void deleteCompany_fail_whenCompanyNotFound() {
             // Given
             UUID callerId = UUID.randomUUID();
@@ -819,7 +969,7 @@ class CompanyCommandServiceTest {
                             companyId
                     );
 
-            when(companyCommandRepository.findById(companyId))
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.empty());
 
             // When & Then
@@ -829,18 +979,19 @@ class CompanyCommandServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue(
                             "errorCode",
-                            ErrorCode.COMPANY_NOT_FOUND
+                            ErrorCode.AUTH_FORBIDDEN
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
 
             verifyNoInteractions(userPort);
+            verifyNoInteractions(hubPort);
         }
 
         @Test
-        @DisplayName("업체 삭제 권한이 없으면 예외가 발생한다.")
-        void deleteCompany_fail_whenForbidden() {
+        @DisplayName("담당하지 않는 Hub의 업체를 Hub Manager가 삭제하면 예외가 발생한다.")
+        void deleteCompany_fail_whenHubManagerOfDifferentHub() {
             // Given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
@@ -868,7 +1019,7 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
@@ -890,11 +1041,19 @@ class CompanyCommandServiceTest {
                             ErrorCode.AUTH_FORBIDDEN
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
 
             verify(userPort)
                     .getCaller(callerId);
+
+            verifyNoInteractions(hubPort);
+
+            verify(companyPersistenceService, never())
+                    .deleteCompany(
+                            any(),
+                            any()
+                    );
         }
 
         @Test
@@ -926,7 +1085,7 @@ class CompanyCommandServiceTest {
 
             CallerInfo callerInfo = mock(CallerInfo.class);
 
-            when(companyCommandRepository.findById(companyId))
+            when(companyPersistenceService.getCompanyById(companyId))
                     .thenReturn(Optional.of(company));
 
             when(userPort.getCaller(callerId))
@@ -945,11 +1104,88 @@ class CompanyCommandServiceTest {
                             ErrorCode.AUTH_FORBIDDEN
                     );
 
-            verify(companyCommandRepository)
-                    .findById(companyId);
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
 
             verify(userPort)
                     .getCaller(callerId);
+
+            verifyNoInteractions(hubPort);
+
+            verify(companyPersistenceService, never())
+                    .deleteCompany(
+                            any(),
+                            any()
+                    );
+        }
+
+        @Test
+        @DisplayName("Hub가 존재하지 않으면 업체 삭제에 실패한다.")
+        void deleteCompany_fail_whenHubNotFound() {
+            // Given
+            UUID callerId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            CompanyDeleteCommand command =
+                    new CompanyDeleteCommand(
+                            callerId,
+                            companyId
+                    );
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            CallerInfo callerInfo = mock(CallerInfo.class);
+
+            when(companyPersistenceService.getCompanyById(companyId))
+                    .thenReturn(Optional.of(company));
+
+            when(userPort.getCaller(callerId))
+                    .thenReturn(callerInfo);
+
+            when(callerInfo.role())
+                    .thenReturn(Role.MASTER);
+
+            when(hubPort.getHub(hubId))
+                    .thenThrow(
+                            new BusinessException(ErrorCode.HUB_NOT_FOUND)
+                    );
+
+            // When & Then
+            assertThatThrownBy(() ->
+                    companyCommandService.deleteCompany(command)
+            )
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue(
+                            "errorCode",
+                            ErrorCode.HUB_NOT_FOUND
+                    );
+
+            verify(companyPersistenceService)
+                    .getCompanyById(companyId);
+
+            verify(userPort)
+                    .getCaller(callerId);
+
+            verify(hubPort)
+                    .getHub(hubId);
+
+            verify(companyPersistenceService, never())
+                    .deleteCompany(
+                            any(),
+                            any()
+                    );
         }
     }
 }
