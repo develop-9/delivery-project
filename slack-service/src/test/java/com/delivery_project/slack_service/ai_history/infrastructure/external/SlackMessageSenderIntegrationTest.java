@@ -1,6 +1,7 @@
-package com.delivery_project.slack_service.slack.infrastructure.external.slack;
+package com.delivery_project.slack_service.ai_history.infrastructure.external;
 
 import com.delivery_project.slack_service.slack.application.result.SlackMessageSendResult;
+import com.delivery_project.slack_service.slack.infrastructure.external.slack.SlackMessageSenderImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
