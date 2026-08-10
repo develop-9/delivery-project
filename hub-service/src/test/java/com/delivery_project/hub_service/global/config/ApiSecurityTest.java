@@ -1,6 +1,7 @@
 package com.delivery_project.hub_service.global.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -36,6 +38,7 @@ import com.delivery_project.hub_service.hub.application.command_service.HubComma
 import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
+import com.delivery_project.hub_service.hub.application.result.HubIdsResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.presentation.api_controller.HubApiController;
@@ -147,6 +150,20 @@ class ApiSecurityTest {
 		mockMvc.perform(get("/internal/v1/hubs/{hubId}", hubId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.name").value("대구광역시 센터"));
+	}
+
+	@Test
+	@DisplayName("전체 허브 ID 조회도 토큰 없이 열려 있다")
+	void internalHubIdsApiIsOpenWithoutToken() throws Exception {
+		// given: permitAll 은 엔드포인트가 아니라 /internal/v1/** 경로 묶음에 걸려 있다.
+		// 나중에 이 경로에만 좁은 matcher 가 붙으면 여기서 401·403 으로 드러난다.
+		when(hubQueryService.getHubIds()).thenReturn(new HubIdsResult(List.of(UUID.randomUUID())));
+
+		// when & then
+		mockMvc.perform(get("/internal/v1/hubs/ids"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.hubIds", hasSize(1)));
 	}
 
 	@Test
