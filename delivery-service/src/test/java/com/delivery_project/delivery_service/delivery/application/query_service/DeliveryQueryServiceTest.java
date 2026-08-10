@@ -102,8 +102,11 @@ class DeliveryQueryServiceTest {
                 .thenReturn(UUID.randomUUID());
 
         when(deliveryRouteQueryRepository
-                .findAllByDeliveryIdOrderBySequenceAsc(deliveryId))
-                .thenReturn(java.util.List.of());
+                .existsByDeliveryIdAndDeliveryManagerId(
+                        deliveryId,
+                        requesterManagerId
+                ))
+                .thenReturn(false);
 
         BusinessException exception =
                 assertThrows(
@@ -168,5 +171,53 @@ class DeliveryQueryServiceTest {
                 ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN,
                 exception.getErrorCode()
         );
+    }
+
+    @Test
+    @DisplayName("DELIVERY_MANAGER는 본인이 담당한 Route가 있는 배송을 조회할 수 있다")
+    void getDeliveryAssignedRouteManagerSuccess() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager manager = mock(DeliveryManager.class);
+
+        DeliveryGetQuery query =
+                DeliveryGetQuery.from(
+                        deliveryId,
+                        requesterId,
+                        Role.DELIVERY_MANAGER
+                );
+
+        when(deliveryQueryRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerQueryRepository.findByUserId(requesterId))
+                .thenReturn(Optional.of(manager));
+
+        when(delivery.getId())
+                .thenReturn(deliveryId);
+
+        when(manager.getId())
+                .thenReturn(managerId);
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(UUID.randomUUID());
+
+        when(deliveryRouteQueryRepository
+                .existsByDeliveryIdAndDeliveryManagerId(
+                        deliveryId,
+                        managerId
+                ))
+                .thenReturn(true);
+
+        deliveryQueryService.getDelivery(query);
+
+        verify(deliveryRouteQueryRepository)
+                .existsByDeliveryIdAndDeliveryManagerId(
+                        deliveryId,
+                        managerId
+                );
     }
 }

@@ -34,4 +34,15 @@ public class DeliveryRouteQueryRepositoryImpl
                 .findByIdAndDeletedAtIsNull(routeId);
     }
 
+    @Override
+    public boolean existsByDeliveryIdAndDeliveryManagerId(
+            UUID deliveryId,
+            UUID deliveryManagerId
+    ) {
+        return springDataRepository
+                .existsByDeliveryIdAndDeliveryManagerIdAndDeletedAtIsNull(
+                        deliveryId,
+                        deliveryManagerId
+                );
+    }
 }

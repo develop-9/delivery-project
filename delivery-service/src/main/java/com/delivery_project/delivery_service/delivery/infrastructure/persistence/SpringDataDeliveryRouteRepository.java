@@ -55,4 +55,9 @@ public interface SpringDataDeliveryRouteRepository
             UUID deliveryManagerId,
             DeliveryRouteStatus status
     );
+
+    boolean existsByDeliveryIdAndDeliveryManagerIdAndDeletedAtIsNull(
+            UUID deliveryId,
+            UUID deliveryManagerId
+    );
 }

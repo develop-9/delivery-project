@@ -15,4 +15,9 @@ public interface DeliveryRouteQueryRepository {
     Optional<DeliveryRoute> findById(
             UUID routeId
     );
+
+    boolean existsByDeliveryIdAndDeliveryManagerId(
+            UUID deliveryId,
+            UUID deliveryManagerId
+    );
 }

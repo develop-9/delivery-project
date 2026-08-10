@@ -156,14 +156,9 @@ public class DeliveryQueryService {
         // 허브 배송 Route 담당자인 경우
         boolean assignedRouteExists =
                 deliveryRouteQueryRepository
-                        .findAllByDeliveryIdOrderBySequenceAsc(
-                                delivery.getId()
-                        )
-                        .stream()
-                        .anyMatch(route ->
-                                manager.getId().equals(
-                                        route.getDeliveryManagerId()
-                                )
+                        .existsByDeliveryIdAndDeliveryManagerId(
+                                delivery.getId(),
+                                manager.getId()
                         );
 
         if (assignedRouteExists) {
