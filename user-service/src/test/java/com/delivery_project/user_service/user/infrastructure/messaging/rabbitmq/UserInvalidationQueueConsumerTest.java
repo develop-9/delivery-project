@@ -125,4 +125,41 @@ class UserInvalidationQueueConsumerTest {
 		verify(redisUserInvalidationWriter, never()).write(any(), any());
 		verify(userInvalidationOutboxRepository, never()).save(any());
 	}
+
+	/**
+	 * findById() 자체가 DB 장애로 실패해도 예외가 밖으로 안 나가야 한다 — 나가면
+	 * spring-rabbit 기본 동작(즉시 requeue, 백오프 없음)에 넘어가서 설계된 5초 TTL
+	 * 재시도를 건너뛰고 DB 장애 중에 오히려 더 몰아치게 된다.
+	 */
+	@Test
+	void findById_자체가_DB_장애로_실패해도_예외가_전파되지_않고_재발행은_그대로_나간다() {
+		// given
+		doThrow(new RuntimeException("DB 연결 실패")).when(userInvalidationOutboxRepository).findById(outboxId);
+
+		// when & then
+		org.assertj.core.api.Assertions.assertThatCode(() -> userInvalidationQueueConsumer.consume(payload()))
+				.doesNotThrowAnyException();
+
+		verify(redisUserInvalidationWriter, never()).write(any(), any());
+		verify(userInvalidationQueuePublisher).publishRetry(outboxId, targetUserId, invalidatedAt);
+	}
+
+	/**
+	 * write() 실패 이후 시도횟수 기록용 save()마저 실패해도(연쇄 DB 장애) 예외가 전파되면
+	 * 안 되고, 재발행은 그래도 나가야 한다.
+	 */
+	@Test
+	void 시도횟수_기록_저장이_실패해도_예외가_전파되지_않고_재발행은_그대로_나간다() {
+		// given
+		UserInvalidationOutbox outbox = pendingOutbox();
+		when(userInvalidationOutboxRepository.findById(outboxId)).thenReturn(Optional.of(outbox));
+		doThrow(new RuntimeException("Redis 연결 실패")).when(redisUserInvalidationWriter).write(targetUserId, invalidatedAt);
+		doThrow(new RuntimeException("DB 연결 실패")).when(userInvalidationOutboxRepository).save(outbox);
+
+		// when & then
+		org.assertj.core.api.Assertions.assertThatCode(() -> userInvalidationQueueConsumer.consume(payload()))
+				.doesNotThrowAnyException();
+
+		verify(userInvalidationQueuePublisher).publishRetry(outboxId, targetUserId, invalidatedAt);
+	}
 }
