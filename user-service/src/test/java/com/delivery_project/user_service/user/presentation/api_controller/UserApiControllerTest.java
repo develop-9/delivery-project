@@ -13,10 +13,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
@@ -26,6 +29,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
+/**
+ * HubPort/CompanyPort는 실제 Hub/Company Service를 이 테스트 환경에서 띄우지 않으므로
+ * @MockitoBean으로 대체한다 — signupUser() 헬퍼가 내부적으로 실제 회원가입 API를 호출하는데,
+ * 기본 동작(예외 없이 통과)이 "허브/업체가 존재한다"는 뜻이라 이 파일의 나머지 테스트(정지/승인/
+ * 거절 등)에는 영향이 없다.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -48,6 +57,12 @@ class UserApiControllerTest {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@MockitoBean
+	private HubPort hubPort;
+
+	@MockitoBean
+	private CompanyPort companyPort;
 
 	private final List<UUID> loggedInUserIds = new ArrayList<>();
 

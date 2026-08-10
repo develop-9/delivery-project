@@ -16,6 +16,8 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -41,7 +43,24 @@ public class AuthCommandService {
 	private final UserInvalidationRepository userInvalidationRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
+	private final HubPort hubPort;
+	private final CompanyPort companyPort;
 
+	/**
+	 * hubId/companyId 존재 검증(Hub/Company Service Feign 호출)을 DB 쓰기보다 먼저 수행한다 —
+	 * 존재하지 않는 허브/업체로 가입을 시도하는 실패 케이스에서 불필요한 DB 쓰기를 막기 위함이다.
+	 *
+	 * TODO: 이 Feign 호출들이 클래스 레벨 @Transactional 안에서 실행돼 DB 커넥션을 붙잡은 채
+	 * 대기한다(UserCommandService.delete()가 이미 겪었던 것과 같은 종류의 문제 — Hub/Company
+	 * Service가 느려지면 커넥션 풀 고갈로 이어질 수 있음). delete()처럼 Feign 호출을 트랜잭션
+	 * 밖으로 빼는 방향도 검토했으나, 그러면 실제 DB 쓰기가 별도의 새 트랜잭션으로 분리돼야 해서
+	 * Spring 테스트의 @Transactional 롤백으로 정리되지 않고 실제로 커밋돼버린다 — 이 메서드를
+	 * 호출하는 기존 통합 테스트(AuthApiControllerTest/UserApiControllerTest) 다수가 "매 테스트가
+	 * 깨끗한 DB에서 시작한다"는 전제에 기대고 있어 파급 범위가 큼. 지금은 존재확인용 Feign 호출
+	 * 1~2번이라 delete()의 상황보다는 위험도가 낮다고 보고 이대로 두지만, 실제로 커넥션 풀 고갈이
+	 * 문제가 되면 테스트 격리 방안(예: 트랜잭션 분리 + 테스트에서 실제 커밋된 데이터 정리)까지
+	 * 같이 정리해서 재적용해야 한다.
+	 */
 	public UserSignupResult signup(UserSignupCommand command) {
 		log.info("[Auth] 회원가입 시도 username={}", command.username());
 
@@ -54,7 +73,12 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
 		}
 
-		// TODO: hubId/companyId 존재 검증 (Hub/Company Internal API 연동 후 추가, 현재는 입력값 그대로 저장)
+		if (command.hubId() != null) {
+			hubPort.validateExists(command.hubId());
+		}
+		if (command.companyId() != null) {
+			companyPort.validateExists(command.companyId());
+		}
 
 		User user = User.builder()
 				.username(command.username())

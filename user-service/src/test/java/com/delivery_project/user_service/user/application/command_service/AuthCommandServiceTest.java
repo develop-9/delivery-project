@@ -24,6 +24,8 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -52,6 +54,12 @@ class AuthCommandServiceTest {
 
 	@Mock
 	private TokenProvider tokenProvider;
+
+	@Mock
+	private HubPort hubPort;
+
+	@Mock
+	private CompanyPort companyPort;
 
 	@InjectMocks
 	private AuthCommandService authCommandService;
@@ -218,6 +226,95 @@ class AuthCommandServiceTest {
 
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
+	}
+
+	@Test
+	void 존재하지_않는_hubId로_가입하면_HUB_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub1", "Abcd1234!", "허브담당자", "U0000000003",
+				Role.HUB_MANAGER, hubId, null);
+
+		when(userCommandRepository.existsByUsername("hub1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000003")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND))
+				.when(hubPort).validateExists(hubId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.HUB_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+	}
+
+	@Test
+	void 존재하지_않는_companyId로_가입하면_COMPANY_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID companyId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"company1", "Abcd1234!", "업체담당자", "U0000000004",
+				Role.COMPANY_MANAGER, null, companyId);
+
+		when(userCommandRepository.existsByUsername("company1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000004")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.COMPANY_NOT_FOUND))
+				.when(companyPort).validateExists(companyId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+	}
+
+	@Test
+	void 존재하는_hubId로_가입하면_검증을_통과하고_정상_가입된다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub2", "Abcd1234!", "허브담당자2", "U0000000005",
+				Role.HUB_MANAGER, hubId, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("hub2")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000005")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.userId()).isEqualTo(saved.getId());
+		org.mockito.Mockito.verify(hubPort).validateExists(hubId);
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+	}
+
+	@Test
+	void MASTER는_hubId_companyId_검증_호출_없이_가입된다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master3", "Abcd1234!", "관리자3", "U0000000006",
+				Role.MASTER, null, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("master3")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000006")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+
+		// when
+		authCommandService.signup(command);
+
+		// then
+		org.mockito.Mockito.verify(hubPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
 	}
 
 	@Test

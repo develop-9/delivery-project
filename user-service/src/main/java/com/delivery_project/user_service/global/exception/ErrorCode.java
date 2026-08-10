@@ -34,6 +34,8 @@ public enum ErrorCode {
 	NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다."),
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
 	INTERNAL_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "조건에 맞는 사용자를 찾을 수 없습니다."),
+	HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 허브입니다."),
+	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 업체입니다."),
 
 	// 409
 	INVALID_STATE(HttpStatus.CONFLICT, "요청을 처리할 수 없는 상태입니다."),
@@ -51,6 +53,8 @@ public enum ErrorCode {
 
 	// 503
 	DELIVERY_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "배송 담당자 정보를 확인할 수 없어 잠시 후 다시 시도해주세요."),
+	HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "허브 정보를 확인할 수 없어 잠시 후 다시 시도해주세요."),
+	COMPANY_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "업체 정보를 확인할 수 없어 잠시 후 다시 시도해주세요."),
 
 	// 500
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
