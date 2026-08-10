@@ -51,6 +51,21 @@ public interface SpringDataDeliveryRouteRepository
             @Param("routeId") UUID routeId
     );
 
+    @Query("""
+    SELECT CASE WHEN COUNT(dr) > 0 THEN true ELSE false END
+    FROM DeliveryRoute dr
+    WHERE dr.deliveryId = :deliveryId
+      AND dr.deletedAt IS NULL
+      AND (
+          dr.departureHubId = :hubId
+          OR dr.arrivalHubId = :hubId
+      )
+    """)
+    boolean existsByDeliveryIdAndHubId(
+            @Param("deliveryId") UUID deliveryId,
+            @Param("hubId") UUID hubId
+    );
+
     boolean existsByDeliveryManagerIdAndStatusAndDeletedAtIsNull(
             UUID deliveryManagerId,
             DeliveryRouteStatus status

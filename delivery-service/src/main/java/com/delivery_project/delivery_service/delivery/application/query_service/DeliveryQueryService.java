@@ -1,9 +1,11 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryListResult;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerQueryRepository;
@@ -29,6 +31,7 @@ public class DeliveryQueryService {
     private final DeliveryQueryRepository deliveryQueryRepository;
     private final DeliveryManagerQueryRepository deliveryManagerQueryRepository;
     private final DeliveryRouteQueryRepository deliveryRouteQueryRepository;
+    private final UserPort userPort;
 
     public DeliveryDetailResult getDelivery(
             DeliveryGetQuery query
@@ -56,6 +59,7 @@ public class DeliveryQueryService {
         validateListPermission(query);
 
         UUID requesterManagerId = null;
+        UUID requesterHubId = null;
 
         if (query.requesterRole() == Role.DELIVERY_MANAGER) {
             requesterManagerId =
@@ -69,6 +73,21 @@ public class DeliveryQueryService {
                             .getId();
         }
 
+        if (query.requesterRole() == Role.HUB_MANAGER) {
+            UserAuthorizationInfo requester =
+                    userPort.getUserAuthorizationInfo(
+                            query.requesterId()
+                    );
+
+            requesterHubId = requester.hubId();
+
+            if (requesterHubId == null) {
+                throw new BusinessException(
+                        ErrorCode.READ_DELIVERY_FORBIDDEN
+                );
+            }
+        }
+
         Pageable pageable =
                 PageRequest.of(
                         query.page(),
@@ -76,7 +95,11 @@ public class DeliveryQueryService {
                 );
 
         return deliveryQueryRepository
-                .search(query, pageable, requesterManagerId)
+                .search(
+                        query,
+                        pageable,
+                        requesterManagerId,
+                        requesterHubId)
                 .map(DeliveryListResult::from);
     }
 
@@ -111,7 +134,10 @@ public class DeliveryQueryService {
         }
 
         if (query.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 조회 방식 확정 후 범위 검증
+            validateHubManagerReadPermission(
+                    query.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -178,7 +204,6 @@ public class DeliveryQueryService {
         }
 
         if (query.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 기준 조회 범위 적용
             return;
         }
 
@@ -194,5 +219,36 @@ public class DeliveryQueryService {
         throw new BusinessException(
                 ErrorCode.READ_DELIVERY_FORBIDDEN
         );
+    }
+
+    private void validateHubManagerReadPermission(
+            UUID requesterId,
+            Delivery delivery
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_FORBIDDEN
+            );
+        }
+
+        boolean relatedHubDelivery =
+                deliveryRouteQueryRepository
+                        .existsByDeliveryIdAndHubId(
+                                delivery.getId(),
+                                requesterHubId
+                        );
+
+        if (!relatedHubDelivery) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_FORBIDDEN
+            );
+        }
     }
 }

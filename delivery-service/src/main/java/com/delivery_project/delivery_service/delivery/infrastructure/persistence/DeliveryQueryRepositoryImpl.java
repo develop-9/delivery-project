@@ -50,7 +50,8 @@ public class DeliveryQueryRepositoryImpl
     public Page<Delivery> search(
             DeliveryListQuery query,
             Pageable pageable,
-            UUID requesterManagerId
+            UUID requesterManagerId,
+            UUID requesterHubId
     ){
         List<Delivery> content =
                 queryFactory
@@ -67,6 +68,10 @@ public class DeliveryQueryRepositoryImpl
                                 deliveryManagerScope(
                                         query.requesterRole(),
                                         requesterManagerId
+                                ),
+                                hubManagerScope(
+                                        query.requesterRole(),
+                                        requesterHubId
                                 )
                         )
                         .orderBy(
@@ -194,5 +199,33 @@ public class DeliveryQueryRepositoryImpl
                         .exists();
 
         return companyDeliveryAssigned.or(hubRouteAssigned);
+    }
+
+    private BooleanExpression hubManagerScope(
+            Role requesterRole,
+            UUID requesterHubId
+    ) {
+        if (requesterRole != Role.HUB_MANAGER) {
+            return null;
+        }
+
+        if (requesterHubId == null) {
+            return delivery.id.isNull();
+        }
+
+        return JPAExpressions
+                .selectOne()
+                .from(deliveryRoute)
+                .where(
+                        deliveryRoute.deliveryId.eq(delivery.id),
+                        deliveryRoute.deletedAt.isNull(),
+                        deliveryRoute.departureHubId.eq(requesterHubId)
+                                .or(
+                                        deliveryRoute.arrivalHubId.eq(
+                                                requesterHubId
+                                        )
+                                )
+                )
+                .exists();
     }
 }

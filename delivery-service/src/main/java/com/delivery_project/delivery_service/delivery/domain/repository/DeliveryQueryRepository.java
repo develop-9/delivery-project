@@ -17,6 +17,7 @@ public interface DeliveryQueryRepository {
     Page<Delivery> search(
             DeliveryListQuery query,
             Pageable pageable,
-            UUID requesterManagerId
+            UUID requesterManagerId,
+            UUID requesterHubId
     );
 }

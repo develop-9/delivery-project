@@ -16,6 +16,11 @@ public interface DeliveryRouteQueryRepository {
             UUID routeId
     );
 
+    boolean existsByDeliveryIdAndHubId(
+            UUID deliveryId,
+            UUID hubId
+    );
+
     boolean existsByDeliveryIdAndDeliveryManagerId(
             UUID deliveryId,
             UUID deliveryManagerId

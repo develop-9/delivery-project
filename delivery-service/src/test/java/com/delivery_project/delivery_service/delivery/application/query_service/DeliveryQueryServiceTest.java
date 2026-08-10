@@ -1,7 +1,10 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
@@ -17,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +47,9 @@ class DeliveryQueryServiceTest {
 
     @InjectMocks
     private DeliveryRouteQueryService deliveryRouteQueryService;
+
+    @Mock
+    private UserPort userPort;
 
     @Test
     @DisplayName("MASTER는 배송 단건을 조회할 수 있다")
@@ -218,6 +226,241 @@ class DeliveryQueryServiceTest {
                 .existsByDeliveryIdAndDeliveryManagerId(
                         deliveryId,
                         managerId
+                );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER는 담당 허브를 경유하는 배송을 조회할 수 있다")
+    void getDeliveryHubManagerRelatedHubSuccess() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryGetQuery query =
+                DeliveryGetQuery.from(
+                        deliveryId,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        when(deliveryQueryRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                hubId,
+                                null
+                        )
+                );
+
+        when(delivery.getId())
+                .thenReturn(deliveryId);
+
+        when(deliveryRouteQueryRepository
+                .existsByDeliveryIdAndHubId(
+                        deliveryId,
+                        hubId
+                ))
+                .thenReturn(true);
+
+        deliveryQueryService.getDelivery(query);
+
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(deliveryRouteQueryRepository)
+                .existsByDeliveryIdAndHubId(
+                        deliveryId,
+                        hubId
+                );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER는 담당 허브와 관련 없는 배송을 조회할 수 없다")
+    void getDeliveryHubManagerUnrelatedHubForbidden() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryGetQuery query =
+                DeliveryGetQuery.from(
+                        deliveryId,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        when(deliveryQueryRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                hubId,
+                                null
+                        )
+                );
+
+        when(delivery.getId())
+                .thenReturn(deliveryId);
+
+        when(deliveryRouteQueryRepository
+                .existsByDeliveryIdAndHubId(
+                        deliveryId,
+                        hubId
+                ))
+                .thenReturn(false);
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryQueryService.getDelivery(query)
+                );
+
+        assertEquals(
+                ErrorCode.READ_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(deliveryRouteQueryRepository)
+                .existsByDeliveryIdAndHubId(
+                        deliveryId,
+                        hubId
+                );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER의 담당 허브가 없으면 배송을 조회할 수 없다")
+    void getDeliveryHubManagerWithoutHubForbidden() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryGetQuery query =
+                DeliveryGetQuery.from(
+                        deliveryId,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        when(deliveryQueryRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                null,
+                                null
+                        )
+                );
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryQueryService.getDelivery(query)
+                );
+
+        assertEquals(
+                ErrorCode.READ_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(deliveryRouteQueryRepository, never())
+                .existsByDeliveryIdAndHubId(
+                        any(),
+                        any()
+                );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER는 담당 허브 기준으로 배송 목록을 조회할 수 있다")
+    void getDeliveriesHubManagerSuccess() {
+        UUID requesterId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+
+        DeliveryListQuery query = mock(DeliveryListQuery.class);
+
+        when(query.page()).thenReturn(0);
+        when(query.size()).thenReturn(10);
+        when(query.requesterId()).thenReturn(requesterId);
+        when(query.requesterRole()).thenReturn(Role.HUB_MANAGER);
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                hubId,
+                                null
+                        )
+                );
+
+        when(deliveryQueryRepository.search(
+                eq(query),
+                any(Pageable.class),
+                isNull(),
+                eq(hubId)
+        )).thenReturn(Page.empty());
+
+        deliveryQueryService.getDeliveries(query);
+
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(deliveryQueryRepository)
+                .search(
+                        eq(query),
+                        any(Pageable.class),
+                        isNull(),
+                        eq(hubId)
+                );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER의 담당 허브가 없으면 배송 목록을 조회할 수 없다")
+    void getDeliveriesHubManagerWithoutHubForbidden() {
+        UUID requesterId = UUID.randomUUID();
+
+        DeliveryListQuery query = mock(DeliveryListQuery.class);
+
+        when(query.page()).thenReturn(0);
+        when(query.size()).thenReturn(10);
+        when(query.requesterId()).thenReturn(requesterId);
+        when(query.requesterRole()).thenReturn(Role.HUB_MANAGER);
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                null,
+                                null
+                        )
+                );
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryQueryService.getDeliveries(query)
+                );
+
+        assertEquals(
+                ErrorCode.READ_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(deliveryQueryRepository, never())
+                .search(
+                        any(),
+                        any(),
+                        any(),
+                        any()
                 );
     }
 }
