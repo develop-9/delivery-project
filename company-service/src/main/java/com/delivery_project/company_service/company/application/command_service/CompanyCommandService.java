@@ -4,7 +4,6 @@ import com.delivery_project.company_service.company.application.command.CompanyC
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
-import com.delivery_project.company_service.company.application.pesistence_service.ProductPersistenceService;
 import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
@@ -14,7 +13,6 @@ import com.delivery_project.company_service.company.application.result.CompanyCr
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
-import com.delivery_project.company_service.company.domain.repository.ProductQueryRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import com.delivery_project.company_service.global.security.Role;
@@ -29,12 +27,10 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CompanyCommandService {
 
-    private final ProductQueryRepository productQueryRepository;
     private final CompanyPersistenceService companyPersistenceService;
     private final UserPort userPort;
     private final HubPort hubPort;
     private final OrderPort orderPort;
-    private final ProductPersistenceService productPersistenceService;
 
     // [외부] 업체 저장 비즈니스 로직
     public CompanyCreateResult createCompany(CompanyCreateCommand companyCreateCommand) {
