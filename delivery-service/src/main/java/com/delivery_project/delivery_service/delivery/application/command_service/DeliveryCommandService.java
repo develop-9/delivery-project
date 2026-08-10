@@ -360,7 +360,11 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: #51 완료 후 담당 Hub 기준 권한 검증 추가
+            validateHubManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery,
+                    ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+            );
             return;
         }
 
@@ -450,7 +454,11 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 기준 검증 추가
+            validateHubManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery,
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
             return;
         }
 
@@ -473,12 +481,44 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: 담당 Hub 기준 권한 검증 추가
+            validateHubManagerDeliveryPermission(
+                    command.deletedBy(),
+                    delivery,
+                    ErrorCode.DELETE_DELIVERY_FORBIDDEN
+            );
             return;
         }
 
         throw new BusinessException(
                 ErrorCode.DELETE_DELIVERY_FORBIDDEN
         );
+    }
+
+    private void validateHubManagerDeliveryPermission(
+            UUID requesterId,
+            Delivery delivery,
+            ErrorCode errorCode
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(errorCode);
+        }
+
+        boolean relatedHubDelivery =
+                deliveryRouteCommandRepository
+                        .existsByDeliveryIdAndHubId(
+                                delivery.getId(),
+                                requesterHubId
+                        );
+
+        if (!relatedHubDelivery) {
+            throw new BusinessException(errorCode);
+        }
     }
 }

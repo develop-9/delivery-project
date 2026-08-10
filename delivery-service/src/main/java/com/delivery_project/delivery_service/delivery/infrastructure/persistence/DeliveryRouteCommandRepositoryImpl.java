@@ -36,6 +36,18 @@ public class DeliveryRouteCommandRepositoryImpl
     }
 
     @Override
+    public boolean existsByDeliveryIdAndHubId(
+            UUID deliveryId,
+            UUID hubId
+    ){
+        return springDataRepository
+                .existsByDeliveryIdAndHubId(
+                        deliveryId,
+                        hubId
+                );
+    }
+
+    @Override
     public List<DeliveryRoute>
     findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
             UUID deliveryId,

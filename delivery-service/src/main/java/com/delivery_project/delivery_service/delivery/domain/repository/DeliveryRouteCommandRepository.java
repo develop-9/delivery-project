@@ -15,6 +15,11 @@ public interface DeliveryRouteCommandRepository {
 
     Optional<DeliveryRoute> findById(UUID routeId);
 
+    boolean existsByDeliveryIdAndHubId(
+            UUID deliveryId,
+            UUID hubId
+    );
+
     List<DeliveryRoute> findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
             UUID deliveryId,
             DeliveryRouteStatus status
