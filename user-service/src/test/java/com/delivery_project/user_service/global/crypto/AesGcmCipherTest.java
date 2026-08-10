@@ -1,6 +1,7 @@
 package com.delivery_project.user_service.global.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -68,5 +69,30 @@ class AesGcmCipherTest {
 
 		// then
 		assertThat(first).isNotEqualTo(second);
+	}
+
+	/**
+	 * DB 값이 손상돼 Base64 디코딩 자체가 실패하는 경우(수동 편집, 마이그레이션 오류 등)를
+	 * 재현한다. IllegalArgumentException이 그대로 새면 GlobalExceptionHandler가 "잘못된
+	 * 요청"(400)으로 오분류하므로, GeneralSecurityException과 동일하게 IllegalStateException으로
+	 * 변환돼야 한다.
+	 */
+	@Test
+	void decrypt는_Base64가_아닌_값에_대해_IllegalStateException을_던진다() {
+		assertThatThrownBy(() -> cipher.decrypt("not-valid-base64!!!"))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("복호화에 실패했습니다.");
+	}
+
+	/**
+	 * Base64로는 유효해도 IV(12바이트)조차 담을 수 없을 만큼 짧은 값을 재현한다.
+	 */
+	@Test
+	void decrypt는_IV_길이보다_짧은_값에_대해_IllegalStateException을_던진다() {
+		String tooShort = java.util.Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
+
+		assertThatThrownBy(() -> cipher.decrypt(tooShort))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("복호화에 실패했습니다.");
 	}
 }

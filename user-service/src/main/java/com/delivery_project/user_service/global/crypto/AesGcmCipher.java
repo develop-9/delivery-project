@@ -65,7 +65,13 @@ public class AesGcmCipher {
 			Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
 			cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
 			return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
-		} catch (GeneralSecurityException e) {
+		} catch (GeneralSecurityException | IllegalArgumentException e) {
+			// IllegalArgumentException은 저장된 값이 Base64가 아니거나 IV(12바이트)를 담기에도
+			// 짧은 경우(Base64.getDecoder().decode(), Arrays.copyOfRange()가 던짐) — DB 값이
+			// 손상된 것이라 GeneralSecurityException과 같은 취급을 한다. 이걸 그냥 두면
+			// GlobalExceptionHandler가 IllegalArgumentException을 "잘못된 요청"(400, INFO 로그)으로
+			// 처리해서, 실제로는 서버측 데이터 손상 문제인데 클라이언트 잘못처럼 보이고 로그
+			// 레벨도 낮아 탐지가 늦어진다.
 			throw new IllegalStateException("복호화에 실패했습니다.", e);
 		}
 	}
