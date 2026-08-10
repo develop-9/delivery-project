@@ -36,7 +36,7 @@ public interface HubInternalSpec {
 	@Operation(
 			summary = "전체 허브 ID 조회 (내부)",
 			description = """
-					살아 있는 허브의 ID 를 전부 돌려준다. Company 가 재고를 등록할 때
+					살아 있는 허브의 ID 를 전부 돌려준다. Order 가 재고를 등록할 때
 					모든 허브에 행을 만들어야 해서 호출한다.
 
 					ID 만 내려간다. 허브명·좌표가 필요하면 이 응답의 ID 로 13번 다건 조회를 부른다.

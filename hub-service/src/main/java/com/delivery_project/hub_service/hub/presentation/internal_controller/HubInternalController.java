@@ -51,7 +51,7 @@ public class HubInternalController implements HubInternalSpec {
 	}
 
 	/**
-	 * 전체 허브 ID 조회 (15번). Company 가 재고 등록 시 모든 허브에 행을 만들려고 부른다.
+	 * 전체 허브 ID 조회 (15번). Order 가 재고 등록 시 모든 허브에 행을 만들려고 부른다.
 	 *
 	 * <p>{@code /{hubId}} 와 같은 자리를 다투지만 리터럴 세그먼트가 경로 변수보다 우선하므로
 	 * {@code /ids} 가 먼저 잡힌다. 선언 순서와는 무관하다.

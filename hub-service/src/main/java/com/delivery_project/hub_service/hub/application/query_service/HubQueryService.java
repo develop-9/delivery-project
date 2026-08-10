@@ -130,7 +130,7 @@ public class HubQueryService {
 	/**
 	 * 전체 허브 ID 조회 (03_internal.md 15번).
 	 *
-	 * <p>Company 가 재고를 등록할 때 모든 허브에 행을 만들어야 해서 부른다. 13번 다건 조회는
+	 * <p>Order 가 재고를 등록할 때 모든 허브에 행을 만들어야 해서 부른다. 13번 다건 조회는
 	 * 호출 측이 ID 를 이미 알고 있어야 하므로 이 용도에 쓸 수 없다.
 	 *
 	 * <p><b>0건은 에러가 아니다</b> (00_common.md). 허브가 하나도 없는 상태를 어떻게 볼지는
@@ -144,7 +144,7 @@ public class HubQueryService {
 	public HubIdsResult getHubIds() {
 		List<UUID> hubIds = hubQueryRepository.findAllIds();
 
-		// 재고 등록마다 불리므로 info 로 남기면 로그가 이것만 쌓인다. 개수는 "Company 가 받은
+		// 재고 등록마다 불리므로 info 로 남기면 로그가 이것만 쌓인다. 개수는 "Order 가 받은
 		// 허브 수가 왜 다른가"를 볼 때만 필요하다.
 		log.debug("[Hub] 전체 허브 ID 조회 hubCount={}", hubIds.size());
 
