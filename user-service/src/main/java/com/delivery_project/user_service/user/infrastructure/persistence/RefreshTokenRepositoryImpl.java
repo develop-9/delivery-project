@@ -65,6 +65,19 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
 		log.warn("[Redis] Refresh Token 삭제 실패(서킷 open 포함) — TTL 만료로 자연 정리됨 userId={}", userId, throwable);
 	}
 
+	@Override
+	@CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "deleteByUserIdOrThrowFallback")
+	public void deleteByUserIdOrThrow(UUID userId) {
+		redisTemplate.delete(key(userId));
+	}
+
+	@SuppressWarnings("unused")
+	private void deleteByUserIdOrThrowFallback(UUID userId, Throwable throwable) {
+		log.warn("[Redis] 로그아웃 시 Refresh Token 삭제 실패(서킷 open 포함) — 정지/삭제와 달리 승인 상태"
+				+ " 재검증으로 방어되지 않는 경로라 실패를 숨기지 않는다 userId={}", userId, throwable);
+		throw new IllegalStateException("로그아웃 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", throwable);
+	}
+
 	private String key(UUID userId) {
 		return KEY_PREFIX + userId;
 	}

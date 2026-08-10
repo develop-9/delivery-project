@@ -153,13 +153,23 @@ public class AuthCommandService {
 		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
+	/**
+	 * Access Token 무효화 기록을 Refresh Token 삭제보다 먼저 한다.
+	 * 아웃박스 DB insert라 Redis 상태와 무관하게 항상 성공하므로,
+	 * 뒤이은 Refresh Token 삭제가 실패해도 이 기록만은 반드시 남아야 한다.
+	 * noRollbackFor로 그 실패가 이 기록까지 롤백시키지 않게 막는다.
+	 */
+	@Transactional(noRollbackFor = IllegalStateException.class)
 	public void logout(UUID callerId) {
-		refreshTokenRepository.deleteByUserId(callerId);
 		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
 		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
-		// Redis에 직접 쓰지 않고 아웃박스에 DB insert로 기록되므로(UserInvalidationRepositoryImpl
-		// 참고) 더 이상 읽기 전용 트랜잭션일 수 없다 — 클래스 레벨 @Transactional을 그대로 쓴다.
 		userInvalidationRepository.invalidate(callerId, Instant.now());
+
+		// 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태
+		// 재검증으로 방어가 안 된다 — Redis 삭제가 실패해도 성공으로 위장하면 안 되므로
+		// fail-open인 deleteByUserId() 대신 실패를 그대로 던지는 쪽을 쓴다.
+		refreshTokenRepository.deleteByUserIdOrThrow(callerId);
+
 		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}
 

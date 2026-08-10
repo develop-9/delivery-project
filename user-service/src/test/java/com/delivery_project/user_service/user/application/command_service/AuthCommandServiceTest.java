@@ -463,7 +463,7 @@ class AuthCommandServiceTest {
 		authCommandService.logout(userId);
 
 		// then
-		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(userId);
+		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserIdOrThrow(userId);
 	}
 
 	@Test
@@ -473,6 +473,44 @@ class AuthCommandServiceTest {
 
 		// when
 		authCommandService.logout(userId);
+
+		// then
+		org.mockito.Mockito.verify(userInvalidationRepository)
+				.invalidate(org.mockito.Mockito.eq(userId), any(java.time.Instant.class));
+	}
+
+	/**
+	 * 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태 재검증으로
+	 * 방어가 안 된다 — Redis 삭제 실패를 성공으로 위장하면 안 되므로 예외가 그대로 올라와야 한다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패하면_로그아웃도_실패한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.logout(userId))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * Access Token 무효화는 Redis가 아니라 DB 아웃박스에 기록되므로, 뒤이은 Refresh Token
+	 * 삭제가 Redis 장애로 실패해도 이 기록 자체는 이미 남아 있어야 한다(호출까지는 됐는지 확인).
+	 * 실제로 그 기록이 롤백되지 않고 커밋까지 되는지는 @Transactional(noRollbackFor=...)에
+	 * 의존하는 부분이라 이 단위 테스트로는 못 보고, 실제 DB로 검증해야 한다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패해도_무효화_기록_시도는_이미_끝난_뒤다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+
+		// when
+		assertThatThrownBy(() -> authCommandService.logout(userId))
+				.isInstanceOf(IllegalStateException.class);
 
 		// then
 		org.mockito.Mockito.verify(userInvalidationRepository)
