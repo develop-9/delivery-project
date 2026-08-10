@@ -5,7 +5,6 @@ import com.delivery_project.company_service.company.application.command.CompanyD
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
 import com.delivery_project.company_service.company.application.port.HubPort;
-import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
 import com.delivery_project.company_service.company.application.port.dto.HubInfo;
@@ -30,7 +29,6 @@ public class CompanyCommandService {
     private final CompanyPersistenceService companyPersistenceService;
     private final UserPort userPort;
     private final HubPort hubPort;
-    private final OrderPort orderPort;
 
     // [외부] 업체 저장 비즈니스 로직
     public CompanyCreateResult createCompany(CompanyCreateCommand companyCreateCommand) {

@@ -5,7 +5,6 @@ import com.delivery_project.company_service.company.application.command.ProductD
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
 import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
 import com.delivery_project.company_service.company.application.pesistence_service.ProductPersistenceService;
-import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
@@ -30,7 +29,6 @@ public class ProductCommandService {
     private final CompanyPersistenceService companyPersistenceService;
     private final ProductPersistenceService productPersistenceService;
     private final UserPort userPort;
-    private final OrderPort orderPort;
 
     // [외부] 상품 생성 비즈니스 로직
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
@@ -90,19 +88,11 @@ public class ProductCommandService {
         }
 
         // 실제 DB 저장 시점부터 트랜잭션 시작
-        ProductCreateResult productCreateResult
-                = productPersistenceService.saveProduct(
+        return productPersistenceService.saveProduct(
                         productCreateCommand.companyId(),
                         productCreateCommand.name(),
                         productCreateCommand.price()
         );
-
-        // Inventory에 Hub별로 Product와 수량(0) 저장
-        // 추후 연동시 주석 제거
-        // List<InventorySaveInfo> inventoryList = orderPort.saveInventory(productCreateResult.productId());
-
-        // 결과 반환
-        return productCreateResult;
     }
 
     // [외부] 상품 수정 비즈니스 로직

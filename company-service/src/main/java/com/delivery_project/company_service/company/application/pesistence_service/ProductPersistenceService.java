@@ -40,6 +40,10 @@ public class ProductPersistenceService {
         // 상품 저장
         Product savedProduct = productCommandRepository.save(product);
 
+        // 허브별 상품의 재고 생성 요청
+        // TODO: Order Service 연동 후 주석 제거
+        // List<InventorySaveInfo> inventoryList = orderPort.saveInventory(productCreateResult.productId());
+
         log.info(
                 "상품 생성 완료. productId={}, createdBy={}",
                 savedProduct.getId(),
