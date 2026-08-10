@@ -10,10 +10,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * username/slack_id의 유일성을 Hibernate가 관리하는 전체 테이블 UNIQUE 제약이 아니라,
- * 삭제되지 않은 행(deleted_at IS NULL)에 대해서만 적용하는 부분 유니크 인덱스로 강제한다.
- * 전체 테이블 제약이면 Soft Delete된 행까지 유일성 검사에 포함되어, 탈퇴한 사용자의
- * username/slack_id를 영구히 재사용할 수 없다(User.java 참고).
+ * Hibernate ddl-auto=update가 스스로 못 고치는 스키마 변경을 앱 시작 시 멱등하게 직접
+ * 실행해 보정한다. ddl-auto=update는 테이블/컬럼 추가는 하지만, 이미 있는 제약(UNIQUE,
+ * CHECK 등)은 alter/drop하지 않는다 — 그래서 이 서비스를 예전 코드로 한 번이라도 띄워본
+ * 스키마에는 옛 제약이 그대로 남아 새 코드와 어긋난다. 팀 전체가 공유 DB 없이 각자 로컬
+ * DB로 개발하므로, 모든 개발자의 로컬 DB가 같은 문제를 겪을 수 있어 수동 안내 대신 여기서
+ * 자동으로 맞춘다.
  *
  * ddl-auto가 테이블을 만들 때 쓰는 스키마 이름(hibernate.default_schema)을 그대로
  * 재사용해서, 운영 스키마(user_schema)와 테스트 스키마(public) 어느 쪽에서 실행되든
@@ -23,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserTableIndexInitializer implements ApplicationRunner {
+public class UserTableSchemaInitializer implements ApplicationRunner {
 
 	private final JdbcTemplate jdbcTemplate;
 
@@ -33,7 +35,17 @@ public class UserTableIndexInitializer implements ApplicationRunner {
 	@Override
 	public void run(ApplicationArguments args) {
 		String table = schema + ".p_users";
+		fixUsernameSlackIdPartialUniqueIndex(table);
+		fixApprovalStatusCheckConstraint(table);
+	}
 
+	/**
+	 * username/slack_id의 유일성을 Hibernate가 관리하는 전체 테이블 UNIQUE 제약이 아니라,
+	 * 삭제되지 않은 행(deleted_at IS NULL)에 대해서만 적용하는 부분 유니크 인덱스로 강제한다.
+	 * 전체 테이블 제약이면 Soft Delete된 행까지 유일성 검사에 포함되어, 탈퇴한 사용자의
+	 * username/slack_id를 영구히 재사용할 수 없다(User.java 참고).
+	 */
+	private void fixUsernameSlackIdPartialUniqueIndex(String table) {
 		// User.java에서 @Column(unique = true)를 제거해도 Hibernate ddl-auto=update는
 		// 이미 만들어둔 제약을 스스로 지우지 않는다. 이 서비스를 예전 코드로 한 번이라도
 		// 띄워본 스키마에는 아래 두 전체 테이블 UNIQUE 제약이 남아있어서, 부분 인덱스를
@@ -50,5 +62,20 @@ public class UserTableIndexInitializer implements ApplicationRunner {
 						+ " (slack_id) WHERE deleted_at IS NULL");
 
 		log.info("[Schema] username/slack_id 부분 유니크 인덱스 확인 완료 schema={}", schema);
+	}
+
+	/**
+	 * approval_status의 CHECK 제약을 ApprovalStatus enum의 현재 값 전체로 다시 맞춘다.
+	 * ApprovalStatus에 SUSPENDED를 추가했을 때(User.suspend() 참고) Hibernate가 기존 제약을
+	 * 고쳐주지 않아, SUSPENDED 이전에 한 번이라도 떠 있던 스키마에서는 정지 처리 시
+	 * DataIntegrityViolationException으로 실패한다.
+	 */
+	private void fixApprovalStatusCheckConstraint(String table) {
+		jdbcTemplate.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS p_users_approval_status_check");
+		jdbcTemplate.execute("ALTER TABLE " + table
+				+ " ADD CONSTRAINT p_users_approval_status_check "
+				+ "CHECK (approval_status IN ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'))");
+
+		log.info("[Schema] approval_status CHECK 제약 확인 완료 schema={}", schema);
 	}
 }

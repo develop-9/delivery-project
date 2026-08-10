@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * User.slackId를 DB에 저장/조회할 때 투명하게 암호화/복호화한다. slackId는 부분 유니크
- * 인덱스(UserTableIndexInitializer)와 existsBySlackId 중복확인이 걸려있어서, 같은
+ * 인덱스(UserTableSchemaInitializer)와 existsBySlackId 중복확인이 걸려있어서, 같은
  * 평문이면 항상 같은 암호문이 나오는 결정적 IV 방식을 쓴다 — 그래야 이 값이 컬럼 값 그대로
  * 비교되는 기존 쿼리/인덱스가 코드 변경 없이 그대로 동작한다.
  *

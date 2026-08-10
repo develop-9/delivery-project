@@ -13,17 +13,19 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.delivery_project.user_service.global.config.JpaConfig;
-import com.delivery_project.user_service.global.config.UserTableIndexInitializer;
+import com.delivery_project.user_service.global.config.UserTableSchemaInitializer;
 import com.delivery_project.user_service.global.crypto.AesGcmCipher;
+import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaConfig.class, UserCommandRepositoryImpl.class, UserTableIndexInitializer.class, AesGcmCipher.class})
+@Import({JpaConfig.class, UserCommandRepositoryImpl.class, UserTableSchemaInitializer.class, AesGcmCipher.class})
 class UserCommandRepositoryImplTest {
 
 	@Autowired
@@ -33,17 +35,20 @@ class UserCommandRepositoryImplTest {
 	private TestEntityManager entityManager;
 
 	@Autowired
-	private UserTableIndexInitializer userTableIndexInitializer;
+	private UserTableSchemaInitializer userTableSchemaInitializer;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	/**
 	 * @DataJpaTest는 ApplicationRunner를 실행시키지 않는 슬라이스 테스트라, 부분 유니크
-	 * 인덱스를 만드는 UserTableIndexInitializer가 앱 기동 시처럼 자동 실행되지 않는다.
-	 * 이 인덱스가 있다는 걸 전제로 하는 테스트가 있어 매 테스트 전에 직접 실행해 보장한다
-	 * (IF NOT EXISTS 기반이라 반복 호출해도 안전).
+	 * 인덱스/CHECK 제약을 보정하는 UserTableSchemaInitializer가 앱 기동 시처럼 자동
+	 * 실행되지 않는다. 이 보정이 돼 있다는 걸 전제로 하는 테스트가 있어 매 테스트 전에
+	 * 직접 실행해 보장한다(멱등하게 짜여 있어 반복 호출해도 안전).
 	 */
 	@BeforeEach
-	void ensurePartialUniqueIndexes() {
-		userTableIndexInitializer.run(null);
+	void ensureSchemaFixups() {
+		userTableSchemaInitializer.run(null);
 	}
 
 	@Test
@@ -166,6 +171,49 @@ class UserCommandRepositoryImplTest {
 		org.assertj.core.api.Assertions.assertThatThrownBy(
 				() -> userCommandRepository.save(createUser("stillactive", "U100009")))
 				.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void 승인된_사용자를_정지_상태로_저장할_수_있다() {
+		// given
+		User user = userCommandRepository.save(createUser("suspendable", "U100010"));
+		user.approve(UUID.randomUUID());
+		userCommandRepository.save(user);
+
+		// when
+		user.suspend();
+		User saved = userCommandRepository.save(user);
+		entityManager.flush();
+
+		// then
+		assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+	}
+
+	/**
+	 * SUSPENDED를 ApprovalStatus에 추가하기 전부터 떠 있던 스키마를 재현한다 — approval_status
+	 * CHECK 제약을 옛 값 3개(PENDING/APPROVED/REJECTED)로 되돌린 뒤, UserTableSchemaInitializer를
+	 * 다시 실행해서 제약이 자동으로 SUSPENDED까지 포함하도록 보정되는지 확인한다. 이 보정이
+	 * 없으면 SUSPENDED 저장 시 DataIntegrityViolationException이 발생한다(실제로 로컬 DB에서
+	 * 재현됐던 문제).
+	 */
+	@Test
+	void 옛_CHECK_제약이_남아있어도_재기동_시_SUSPENDED를_허용하도록_자동_보정된다() {
+		// given: 옛 스키마 상태를 인위적으로 재현
+		jdbcTemplate.execute("ALTER TABLE public.p_users DROP CONSTRAINT IF EXISTS p_users_approval_status_check");
+		jdbcTemplate.execute("ALTER TABLE public.p_users ADD CONSTRAINT p_users_approval_status_check "
+				+ "CHECK (approval_status IN ('PENDING', 'APPROVED', 'REJECTED'))");
+
+		User user = userCommandRepository.save(createUser("legacyschema", "U100011"));
+		user.approve(UUID.randomUUID());
+		user.suspend();
+
+		// when: 앱 재기동 시와 동일하게 스키마 보정 러너를 다시 실행
+		userTableSchemaInitializer.run(null);
+
+		// then: 보정 이전이었다면 실패했을 저장이 성공한다
+		User saved = userCommandRepository.save(user);
+		entityManager.flush();
+		assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
 	}
 
 	private User createUser(String username, String slackId) {

@@ -309,7 +309,7 @@ class AuthApiControllerTest {
 				""".formatted(UUID.randomUUID());
 
 		// when & then: username/slack_id의 유일성은 삭제되지 않은 행에만 적용되는 부분 유니크
-		// 인덱스(UserTableIndexInitializer)라, 삭제된 사용자의 username 재사용은 더 이상 막히지 않는다.
+		// 인덱스(UserTableSchemaInitializer)라, 삭제된 사용자의 username 재사용은 더 이상 막히지 않는다.
 		assertThat(mvc.post().uri("/api/v1/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(reSignupBody))

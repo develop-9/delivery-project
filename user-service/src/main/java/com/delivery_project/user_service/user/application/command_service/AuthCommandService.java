@@ -81,7 +81,7 @@ public class AuthCommandService {
 	/**
 	 * existsByUsername/existsBySlackId 사전 체크와 저장 사이에 동시에 같은 값으로 가입 요청이
 	 * 들어오면, 사전 체크를 통과하고도 DB의 부분 유니크 인덱스(삭제되지 않은 행에만 적용 —
-	 * User.java, UserTableIndexInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
+	 * User.java, UserTableSchemaInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
 	 * ErrorCode로 변환한다(그 외 제약 위반은 GlobalExceptionHandler의 일반 처리로 위임).
 	 *
 	 * 삭제된 사용자와 같은 username/slackId로 재가입하는 것은 더 이상 막히지 않는다 — 부분
