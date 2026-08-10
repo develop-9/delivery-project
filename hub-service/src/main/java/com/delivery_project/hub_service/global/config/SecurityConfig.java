@@ -11,7 +11,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.delivery_project.hub_service.global.security.JwtProvider;
+import com.delivery_project.hub_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.hub_service.global.security.JwtTokenParser;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final JwtProvider jwtProvider;
+	private final JwtTokenParser jwtTokenParser;
 	private final JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint;
 	private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
 
@@ -79,7 +80,7 @@ public class SecurityConfig {
 						.accessDeniedHandler(jsonAccessDeniedHandler)
 				)
 
-				.addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
+				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenParser),
 						UsernamePasswordAuthenticationFilter.class)
 
 				// 기본 CORS 설정
