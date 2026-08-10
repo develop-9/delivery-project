@@ -23,6 +23,7 @@ import com.delivery_project.hub_service.hub.application.query.HubSearchQuery;
 import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
 import com.delivery_project.hub_service.hub.application.result.HubDetailResult;
+import com.delivery_project.hub_service.hub.application.result.HubIdsResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
 import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
@@ -124,6 +125,30 @@ public class HubQueryService {
 		}
 
 		return new HubBatchResult(found.stream().map(HubSummaryResult::from).toList(), notFoundHubIds);
+	}
+
+	/**
+	 * 전체 허브 ID 조회 (03_internal.md 15번).
+	 *
+	 * <p>Company 가 재고를 등록할 때 모든 허브에 행을 만들어야 해서 부른다. 13번 다건 조회는
+	 * 호출 측이 ID 를 이미 알고 있어야 하므로 이 용도에 쓸 수 없다.
+	 *
+	 * <p><b>0건은 에러가 아니다</b> (00_common.md). 허브가 하나도 없는 상태를 어떻게 볼지는
+	 * 호출 측이 정한다 — 여기서 404 를 내면 "아직 허브가 없다"와 "조회에 실패했다"를 구분할 수 없다.
+	 *
+	 * <p>캐시하지 않는다. 문서의 {@code hub:all} 은 아직 만들지 않았고, 값 타입을 못 박은 직렬화기
+	 * 때문에 {@code hub} 캐시에 얹을 수도 없다 ({@code HubCacheConfig}). 별도 캐시를 두면 지금은
+	 * 무효화하지 않는 <b>허브 생성 시점</b>까지 무효화 지점이 늘어난다. 17행짜리 ID 프로젝션이라
+	 * 캐시가 없어도 비용이 크지 않다.
+	 */
+	public HubIdsResult getHubIds() {
+		List<UUID> hubIds = hubQueryRepository.findAllIds();
+
+		// 재고 등록마다 불리므로 info 로 남기면 로그가 이것만 쌓인다. 개수는 "Company 가 받은
+		// 허브 수가 왜 다른가"를 볼 때만 필요하다.
+		log.debug("[Hub] 전체 허브 ID 조회 hubCount={}", hubIds.size());
+
+		return new HubIdsResult(hubIds);
 	}
 
 	private void validateBatchSize(Collection<UUID> hubIds) {
