@@ -5,21 +5,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.delivery_project.user_service.global.config.JpaConfig;
+import com.delivery_project.user_service.global.config.UserTableIndexInitializer;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({JpaConfig.class, UserCommandRepositoryImpl.class})
+@Import({JpaConfig.class, UserCommandRepositoryImpl.class, UserTableIndexInitializer.class})
 class UserCommandRepositoryImplTest {
 
 	@Autowired
@@ -27,6 +30,20 @@ class UserCommandRepositoryImplTest {
 
 	@Autowired
 	private TestEntityManager entityManager;
+
+	@Autowired
+	private UserTableIndexInitializer userTableIndexInitializer;
+
+	/**
+	 * @DataJpaTest는 ApplicationRunner를 실행시키지 않는 슬라이스 테스트라, 부분 유니크
+	 * 인덱스를 만드는 UserTableIndexInitializer가 앱 기동 시처럼 자동 실행되지 않는다.
+	 * 이 인덱스가 있다는 걸 전제로 하는 테스트가 있어 매 테스트 전에 직접 실행해 보장한다
+	 * (IF NOT EXISTS 기반이라 반복 호출해도 안전).
+	 */
+	@BeforeEach
+	void ensurePartialUniqueIndexes() {
+		userTableIndexInitializer.run(null);
+	}
 
 	@Test
 	void 사용자를_저장하면_승인상태는_기본값으로_PENDING이_된다() {
@@ -118,6 +135,36 @@ class UserCommandRepositoryImplTest {
 
 		// then
 		assertThat(found).isEmpty();
+	}
+
+	@Test
+	void 소프트_삭제된_사용자의_username과_slack_id는_재사용할_수_있다() {
+		// given
+		User original = userCommandRepository.save(createUser("reusable", "U100007"));
+		original.delete(UUID.randomUUID());
+		userCommandRepository.save(original);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		User reCreated = userCommandRepository.save(createUser("reusable", "U100007"));
+
+		// then
+		assertThat(reCreated.getId()).isNotEqualTo(original.getId());
+		assertThat(reCreated.getUsername()).isEqualTo("reusable");
+		assertThat(reCreated.getSlackId()).isEqualTo("U100007");
+	}
+
+	@Test
+	void 삭제되지_않은_사용자와_같은_username이면_여전히_거부된다() {
+		// given
+		userCommandRepository.save(createUser("stillactive", "U100008"));
+		entityManager.flush();
+
+		// when & then
+		org.assertj.core.api.Assertions.assertThatThrownBy(
+				() -> userCommandRepository.save(createUser("stillactive", "U100009")))
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	private User createUser(String username, String slackId) {
