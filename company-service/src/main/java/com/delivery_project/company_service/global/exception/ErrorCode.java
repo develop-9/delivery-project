@@ -62,6 +62,13 @@ public enum ErrorCode {
 
     // 503
     HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "HUB-SERVICE 호출에 실패했습니다.", "HUB_SERVICE_UNAVAILABLE"),
+
+    // order
+    // 500
+    INVENTORY_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "재고 저장에 실패했습니다.", "INVENTORY_SAVE_FAILED"),
+
+    // 503
+    ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "ORDER-SERVICE 호출에 실패했습니다.", "ORDER_SERVICE_UNAVAILABLE")
     ;
 
     private final HttpStatus status;

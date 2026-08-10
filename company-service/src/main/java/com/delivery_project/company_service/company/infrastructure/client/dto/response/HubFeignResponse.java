@@ -1,4 +1,4 @@
-package com.delivery_project.company_service.company.infrastructure.client.dto;
+package com.delivery_project.company_service.company.infrastructure.client.dto.response;
 
 import java.math.BigDecimal;
 import java.util.UUID;

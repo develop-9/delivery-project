@@ -3,8 +3,10 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
+import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
+import com.delivery_project.company_service.company.application.port.dto.InventorySaveInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
@@ -20,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ public class ProductCommandService {
     private final CompanyQueryRepository companyQueryRepository;
     private final ProductCommandRepository productCommandRepository;
     private final UserPort userPort;
+    private final OrderPort orderPort;
 
     // [외부] 상품 생성 비즈니스 로직
     @Transactional
@@ -85,16 +89,14 @@ public class ProductCommandService {
         Product savedProduct = productCommandRepository.save(product);
 
         // Inventory에 Hub별로 Product와 수량(0) 저장
-        /*
-         * TODO:
-         *  Inventory 호출하여 각 Hub별로 Product 생성
-         *  이때, 수량은 0으로 설정
-         */
+        // 추후 연동시 주석 제거
+        // List<InventorySaveInfo> inventoryList = orderPort.saveInventory(savedProduct.getId());
 
         log.info(
                 "상품 생성 완료. productId={}, createdBy={}",
                 savedProduct.getId(),
                 savedProduct.getCreatedBy()
+                // inventoryList.size()
         );
 
         // 결과 반환
@@ -202,11 +204,8 @@ public class ProductCommandService {
         }
 
         // Inventory에 Hub별로 저장된 Product 제거
-        /*
-         * TODO:
-         *  Inventory 호출하여 각 Hub별로 저장된 Product 제거
-         *  Hub에 재고가 남아있을 경우 Product 삭제 불가능
-         */
+        // 추후 연동시 주석 제거
+        // orderPort.deleteInventory(product.getId());
 
         // 상품 제거
         product.delete(productDeleteCommand.callerId());

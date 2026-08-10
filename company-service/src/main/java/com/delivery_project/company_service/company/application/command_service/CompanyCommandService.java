@@ -4,6 +4,7 @@ import com.delivery_project.company_service.company.application.command.CompanyC
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.port.HubPort;
+import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
 import com.delivery_project.company_service.company.application.port.dto.HubInfo;
@@ -12,6 +13,7 @@ import com.delivery_project.company_service.company.application.result.CompanyDe
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
+import com.delivery_project.company_service.company.domain.repository.ProductQueryRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
 import com.delivery_project.company_service.global.security.Role;
@@ -29,8 +31,10 @@ import java.util.UUID;
 public class CompanyCommandService {
 
     private final CompanyCommandRepository companyCommandRepository;
+    private final ProductQueryRepository productQueryRepository;
     private final UserPort userPort;
     private final HubPort hubPort;
+    private final OrderPort orderPort;
 
     // [외부] 업체 저장 비즈니스 로직
     @Transactional
@@ -186,11 +190,13 @@ public class CompanyCommandService {
             );
         }
 
-        /*
-         * TODO:
-         *  업체가 가지고 있는 상품들 삭제
-         *  허브에 존재하는 상품들 삭제
-         */
+        // 업체가 가지고 있는 상품들 삭제 및 재고 테이블에 존재하는 상품들 삭제
+        productQueryRepository.findByCompanyId(company.getId())
+                .forEach(product -> {
+                    // 추후 연동시 주석 제거
+                    // orderPort.deleteInventory(product.getId());
+                    product.delete(companyDeleteCommand.callerId());
+                });
 
         // 업체 논리 삭제
         company.delete(companyDeleteCommand.callerId());

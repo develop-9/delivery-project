@@ -2,7 +2,7 @@ package com.delivery_project.company_service.company.infrastructure.adpater;
 
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
-import com.delivery_project.company_service.company.infrastructure.client.dto.UserFeignResponse;
+import com.delivery_project.company_service.company.infrastructure.client.dto.response.UserFeignResponse;
 import com.delivery_project.company_service.company.infrastructure.client.user.UserClient;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;

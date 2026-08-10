@@ -2,7 +2,7 @@ package com.delivery_project.company_service.company.infrastructure.adpater;
 
 import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.dto.HubInfo;
-import com.delivery_project.company_service.company.infrastructure.client.dto.HubFeignResponse;
+import com.delivery_project.company_service.company.infrastructure.client.dto.response.HubFeignResponse;
 import com.delivery_project.company_service.company.infrastructure.client.hub.HubClient;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
