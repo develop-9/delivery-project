@@ -240,11 +240,9 @@ public class UserCommandService {
 	 * 정리가 안 된 배송담당자 레코드를 Delivery Service 쪽에 활성 상태로 남겨두면, User Service에서는
 	 * 이미 삭제되어 로그인도 안 되는 사람에게 라운드로빈으로 새 배송이 배정될 수 있어 "최선 노력"보다
 	 * 안전한 실패(차단) 쪽을 택함. 재시도 장치가 없어 한 번 어긋나면 계속 그 상태로 남는 것도 이유.
-	 * DeliveryManagerPort가 존재하지 않는 레코드는 이미 멱등 성공으로 처리하므로, 여기서는
+	 * 진행 중인 배송에 배정된 경우(DELIVERY_MANAGER_HAS_ACTIVE_DELIVERY)와 Delivery Service 장애
+	 * (DELIVERY_SERVICE_UNAVAILABLE)는 DeliveryManagerPort가 이미 구분해서 던지므로, 여기서는
 	 * BusinessException이 올라오면 그대로 전파하기만 하면 된다.
-	 *
-	 * TODO: Delivery Service의 내부 삭제 API가 "진행 중인 배송 배정 여부"를 검증하게 되면
-	 * (Delivery/DeliveryRoute 구현 후), 그 결과를 여기서 전용 ErrorCode로 구분해 반영해야 한다.
 	 */
 	private void syncDeleteDeliveryManager(UUID userId) {
 		deliveryManagerPort.deleteByUserId(userId);

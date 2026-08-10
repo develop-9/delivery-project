@@ -44,6 +44,7 @@ public enum ErrorCode {
 	LAST_MASTER_SUSPEND_FORBIDDEN(HttpStatus.CONFLICT, "마지막 MASTER 계정은 정지할 수 없습니다."),
 	USER_NOT_SUSPENDABLE(HttpStatus.CONFLICT, "승인된 사용자만 정지할 수 있습니다."),
 	USER_NOT_SUSPENDED(HttpStatus.CONFLICT, "정지된 사용자만 정지 해제할 수 있습니다."),
+	DELIVERY_MANAGER_HAS_ACTIVE_DELIVERY(HttpStatus.CONFLICT, "담당 중인 배송이 있어 삭제할 수 없습니다."),
 
 	// 415
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 미디어 타입입니다."),
