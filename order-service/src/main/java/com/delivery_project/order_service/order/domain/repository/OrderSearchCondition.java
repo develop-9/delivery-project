@@ -35,6 +35,17 @@ public record OrderSearchCondition(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         LocalDateTime createdTo
 ) {
+    /**
+     * 호출자 본인의 주문만 보도록 조건을 좁힌다.
+     *
+     * <p>조회한 뒤에 걸러내지 않고 <b>조건 자체에</b> 넣는다. 뒤에서 걸러내면
+     * totalElements·totalPages 가 실제 권한 범위와 어긋나 페이지 수가 부풀려진다.
+     */
+    public OrderSearchCondition restrictedTo(UUID callerId) {
+        return new OrderSearchCondition(status, supplierCompanyId, receiverCompanyId,
+                callerId, productId, keyword, createdFrom, createdTo);
+    }
+
     public boolean hasKeyword() {
         return keyword != null && !keyword.isBlank();
     }

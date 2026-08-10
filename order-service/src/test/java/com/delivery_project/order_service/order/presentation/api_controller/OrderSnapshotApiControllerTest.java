@@ -58,7 +58,7 @@ class OrderSnapshotApiControllerTest {
 	@DisplayName("타임라인은 주문 하위 경로(/api/v1/orders/{orderId}/order-snapshots)로 매핑된다")
 	void timelineIsNestedUnderOrder() throws Exception {
 		// given
-		given(orderSnapshotQueryService.getSnapshots(any(), any(), any()))
+		given(orderSnapshotQueryService.getSnapshots(any(), any(), any(), any()))
 				.willReturn(emptyPage());
 
 		// when & then

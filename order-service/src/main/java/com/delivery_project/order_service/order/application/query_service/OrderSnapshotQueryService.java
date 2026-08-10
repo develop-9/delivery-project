@@ -2,9 +2,12 @@ package com.delivery_project.order_service.order.application.query_service;
 
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.global.util.PageableUtil;
+import com.delivery_project.order_service.order.application.authorization.OrderAccessPolicy;
 import com.delivery_project.order_service.order.application.result.OrderSnapshotResult;
 import com.delivery_project.order_service.order.domain.entity.EventType;
+import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.Order;
 import com.delivery_project.order_service.order.domain.entity.OrderSnapshot;
 import com.delivery_project.order_service.order.domain.repository.OrderQueryRepository;
@@ -31,15 +34,19 @@ public class OrderSnapshotQueryService {
 
 	private final OrderSnapshotQueryRepository orderSnapshotQueryRepository;
 	private final OrderQueryRepository orderQueryRepository;
+	private final OrderAccessPolicy orderAccessPolicy;
 
 	/**
 	 * 이력 타임라인.
 	 * eventType 이 주어지면 그 사건만 걸러 본다 (예: 수량이 몇 번 바뀌었나).
 	 */
-	public Page<OrderSnapshotResult> getSnapshots(UUID orderId, EventType eventType, Pageable pageable) {
-		if (orderQueryRepository.findDetailById(orderId).isEmpty()) {
-			throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
-		}
+	public Page<OrderSnapshotResult> getSnapshots(UUID orderId, EventType eventType, Pageable pageable,
+			JwtPrincipal principal) {
+		Order order = orderQueryRepository.findDetailById(orderId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+		// 주문을 못 보는 사람은 그 주문의 이력도 못 본다
+		orderAccessPolicy.validateReadable(order, principal);
 
 		Page<OrderSnapshot> snapshots = orderSnapshotQueryRepository.findByOrderId(
 				orderId, eventType, PageableUtil.normalize(pageable, PageableUtil.SNAPSHOT_SORTS));
@@ -57,11 +64,11 @@ public class OrderSnapshotQueryService {
 	 * 경로에 주문 ID 가 없으므로 "이 이력을 볼 자격이 있는가"를 <b>인증 주체로</b> 판단한다.
 	 * 이력 → 주문 → {@code receiver_user_id} 를 따라가 호출자와 비교한다.
 	 */
-	public OrderSnapshotResult getSnapshot(UUID orderSnapshotId, UUID callerId) {
+	public OrderSnapshotResult getSnapshot(UUID orderSnapshotId, JwtPrincipal principal) {
 		OrderSnapshot snapshot = orderSnapshotQueryRepository.findDetailById(orderSnapshotId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_SNAPSHOT_NOT_FOUND));
 
-		validateAccessible(snapshot, callerId);
+		validateAccessible(snapshot, principal);
 
 		log.info("[스냅샷] 단건 조회 : [{}] orderId={} sequence={} eventType={}",
 				orderSnapshotId, snapshot.getOrderId(), snapshot.getSequence(), snapshot.getEventType());
@@ -80,17 +87,14 @@ public class OrderSnapshotQueryService {
 	 * TODO MASTER·HUB_MANAGER 는 남의 주문 이력도 봐야 할 수 있다. role 이 principal 에
 	 * 실리면(JwtPrincipal) 역할 기반 예외를 여기에 추가한다.
 	 */
-	private void validateAccessible(OrderSnapshot snapshot, UUID callerId) {
-		if (callerId == null) {
-			return;
-		}
-
+	private void validateAccessible(OrderSnapshot snapshot, JwtPrincipal principal) {
 		Order order = orderQueryRepository.findDetailById(snapshot.getOrderId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_SNAPSHOT_NOT_FOUND));
 
-		if (!order.getReceiverUserId().equals(callerId)) {
-			log.warn("[스냅샷] 권한 없는 이력 조회 차단 : [{}] orderId={} callerId={}",
-					snapshot.getId(), snapshot.getOrderId(), callerId);
+		try {
+			orderAccessPolicy.validateReadable(order, principal);
+		} catch (BusinessException exception) {
+			// 정책은 주문 기준으로 ORDER_NOT_FOUND 를 던지는데, 여기서 찾던 것은 이력이다
 			throw new BusinessException(ErrorCode.ORDER_SNAPSHOT_NOT_FOUND);
 		}
 	}

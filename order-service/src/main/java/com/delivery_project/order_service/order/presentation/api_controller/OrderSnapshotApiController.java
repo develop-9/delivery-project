@@ -50,12 +50,13 @@ public class OrderSnapshotApiController {
 	})
 	@GetMapping("/api/v1/orders/{orderId}/order-snapshots")
 	public ResponseEntity<SuccessResponse<PageResponse<OrderSnapshotResponse>>> getSnapshots(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID orderId,
 			@RequestParam(required = false) EventType eventType,
 			Pageable pageable
 	) {
 		PageResponse<OrderSnapshotResponse> response = PageResponse.of(
-				orderSnapshotQueryService.getSnapshots(orderId, eventType, pageable), OrderSnapshotResponse::from);
+				orderSnapshotQueryService.getSnapshots(orderId, eventType, pageable, principal), OrderSnapshotResponse::from);
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
@@ -72,8 +73,7 @@ public class OrderSnapshotApiController {
 			@PathVariable UUID orderSnapshotId
 	) {
 		OrderSnapshotResponse response = OrderSnapshotResponse.from(
-				orderSnapshotQueryService.getSnapshot(orderSnapshotId,
-						principal != null ? principal.userId() : null));
+				orderSnapshotQueryService.getSnapshot(orderSnapshotId, principal));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 }

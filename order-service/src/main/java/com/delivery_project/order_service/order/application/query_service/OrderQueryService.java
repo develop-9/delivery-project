@@ -2,7 +2,9 @@ package com.delivery_project.order_service.order.application.query_service;
 
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.global.util.PageableUtil;
+import com.delivery_project.order_service.order.application.authorization.OrderAccessPolicy;
 import com.delivery_project.order_service.order.application.result.OrderInternalDetailResult;
 import com.delivery_project.order_service.order.application.result.OrderResult;
 import com.delivery_project.order_service.order.application.result.OrderSummaryResult;
@@ -25,11 +27,14 @@ import java.util.UUID;
 public class OrderQueryService {
 
 	private final OrderQueryRepository orderQueryRepository;
+	private final OrderAccessPolicy orderAccessPolicy;
 
 	/** 상세 조회 — 상품 줄은 @EntityGraph 로 한 번에 가져온다 */
-	public OrderResult getOrder(UUID orderId) {
+	public OrderResult getOrder(UUID orderId, JwtPrincipal principal) {
 		Order order = orderQueryRepository.findDetailById(orderId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+		orderAccessPolicy.validateReadable(order, principal);
 
 		log.info("[주문] 단건 조회 : [{}] status={} itemCount={}",
 				orderId, order.getStatus(), order.getItems().size());
@@ -56,12 +61,18 @@ public class OrderQueryService {
 	 * 검색 + 페이징.
 	 * 정렬 컬럼과 페이지 크기는 PageableUtil 화이트리스트로 제한한다.
 	 */
-	public Page<OrderSummaryResult> searchOrders(OrderSearchCondition condition, Pageable pageable) {
+	public Page<OrderSummaryResult> searchOrders(OrderSearchCondition condition, Pageable pageable,
+			JwtPrincipal principal) {
+		// 남의 주문이 목록에 섞이지 않도록 조건 단계에서 좁힌다
+		OrderSearchCondition scoped = orderAccessPolicy.canSeeAllOrders(principal)
+				? condition
+				: condition.restrictedTo(principal.userId());
+
 		Pageable normalized = PageableUtil.normalize(pageable, PageableUtil.ORDER_SORTS);
-		Page<Order> orders = orderQueryRepository.search(condition, normalized);
+		Page<Order> orders = orderQueryRepository.search(scoped, normalized);
 
 		log.info("[주문] 검색 : [status={}, receiverCompanyId={}, keyword={}] page={} size={} totalElements={}",
-				condition.status(), condition.receiverCompanyId(), condition.keyword(),
+				scoped.status(), scoped.receiverCompanyId(), scoped.keyword(),
 				normalized.getPageNumber(), normalized.getPageSize(), orders.getTotalElements());
 
 		return orders.map(OrderSummaryResult::from);

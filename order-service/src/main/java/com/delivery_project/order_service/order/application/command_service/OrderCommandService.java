@@ -2,6 +2,8 @@ package com.delivery_project.order_service.order.application.command_service;
 
 import com.delivery_project.order_service.global.exception.BusinessException;
 import com.delivery_project.order_service.global.exception.ErrorCode;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
+import com.delivery_project.order_service.order.application.authorization.OrderAccessPolicy;
 import com.delivery_project.order_service.order.application.command.OrderCreateCommand;
 import com.delivery_project.order_service.order.application.command.OrderItemCommand;
 import com.delivery_project.order_service.order.application.command.OrderUpdateCommand;
@@ -39,6 +41,7 @@ public class OrderCommandService {
 	private final OrderCommandRepository orderCommandRepository;
 	private final InventoryCommandRepository inventoryCommandRepository;
 	private final OrderSnapshotCommandService orderSnapshotCommandService;
+	private final OrderAccessPolicy orderAccessPolicy;
 
 	public OrderResult create(OrderCreateCommand command) {
 		validateNoDuplicatedProduct(command.items());
@@ -63,8 +66,9 @@ public class OrderCommandService {
 		return OrderResult.from(order);
 	}
 
-	public OrderResult update(OrderUpdateCommand command) {
+	public OrderResult update(OrderUpdateCommand command, JwtPrincipal principal) {
 		Order order = findActive(command.orderId());
+		orderAccessPolicy.validateWritable(order, principal);
 		order.validateModifiable();
 
 		order.updateDetails(command.requestDetails());
@@ -111,8 +115,9 @@ public class OrderCommandService {
 		return OrderResult.from(order);
 	}
 
-	public OrderResult cancel(UUID orderId) {
+	public OrderResult cancel(UUID orderId, JwtPrincipal principal) {
 		Order order = findActive(orderId);
+		orderAccessPolicy.validateWritable(order, principal);
 		order.cancel();
 		releaseAll(order);
 		orderSnapshotCommandService.capture(order, EventType.ORDER_CANCELED);
