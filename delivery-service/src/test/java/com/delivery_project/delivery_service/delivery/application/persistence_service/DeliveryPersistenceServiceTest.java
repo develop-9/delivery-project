@@ -1,7 +1,6 @@
-package com.delivery_project.delivery_service.delivery.application.command_service;
+package com.delivery_project.delivery_service.delivery.application.persistence_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.persistence_service.DeliveryPersistenceService;
 import com.delivery_project.delivery_service.delivery.application.port.DeliveryCreationLockPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
