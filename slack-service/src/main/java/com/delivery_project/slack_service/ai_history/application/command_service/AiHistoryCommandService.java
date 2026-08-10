@@ -1,17 +1,26 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
-import com.delivery_project.slack_service.ai_history.application.port.*;
+import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubManagerClient;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
 import com.delivery_project.slack_service.ai_history.application.result.HubBatchResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubManagerResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
+import com.delivery_project.slack_service.slack.application.command.SlackInternalMessageCreateCommand;
+import com.delivery_project.slack_service.slack.application.command_service.SlackInternalMessageCommandService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -27,6 +36,7 @@ public class AiHistoryCommandService {
     private final AiGenerationClient aiGenerationClient;
     private final AiPromptGenerator aiPromptGenerator;
     private final AiHistoryStatusCommandService aiHistoryStatusCommandService;
+    private final SlackInternalMessageCommandService slackInternalMessageCommandService;
 
     public AiHistoryCreateResult create(
             AiHistoryCreateCommand command
@@ -52,11 +62,14 @@ public class AiHistoryCommandService {
         validateHubBatch(hubBatch);
 
         UUID firstDepartureHubId =
-                getFirstDepartureHubId(deliveryRoute);
+                getFirstDepartureHubId(
+                        deliveryRoute
+                );
 
-        hubManagerClient.getHubManager(
-                firstDepartureHubId
-        );
+        HubManagerResult hubManager =
+                hubManagerClient.getHubManager(
+                        firstDepartureHubId
+                );
 
         String prompt =
                 aiPromptGenerator.generate(
@@ -65,7 +78,8 @@ public class AiHistoryCommandService {
                         hubBatch
                 );
 
-        Instant requestedAt = Instant.now();
+        Instant requestedAt =
+                Instant.now();
 
         UUID aiHistoryId =
                 aiHistoryStatusCommandService.createPending(
@@ -82,6 +96,7 @@ public class AiHistoryCommandService {
                             .generateFinalDispatchDeadline(
                                     prompt
                             );
+
         } catch (BusinessException exception) {
             saveFailedHistory(
                     aiHistoryId,
@@ -101,14 +116,25 @@ public class AiHistoryCommandService {
             );
         }
 
-        return AiHistoryCreateResult.from(
-                aiHistoryStatusCommandService.complete(
-                        aiHistoryId,
-                        generationResult.modelName(),
-                        generationResult.finalDispatchDeadline(),
-                        Instant.now()
+        AiHistoryCreateResult result =
+                AiHistoryCreateResult.from(
+                        aiHistoryStatusCommandService.complete(
+                                aiHistoryId,
+                                generationResult.modelName(),
+                                generationResult.finalDispatchDeadline(),
+                                Instant.now()
+                        )
+                );
+
+        slackInternalMessageCommandService.createAndPublish(
+                new SlackInternalMessageCreateCommand(
+                        hubManager.userId(),
+                        command.orderId(),
+                        generationResult.finalDispatchDeadline()
                 )
         );
+
+        return result;
     }
 
     private void validateDeliveryRoute(
@@ -145,7 +171,7 @@ public class AiHistoryCommandService {
         return deliveryRoute.routes()
                 .stream()
                 .min(
-                        java.util.Comparator.comparing(
+                        Comparator.comparing(
                                 DeliveryRouteResult.RouteResult::sequence
                         )
                 )

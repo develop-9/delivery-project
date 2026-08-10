@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -40,7 +41,7 @@ public class GeminiAiGenerationClient
             String baseUrl,
             @Value("${gemini.api-key:}")
             String apiKey,
-            @Value("${gemini.model:gemini-2.5-flash}")
+            @Value("${gemini.model:gemini-3.6-flash}")
             String modelName
     ) {
         this.restClient =
@@ -185,9 +186,26 @@ public class GeminiAiGenerationClient
                     matcher.group()
             );
 
-        } catch (DateTimeParseException exception) {
+        } catch (RestClientResponseException exception) {
+            System.err.println(
+                    "Gemini HTTP status = "
+                            + exception.getStatusCode()
+            );
+
+            System.err.println(
+                    "Gemini response body = "
+                            + exception.getResponseBodyAsString()
+            );
+
             throw new BusinessException(
-                    ErrorCode.AI_RESPONSE_PARSE_FAILED
+                    ErrorCode.AI_REQUEST_FAILED
+            );
+
+        } catch (RestClientException exception) {
+            exception.printStackTrace();
+
+            throw new BusinessException(
+                    ErrorCode.AI_REQUEST_FAILED
             );
         }
     }

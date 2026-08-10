@@ -16,6 +16,8 @@ import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
+import com.delivery_project.slack_service.slack.application.command.SlackInternalMessageCreateCommand;
+import com.delivery_project.slack_service.slack.application.command_service.SlackInternalMessageCommandService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AI History CommandService 테스트")
@@ -58,11 +65,14 @@ class AiHistoryCommandServiceTest {
     @Mock
     private AiHistoryStatusCommandService aiHistoryPersistenceService;
 
+    @Mock
+    private SlackInternalMessageCommandService slackInternalMessageCommandService;
+
     @InjectMocks
     private AiHistoryCommandService aiHistoryCommandService;
 
     @Test
-    @DisplayName("AI 요청 생성이 성공하면 SUCCESS 상태의 이력을 반환한다")
+    @DisplayName("AI 요청 생성이 성공하면 SUCCESS 상태의 이력을 반환하고 Slack 발송 작업을 등록한다")
     void create_success() {
         // given
         UUID orderId = UUID.randomUUID();
@@ -81,10 +91,10 @@ class AiHistoryCommandServiceTest {
                 new AiHistoryCreateCommand(orderId);
 
         OrderSummaryResult orderSummary =
-                mock(OrderSummaryResult.class);
+                org.mockito.Mockito.mock(OrderSummaryResult.class);
 
         DeliveryRouteResult deliveryRoute =
-                mock(DeliveryRouteResult.class);
+                org.mockito.Mockito.mock(DeliveryRouteResult.class);
 
         DeliveryRouteResult.RouteResult route =
                 new DeliveryRouteResult.RouteResult(
@@ -156,7 +166,7 @@ class AiHistoryCommandServiceTest {
                 );
 
         AiHistory completedHistory =
-                mock(AiHistory.class);
+                org.mockito.Mockito.mock(AiHistory.class);
 
         when(completedHistory.getStatus())
                 .thenReturn(AiHistoryStatus.SUCCESS);
@@ -216,12 +226,24 @@ class AiHistoryCommandServiceTest {
                         any(Instant.class)
                 );
 
+        verify(slackInternalMessageCommandService)
+                .createAndPublish(
+                        argThat(slackCommand ->
+                                slackCommand.receiverUserId()
+                                        .equals(hubManagerUserId)
+                                        && slackCommand.orderId()
+                                        .equals(orderId)
+                                        && slackCommand.finalDispatchDeadline()
+                                        .equals(deadline)
+                        )
+                );
+
         verify(aiHistoryPersistenceService, never())
                 .fail(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Gemini 요청이 실패하면 AI 이력을 FAILED 상태로 저장한다")
+    @DisplayName("Gemini 요청이 실패하면 AI 이력을 FAILED 상태로 저장하고 Slack 작업은 등록하지 않는다")
     void create_geminiFailure() {
         // given
         UUID orderId = UUID.randomUUID();
@@ -237,10 +259,10 @@ class AiHistoryCommandServiceTest {
                 new AiHistoryCreateCommand(orderId);
 
         OrderSummaryResult orderSummary =
-                mock(OrderSummaryResult.class);
+                org.mockito.Mockito.mock(OrderSummaryResult.class);
 
         DeliveryRouteResult deliveryRoute =
-                mock(DeliveryRouteResult.class);
+                org.mockito.Mockito.mock(DeliveryRouteResult.class);
 
         DeliveryRouteResult.RouteResult route =
                 new DeliveryRouteResult.RouteResult(
@@ -333,6 +355,9 @@ class AiHistoryCommandServiceTest {
                         any(),
                         any()
                 );
+
+        verify(slackInternalMessageCommandService, never())
+                .createAndPublish(any(SlackInternalMessageCreateCommand.class));
     }
 
     @Test
@@ -345,10 +370,10 @@ class AiHistoryCommandServiceTest {
                 new AiHistoryCreateCommand(orderId);
 
         OrderSummaryResult orderSummary =
-                mock(OrderSummaryResult.class);
+                org.mockito.Mockito.mock(OrderSummaryResult.class);
 
         DeliveryRouteResult deliveryRoute =
-                mock(DeliveryRouteResult.class);
+                org.mockito.Mockito.mock(DeliveryRouteResult.class);
 
         when(orderSummaryClient.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
@@ -383,5 +408,8 @@ class AiHistoryCommandServiceTest {
 
         verify(aiGenerationClient, never())
                 .generateFinalDispatchDeadline(any());
+
+        verify(slackInternalMessageCommandService, never())
+                .createAndPublish(any(SlackInternalMessageCreateCommand.class));
     }
 }

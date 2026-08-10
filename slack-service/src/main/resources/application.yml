@@ -39,7 +39,7 @@ system:
 gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
   api-key: ${GEMINI_API_KEY:}
-  model: ${GEMINI_MODEL:gemini-2.5-flash}
+  model: ${GEMINI_MODEL:gemini-3.6-flash}
 
 # 게이트웨이가 relay한 토큰을 파싱하기 위한 키. user-service와 반드시 같은 값이어야 한다.
 jwt:
