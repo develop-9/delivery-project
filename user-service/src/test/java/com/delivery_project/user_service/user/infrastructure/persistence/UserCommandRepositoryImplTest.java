@@ -2,8 +2,17 @@ package com.delivery_project.user_service.user.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +23,8 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.delivery_project.user_service.global.config.JpaConfig;
 import com.delivery_project.user_service.global.config.UserTableSchemaInitializer;
@@ -39,6 +50,9 @@ class UserCommandRepositoryImplTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private DataSource dataSource;
 
 	/**
 	 * @DataJpaTest는 ApplicationRunner를 실행시키지 않는 슬라이스 테스트라, 부분 유니크
@@ -216,6 +230,99 @@ class UserCommandRepositoryImplTest {
 		assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
 	}
 
+	@Test
+	void countActiveMastersForUpdate는_countActiveMasters와_같은_값을_반환한다() {
+		// given
+		long before = userCommandRepository.countActiveMasters();
+
+		User master1 = userCommandRepository.save(createMaster("master-lock-1", "U100012"));
+		master1.approve(UUID.randomUUID());
+		userCommandRepository.save(master1);
+
+		User master2 = userCommandRepository.save(createMaster("master-lock-2", "U100013"));
+		master2.approve(UUID.randomUUID());
+		userCommandRepository.save(master2);
+		entityManager.flush();
+
+		// when & then
+		assertThat(userCommandRepository.countActiveMastersForUpdate()).isEqualTo(before + 2);
+		assertThat(userCommandRepository.countActiveMastersForUpdate())
+				.isEqualTo(userCommandRepository.countActiveMasters());
+	}
+
+	/**
+	 * countActiveMastersForUpdate()가 실제로 SELECT ... FOR UPDATE로 행을 잠그는지, Hibernate
+	 * 애노테이션만 믿지 않고 순수 JDBC 커넥션 두 개로 직접 검증한다. 커넥션 A가 락을 잡고
+	 * 커밋하지 않은 채로, 커넥션 B가 짧은 statement_timeout으로 같은 행에 FOR UPDATE를
+	 * 시도하면 대기하다 타임아웃 예외가 나야 한다 — 즉시 통과하면 락이 안 걸린 것이다.
+	 *
+	 * @DataJpaTest는 테스트 메서드 전체를 롤백 전용 트랜잭션으로 감싸는데, 그 안에서
+	 * save()한 행은 아직 커밋되지 않아 별도 JDBC 커넥션에서는 안 보인다(READ COMMITTED).
+	 * 진짜로 분리된 커넥션 두 개로 락을 검증해야 해서, 클래스 레벨 트랜잭션 감싸기를 이
+	 * 메서드에서만 껐다 — 그래서 준비 단계의 save()도 즉시 커밋되고, 끝나고 나면 수동으로
+	 * 지워야 한다.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void countActiveMastersForUpdate는_실제로_행을_잠가서_동시_요청을_막는다() throws Exception {
+		// given
+		User master = userCommandRepository.save(createMaster("master-lock-3", "U100014"));
+		master.approve(UUID.randomUUID());
+		userCommandRepository.save(master);
+
+		String lockingQuery =
+				"SELECT id FROM public.p_users WHERE role = 'MASTER' AND approval_status = 'APPROVED' "
+						+ "AND deleted_at IS NULL FOR UPDATE";
+
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		CountDownLatch lockAcquired = new CountDownLatch(1);
+		CountDownLatch releaseLock = new CountDownLatch(1);
+
+		try (Connection connectionA = dataSource.getConnection()) {
+			connectionA.setAutoCommit(false);
+
+			Future<Boolean> holderTask = executor.submit(() -> {
+				try (var statement = connectionA.createStatement()) {
+					statement.executeQuery(lockingQuery);
+					lockAcquired.countDown();
+					releaseLock.await(5, TimeUnit.SECONDS);
+				}
+				return true;
+			});
+
+			assertThat(lockAcquired.await(5, TimeUnit.SECONDS)).isTrue();
+
+			// when: 두 번째 커넥션은 짧은 statement_timeout으로 같은 행에 FOR UPDATE를 시도한다.
+			Future<Boolean> blockedTask = executor.submit(() -> {
+				try (Connection connectionB = dataSource.getConnection()) {
+					connectionB.setAutoCommit(false);
+					try (var setTimeout = connectionB.createStatement()) {
+						setTimeout.execute("SET LOCAL statement_timeout = '1000ms'");
+					}
+					try (var statement = connectionB.createStatement()) {
+						statement.executeQuery(lockingQuery);
+						return false; // 락에 안 걸리고 바로 통과했다면 실패
+					} catch (SQLException e) {
+						return true; // 타임아웃으로 막힌 것이 기대하는 결과
+					} finally {
+						connectionB.rollback();
+					}
+				}
+			});
+
+			// then
+			assertThat(blockedTask.get(5, TimeUnit.SECONDS)).isTrue();
+
+			releaseLock.countDown();
+			holderTask.get(5, TimeUnit.SECONDS);
+			connectionA.rollback();
+		} finally {
+			executor.shutdownNow();
+			// 이 메서드는 트랜잭션 감싸기를 껐으니 save()가 이미 커밋됐다 — 직접 지운다.
+			jdbcTemplate.update("DELETE FROM public.p_users WHERE username = 'master-lock-3'");
+		}
+	}
+
 	private User createUser(String username, String slackId) {
 		return User.builder()
 				.username(username)
@@ -223,6 +330,16 @@ class UserCommandRepositoryImplTest {
 				.name("테스트유저")
 				.slackId(slackId)
 				.role(Role.COMPANY_MANAGER)
+				.build();
+	}
+
+	private User createMaster(String username, String slackId) {
+		return User.builder()
+				.username(username)
+				.password("encoded-password")
+				.name("테스트유저")
+				.slackId(slackId)
+				.role(Role.MASTER)
 				.build();
 	}
 }

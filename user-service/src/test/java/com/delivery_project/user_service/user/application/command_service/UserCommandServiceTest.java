@@ -239,7 +239,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId())))
@@ -256,7 +256,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(2L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
 
 		// when
 		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
@@ -475,7 +475,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId())))
@@ -492,7 +492,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(2L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
 
 		// when
 		UserSuspendResult result = userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
