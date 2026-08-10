@@ -2,6 +2,7 @@ package com.delivery_project.order_service.order.presentation.api_controller;
 
 import com.delivery_project.order_service.global.response.PageResponse;
 import com.delivery_project.order_service.global.response.SuccessResponse;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.order.application.query_service.OrderSnapshotQueryService;
 import com.delivery_project.order_service.order.domain.entity.EventType;
 import com.delivery_project.order_service.order.presentation.response.OrderSnapshotResponse;
@@ -67,11 +68,12 @@ public class OrderSnapshotApiController {
 	})
 	@GetMapping("/api/v1/order-snapshots/{orderSnapshotId}")
 	public ResponseEntity<SuccessResponse<OrderSnapshotResponse>> getSnapshot(
-			@AuthenticationPrincipal UUID callerId,
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID orderSnapshotId
 	) {
 		OrderSnapshotResponse response = OrderSnapshotResponse.from(
-				orderSnapshotQueryService.getSnapshot(orderSnapshotId, callerId));
+				orderSnapshotQueryService.getSnapshot(orderSnapshotId,
+						principal != null ? principal.userId() : null));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 }

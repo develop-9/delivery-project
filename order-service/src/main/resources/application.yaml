@@ -58,6 +58,11 @@ eureka:
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 
+# 게이트웨이가 검증한 토큰을 이 서비스에서 다시 파싱한다.
+# 전 서비스가 같은 비밀키를 써야 하므로 루트 .env 의 JWT_SECRET 을 그대로 받는다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
 management:
   endpoints:
     web:

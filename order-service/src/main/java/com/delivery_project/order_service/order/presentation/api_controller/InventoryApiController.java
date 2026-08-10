@@ -2,6 +2,7 @@ package com.delivery_project.order_service.order.presentation.api_controller;
 
 import com.delivery_project.order_service.global.response.PageResponse;
 import com.delivery_project.order_service.global.response.SuccessResponse;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.order.application.command.InventoryAdjustCommand;
 import com.delivery_project.order_service.order.application.command.InventoryCreateCommand;
 import com.delivery_project.order_service.order.application.command.InventoryDeleteCommand;
@@ -127,11 +128,11 @@ public class InventoryApiController {
 	})
 	@DeleteMapping("/{inventoryId}")
 	public ResponseEntity<SuccessResponse<InventoryDeleteResponse>> delete(
-			@AuthenticationPrincipal UUID callerId,
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID inventoryId
 	) {
 		InventoryDeleteCommand command = InventoryDeleteCommand.from(
-				inventoryId, callerId != null ? callerId : systemUserId);
+				inventoryId, principal != null ? principal.userId() : systemUserId);
 		InventoryDeleteResponse response = InventoryDeleteResponse.from(inventoryCommandService.delete(command));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}

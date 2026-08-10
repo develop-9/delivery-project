@@ -15,6 +15,11 @@ spring:
 system:
   id: 00000000-0000-0000-0000-000000000000
 
+# 테스트 전용 서명키. HMAC-SHA 는 32바이트 미만이면 기동 시 WeakKeyException 이 난다.
+# 프로필 구분선(---) 위에 둬야 smoke 뿐 아니라 슬라이스 테스트에서도 잡힌다.
+jwt:
+  secret: test-only-secret-key-that-is-long-enough-for-hmac-sha256-algorithm
+
 logging:
   level:
     com.delivery_project.order_service: info

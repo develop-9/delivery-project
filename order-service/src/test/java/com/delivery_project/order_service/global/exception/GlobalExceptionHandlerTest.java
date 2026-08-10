@@ -1,12 +1,17 @@
 package com.delivery_project.order_service.global.exception;
 
 import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
+import com.delivery_project.order_service.order.application.facade.OrderFacade;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.presentation.api_controller.OrderApiController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.order_service.global.security.JwtTokenParser;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -15,10 +20,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderApiController.class)
+@Import({JwtAuthenticationFilter.class, JwtTokenParser.class})
+// 컨트롤러 동작만 본다. 인증 자체는 JwtAuthenticationFilterTest 가 검증한다
+@AutoConfigureMockMvc(addFilters = false)
 class GlobalExceptionHandlerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private OrderFacade orderFacade;
 
 	@MockitoBean
 	private OrderCommandService orderCommandService;

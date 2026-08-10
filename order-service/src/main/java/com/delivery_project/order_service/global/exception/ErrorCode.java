@@ -33,6 +33,13 @@ public enum ErrorCode {
     INVENTORY_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 재고입니다.", "INVENTORY_ALREADY_EXISTS"),
     INVENTORY_IN_USE(HttpStatus.BAD_REQUEST, "사용 중인 재고는 삭제할 수 없습니다.", "INVENTORY_IN_USE"),
     INSUFFICIENT_STOCK(HttpStatus.CONFLICT, "재고가 부족합니다.", "INSUFFICIENT_STOCK"),
+
+    // ────────── 서비스 연동 ──────────
+    COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "업체를 찾을 수 없습니다.", "COMPANY_NOT_FOUND"),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
+    RECEIVER_COMPANY_MISMATCH(HttpStatus.FORBIDDEN, "본인이 속한 업체로만 주문할 수 있습니다.", "RECEIVER_COMPANY_MISMATCH"),
+    DELIVERY_CREATE_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "배송 생성에 실패했습니다.", "DELIVERY_CREATE_FAILED"),
+    DELIVERY_CANCEL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "배송 취소에 실패했습니다.", "DELIVERY_CANCEL_FAILED"),
     ;
 
     private final HttpStatus status;

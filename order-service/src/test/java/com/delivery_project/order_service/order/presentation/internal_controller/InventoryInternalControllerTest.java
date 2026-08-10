@@ -6,7 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.order_service.global.security.JwtTokenParser;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** 재고 내부 API — company-service 가 쓰는 계약을 고정한다. */
 @WebMvcTest(InventoryInternalController.class)
+@Import({JwtAuthenticationFilter.class, JwtTokenParser.class})
+// 컨트롤러 동작만 본다. 인증 자체는 JwtAuthenticationFilterTest 가 검증한다
+@AutoConfigureMockMvc(addFilters = false)
 class InventoryInternalControllerTest {
 
 	@Autowired

@@ -72,6 +72,11 @@ public class OrderCommandService {
 			// 상품 구성 변경은 배송 생성 전에만 허용한다
 			order.validateItemsModifiable();
 			validateNoDuplicatedProduct(command.items());
+
+			// 새 줄을 선점하기 전에 옛 줄을 먼저 놓는다.
+			// 순서가 반대면 같은 재고를 두 번 잡은 상태가 되어 수량이 모자란 것처럼 보인다
+			releaseAll(order);
+
 			order.replaceItems(command.items().stream().map(this::toItem).toList());
 		}
 
@@ -80,6 +85,98 @@ public class OrderCommandService {
 		log.info("[주문] 수정 : [{}] itemCount={}", order.getId(), order.getItems().size());
 
 		return OrderResult.from(order);
+	}
+
+	/** 배송 생성이 끝났다. delivery 연동 성공 시 {@code OrderFacade} 가 호출한다 */
+	public OrderResult confirm(UUID orderId) {
+		Order order = findActive(orderId);
+		order.confirm();
+		orderSnapshotCommandService.capture(order, EventType.DELIVERY_CONFIRMED);
+
+		log.info("[주문] 확정 : [{}]", orderId);
+
+		return OrderResult.from(order);
+	}
+
+	/** 배송 생성이 실패했다. 배송 없는 주문이 PENDING 으로 남지 않게 종착 상태로 내린다 */
+	public OrderResult markFailed(UUID orderId) {
+		Order order = findActive(orderId);
+		order.markFailed();
+		releaseAll(order);
+		orderSnapshotCommandService.capture(order, EventType.ORDER_FAILED);
+
+		log.info("[주문] 실패 처리 : [{}]", orderId);
+
+		return OrderResult.from(order);
+	}
+
+	public OrderResult cancel(UUID orderId) {
+		Order order = findActive(orderId);
+		order.cancel();
+		releaseAll(order);
+		orderSnapshotCommandService.capture(order, EventType.ORDER_CANCELED);
+
+		log.info("[주문] 취소 : [{}]", orderId);
+
+		return OrderResult.from(order);
+	}
+
+	/**
+	 * 배송이 끝났다. 선점을 실물 차감으로 확정한다.
+	 * 주문 상태는 CONFIRMED 그대로 두고 이력만 남긴다(팀문서 p_orders.status 정의).
+	 */
+	public OrderResult complete(UUID orderId) {
+		Order order = findActive(orderId);
+
+		order.getItems().forEach(item -> inventoryCommandRepository.findById(item.getInventoryId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND))
+				.confirm(item.getQuantity()));
+
+		orderSnapshotCommandService.capture(order, EventType.ORDER_COMPLETED);
+
+		log.info("[주문] 배송 완료 처리 : [{}] itemCount={}", orderId, order.getItems().size());
+
+		return OrderResult.from(order);
+	}
+
+	/**
+	 * 주문 줄이 잡고 있던 선점을 모두 되돌린다.
+	 *
+	 * <p>재고 행이 지워졌더라도 취소는 진행돼야 하므로 없으면 건너뛴다.
+	 * 되돌릴 대상이 없는 것이지, 취소를 막을 이유는 아니다.
+	 */
+	private void releaseAll(Order order) {
+		order.getItems().forEach(item -> inventoryCommandRepository.findById(item.getInventoryId())
+				.ifPresentOrElse(
+						inventory -> inventory.release(item.getQuantity()),
+						() -> log.warn("[재고] 선점 복원 대상 없음 : orderId={} inventoryId={}",
+								order.getId(), item.getInventoryId())));
+	}
+
+	/**
+	 * 배송 출발 허브를 구한다. 주문 줄이 선점한 재고가 놓인 허브다.
+	 *
+	 * <p>⚠️ 줄이 여러 개면 서로 다른 허브의 재고를 선점했을 수 있는데, 배송은 출발지가 하나뿐이다.
+	 * 지금은 첫 줄의 허브를 쓰고 나머지가 다르면 경고만 남긴다.
+	 * 허브 선택 규칙이 정해지면(→ {@code selectInventory}) 이 갈라짐 자체가 없어져야 한다.
+	 */
+	@Transactional(readOnly = true)
+	public UUID resolveDepartureHubId(UUID orderId) {
+		Order order = findActive(orderId);
+
+		List<UUID> hubIds = order.getItems().stream()
+				.map(item -> inventoryCommandRepository.findById(item.getInventoryId())
+						.orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND))
+						.getHubId())
+				.distinct()
+				.toList();
+
+		if (hubIds.size() > 1) {
+			log.warn("[주문] 주문 줄이 여러 허브에 걸침 : [{}] hubIds={} 첫 허브를 출발지로 사용",
+					orderId, hubIds);
+		}
+
+		return hubIds.getFirst();
 	}
 
 	private Order findActive(UUID orderId) {
@@ -101,6 +198,10 @@ public class OrderCommandService {
 		}
 
 		Inventory inventory = selectInventory(candidates, command);
+
+		// 여기서 실제로 수량을 잡는다. 가용 수량이 모자라면 INSUFFICIENT_STOCK 으로 끊긴다.
+		// 동시 주문은 Inventory 의 @Version 이 막는다 — 늦게 커밋한 쪽이 충돌로 실패한다.
+		inventory.reserve(command.quantity(), command.productId().toString());
 
 		return OrderItem.builder()
 				.productId(command.productId())

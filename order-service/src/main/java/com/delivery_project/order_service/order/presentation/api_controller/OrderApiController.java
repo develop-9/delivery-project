@@ -2,9 +2,11 @@ package com.delivery_project.order_service.order.presentation.api_controller;
 
 import com.delivery_project.order_service.global.response.PageResponse;
 import com.delivery_project.order_service.global.response.SuccessResponse;
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import com.delivery_project.order_service.order.application.command.OrderCreateCommand;
 import com.delivery_project.order_service.order.application.command.OrderUpdateCommand;
 import com.delivery_project.order_service.order.application.command_service.OrderCommandService;
+import com.delivery_project.order_service.order.application.facade.OrderFacade;
 import com.delivery_project.order_service.order.application.query_service.OrderQueryService;
 import com.delivery_project.order_service.order.domain.repository.OrderSearchCondition;
 import com.delivery_project.order_service.order.presentation.request.OrderCreateRequest;
@@ -27,12 +29,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@Tag(name = "주문", description = "주문 접수 · 조회 · 수정")
+@Tag(name = "주문", description = "주문 접수 · 조회 · 수정 · 취소")
 @RestController
 @RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
 public class OrderApiController {
 
+	/** 접수·취소는 배송 연동이 얽혀 있어 Facade 를 거친다. 수정은 order 안에서 끝나 서비스를 직접 쓴다 */
+	private final OrderFacade orderFacade;
 	private final OrderCommandService orderCommandService;
 	private final OrderQueryService orderQueryService;
 
@@ -51,12 +55,28 @@ public class OrderApiController {
 	})
 	@PostMapping
 	public ResponseEntity<SuccessResponse<OrderResponse>> create(
-			@AuthenticationPrincipal UUID callerId,
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@Valid @RequestBody OrderCreateRequest request
 	) {
-		OrderCreateCommand command = OrderCreateCommand.from(receiverOrSystem(callerId), request);
-		OrderResponse response = OrderResponse.from(orderCommandService.create(command));
+		OrderCreateCommand command = OrderCreateCommand.from(receiverOrSystem(principal), request);
+		OrderResponse response = OrderResponse.from(orderFacade.create(command));
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
+	}
+
+	@Operation(summary = "주문 취소",
+			description = "주문을 취소하고 배송도 함께 취소한다. 배송이 시작된 주문은 취소할 수 없다.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "취소 성공"),
+			@ApiResponse(responseCode = "400", description = "취소할 수 없는 상태"),
+			@ApiResponse(responseCode = "404", description = "주문 없음 · 삭제됨"),
+			@ApiResponse(responseCode = "503", description = "배송 취소 실패")
+	})
+	@DeleteMapping("/{orderId}")
+	public ResponseEntity<SuccessResponse<OrderResponse>> cancel(
+			@PathVariable UUID orderId
+	) {
+		OrderResponse response = OrderResponse.from(orderFacade.cancel(orderId));
+		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
 	@Operation(summary = "주문 상세 조회", description = "주문 상품 줄까지 함께 반환한다.")
@@ -100,7 +120,13 @@ public class OrderApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
-	private UUID receiverOrSystem(UUID callerId) {
-		return callerId != null ? callerId : systemUserId;
+	/**
+	 * 인증 주체가 곧 수령인이다.
+	 *
+	 * <p>{@code /api/v1/**} 는 인증이 걸려 있어 평소엔 principal 이 항상 있다.
+	 * 그럼에도 {@code null} 을 받아주는 것은 인증을 끄고 띄우는 로컬·스모크 실행 때문이다.
+	 */
+	private UUID receiverOrSystem(JwtPrincipal principal) {
+		return principal != null ? principal.userId() : systemUserId;
 	}
 }

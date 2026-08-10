@@ -5,7 +5,11 @@ import com.delivery_project.order_service.order.application.result.OrderSnapshot
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.order_service.global.security.JwtTokenParser;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 타임라인은 주문 하위 리소스, 단건은 독립 리소스라 두 경로가 다른 계층에 있다.
  */
 @WebMvcTest(OrderSnapshotApiController.class)
+@Import({JwtAuthenticationFilter.class, JwtTokenParser.class})
+// 컨트롤러 동작만 본다. 인증 자체는 JwtAuthenticationFilterTest 가 검증한다
+@AutoConfigureMockMvc(addFilters = false)
 class OrderSnapshotApiControllerTest {
 
 	@Autowired

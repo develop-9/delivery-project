@@ -1,5 +1,8 @@
 package com.delivery_project.order_service.global.config;
 
+import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -8,16 +11,22 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * TODO 현재는 개발을 위해 API 경로를 열어둔다. JWT 파싱 필터와 권한 검증은 인증 단계에서 추가한다.
+ * 게이트웨이가 JWT 를 검증한 뒤 원본 토큰을 relay 하고, 이 서비스는 토큰을 파싱해
+ * 사용자 ID·역할을 얻는다.
  *
- * <p>게이트웨이가 JWT 를 검증한 뒤 원본 토큰을 relay 하며, 이 서비스는 토큰을 파싱해
- * 사용자 ID·권한을 얻는다. 클레임명은 user-service 담당자와 확정 후 반영한다.
+ * <p>{@code /internal/v1/**} 는 인증에서 뺀다. 서비스 간 호출에는 사용자 토큰이 없다.
+ * 대신 배포 시 서비스 포트를 외부에 노출하지 않아 네트워크 레벨에서 막는다
+ * (PR 리뷰 P3 에서 합의한 방식이며, 서비스 간 인증은 별도 안건이다).
  */
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(
@@ -41,10 +50,8 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						// 인증 없이 접근 가능
 						.requestMatchers(
-								// ===개발을 위한 권한 허용===
-								"/api/v1/**",
+								// 서비스 간 호출. 사용자 토큰이 없어 네트워크 격리로 막는다
 								"/internal/v1/**",
-								// ======================
 
 								// actuator
 								"/actuator/**",
@@ -56,6 +63,9 @@ public class SecurityConfig {
 						// 나머지는 인증 필요
 						.anyRequest().authenticated()
 				)
+
+				// 토큰 파싱 필터. 인증 여부 판단보다 앞서야 SecurityContext 가 채워진다
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
 				// 기본 CORS 설정
 				.cors(Customizer.withDefaults());
