@@ -5,12 +5,14 @@ import com.delivery_project.delivery_service.delivery.application.result.OrderCo
 import com.delivery_project.delivery_service.delivery.infrastructure.client.OrderInternalClient;
 import com.delivery_project.delivery_service.delivery.infrastructure.client.dto.InternalApiResponse;
 import com.delivery_project.delivery_service.delivery.infrastructure.client.dto.OrderInfoResponse;
+import com.delivery_project.delivery_service.delivery.infrastructure.client.dto.RelatedOrderIdsResponse;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -44,5 +46,24 @@ public class OrderFeignAdapter implements OrderPort {
                     ErrorCode.ORDER_SERVICE_UNAVAILABLE
             );
         }
+    }
+
+    @Override
+    public List<UUID> getRelatedOrderIds(
+            UUID companyId
+    ){
+        try {
+            InternalApiResponse<RelatedOrderIdsResponse> response =
+                    orderInternalClient.getRelatedOrderIds(
+                            companyId
+                    );
+
+            return response.data().orderIds();
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_SERVICE_UNAVAILABLE
+            );
+        }
+
     }
 }

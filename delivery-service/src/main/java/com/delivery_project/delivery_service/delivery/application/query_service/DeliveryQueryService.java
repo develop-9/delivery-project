@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -63,6 +64,7 @@ public class DeliveryQueryService {
 
         UUID requesterManagerId = null;
         UUID requesterHubId = null;
+        List<UUID> requesterOrderIds = null;
 
         if (query.requesterRole() == Role.DELIVERY_MANAGER) {
             requesterManagerId =
@@ -91,6 +93,26 @@ public class DeliveryQueryService {
             }
         }
 
+        if (query.requesterRole() == Role.COMPANY_MANAGER) {
+            UserAuthorizationInfo requester =
+                    userPort.getUserAuthorizationInfo(
+                            query.requesterId()
+                    );
+
+            UUID requesterCompanyId = requester.companyId();
+
+            if (requesterCompanyId == null) {
+                throw new BusinessException(
+                        ErrorCode.READ_DELIVERY_FORBIDDEN
+                );
+            }
+
+            requesterOrderIds =
+                    orderPort.getRelatedOrderIds(
+                            requesterCompanyId
+                    );
+        }
+
         Pageable pageable =
                 PageRequest.of(
                         query.page(),
@@ -102,7 +124,8 @@ public class DeliveryQueryService {
                         query,
                         pageable,
                         requesterManagerId,
-                        requesterHubId)
+                        requesterHubId,
+                        requesterOrderIds)
                 .map(DeliveryListResult::from);
     }
 
@@ -214,7 +237,6 @@ public class DeliveryQueryService {
         }
 
         if (query.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 기준 조회 범위 적용(List)
             return;
         }
 

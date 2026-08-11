@@ -51,7 +51,8 @@ public class DeliveryQueryRepositoryImpl
             DeliveryListQuery query,
             Pageable pageable,
             UUID requesterManagerId,
-            UUID requesterHubId
+            UUID requesterHubId,
+            List<UUID> requesterOrderIds
     ){
         List<Delivery> content =
                 queryFactory
@@ -72,6 +73,10 @@ public class DeliveryQueryRepositoryImpl
                                 hubManagerScope(
                                         query.requesterRole(),
                                         requesterHubId
+                                ),
+                                companyManagerScope(
+                                        query.requesterRole(),
+                                        requesterOrderIds
                                 )
                         )
                         .orderBy(
@@ -100,6 +105,14 @@ public class DeliveryQueryRepositoryImpl
                                 deliveryManagerScope(
                                         query.requesterRole(),
                                         requesterManagerId
+                                ),
+                                hubManagerScope(
+                                        query.requesterRole(),
+                                        requesterHubId
+                                ),
+                                companyManagerScope(
+                                        query.requesterRole(),
+                                        requesterOrderIds
                                 )
                         )
                         .fetchOne();
@@ -227,5 +240,23 @@ public class DeliveryQueryRepositoryImpl
                                 )
                 )
                 .exists();
+    }
+
+    private BooleanExpression companyManagerScope(
+            Role requesterRole,
+            List<UUID> requesterOrderIds
+    ) {
+        if (requesterRole != Role.COMPANY_MANAGER) {
+            return null;
+        }
+
+        if (requesterOrderIds == null
+                || requesterOrderIds.isEmpty()) {
+            return delivery.id.isNull();
+        }
+
+        return delivery.orderId.in(
+                requesterOrderIds
+        );
     }
 }

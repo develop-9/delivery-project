@@ -1,9 +1,11 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryListResult;
 import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
@@ -23,11 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +52,9 @@ class DeliveryQueryServiceTest {
 
     @Mock
     private UserPort userPort;
+
+    @Mock
+    private OrderPort orderPort;
 
     @Test
     @DisplayName("MASTER는 배송 단건을 조회할 수 있다")
@@ -406,7 +411,8 @@ class DeliveryQueryServiceTest {
                 eq(query),
                 any(Pageable.class),
                 isNull(),
-                eq(hubId)
+                eq(hubId),
+                isNull()
         )).thenReturn(Page.empty());
 
         deliveryQueryService.getDeliveries(query);
@@ -419,7 +425,8 @@ class DeliveryQueryServiceTest {
                         eq(query),
                         any(Pageable.class),
                         isNull(),
-                        eq(hubId)
+                        eq(hubId),
+                        isNull()
                 );
     }
 
@@ -457,6 +464,192 @@ class DeliveryQueryServiceTest {
 
         verify(deliveryQueryRepository, never())
                 .search(
+                        any(),
+                        any(),
+                        any(),
+                        any(),
+                        any()
+                );
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 소속 업체와 관련된 주문의 배송 목록을 조회할 수 있다")
+    void getDeliveriesCompanyManagerSuccess() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        UUID orderId1 = UUID.randomUUID();
+        UUID orderId2 = UUID.randomUUID();
+
+        List<UUID> relatedOrderIds =
+                List.of(orderId1, orderId2);
+
+        DeliveryListQuery query =
+                DeliveryListQuery.of(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        0,
+                        10,
+                        "createdAt",
+                        "desc",
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        null,
+                        companyId
+                );
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        when(orderPort.getRelatedOrderIds(companyId))
+                .thenReturn(relatedOrderIds);
+
+        when(deliveryQueryRepository.search(
+                eq(query),
+                any(Pageable.class),
+                isNull(),
+                isNull(),
+                eq(relatedOrderIds)
+        )).thenReturn(Page.empty());
+
+        // when
+        Page<DeliveryListResult> result =
+                deliveryQueryService.getDeliveries(query);
+
+        // then
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(orderPort)
+                .getRelatedOrderIds(companyId);
+
+        verify(deliveryQueryRepository)
+                .search(
+                        eq(query),
+                        any(Pageable.class),
+                        isNull(),
+                        isNull(),
+                        eq(relatedOrderIds)
+                );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER의 소속 업체와 관련된 주문이 없으면 빈 배송 목록을 조회한다")
+    void getDeliveriesCompanyManagerNoRelatedOrders() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        DeliveryListQuery query =
+                DeliveryListQuery.of(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        0,
+                        10,
+                        "createdAt",
+                        "desc",
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        null,
+                        companyId
+                );
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        when(orderPort.getRelatedOrderIds(companyId))
+                .thenReturn(List.of());
+
+        when(deliveryQueryRepository.search(
+                eq(query),
+                any(Pageable.class),
+                isNull(),
+                isNull(),
+                eq(List.of())
+        )).thenReturn(Page.empty());
+
+        // when
+        Page<DeliveryListResult> result =
+                deliveryQueryService.getDeliveries(query);
+
+        // then
+        assertTrue(result.isEmpty());
+
+        verify(orderPort)
+                .getRelatedOrderIds(companyId);
+
+        verify(deliveryQueryRepository)
+                .search(
+                        eq(query),
+                        any(Pageable.class),
+                        isNull(),
+                        isNull(),
+                        eq(List.of())
+                );
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER의 companyId가 없으면 배송 목록을 조회할 수 없다")
+    void getDeliveriesCompanyManagerWithoutCompanyForbidden() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+
+        DeliveryListQuery query =
+                DeliveryListQuery.of(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        0,
+                        10,
+                        "createdAt",
+                        "desc",
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        null,
+                        null
+                );
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        // when & then
+        assertThrows(
+                BusinessException.class,
+                () -> deliveryQueryService.getDeliveries(query)
+        );
+
+        verify(orderPort, never())
+                .getRelatedOrderIds(any());
+
+        verify(deliveryQueryRepository, never())
+                .search(
+                        any(),
                         any(),
                         any(),
                         any(),

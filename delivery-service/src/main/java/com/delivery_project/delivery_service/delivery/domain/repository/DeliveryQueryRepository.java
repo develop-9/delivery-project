@@ -5,6 +5,7 @@ import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ public interface DeliveryQueryRepository {
             DeliveryListQuery query,
             Pageable pageable,
             UUID requesterManagerId,
-            UUID requesterHubId
+            UUID requesterHubId,
+            List<UUID> requesterOrderIds
     );
 }
