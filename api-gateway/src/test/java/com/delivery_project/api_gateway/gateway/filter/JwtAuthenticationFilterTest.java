@@ -58,6 +58,33 @@ class JwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void 문서_경로는_접두사_일치로_토큰_없이_통과한다() {
+		// given: /docs/user-service/v3/api-docs처럼 뒤에 서비스명이 계속 붙는 경로라
+		// WHITELIST_PATHS의 정확히 일치가 아니라 접두사 일치로 처리되는지 확인한다.
+		JwtAuthenticationFilter filter = filterUnderTest();
+		ServerWebExchange exchange = exchangeFor("/docs/user-service/v3/api-docs", null);
+		when(chain.filter(exchange)).thenReturn(Mono.empty());
+
+		// when & then
+		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+		verify(chain).filter(exchange);
+		verify(tokenValidator, never()).validate(any());
+	}
+
+	@Test
+	void swagger_ui_정적_리소스_경로도_토큰_없이_통과한다() {
+		// given
+		JwtAuthenticationFilter filter = filterUnderTest();
+		ServerWebExchange exchange = exchangeFor("/swagger-ui/index.html", null);
+		when(chain.filter(exchange)).thenReturn(Mono.empty());
+
+		// when & then
+		StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+		verify(chain).filter(exchange);
+		verify(tokenValidator, never()).validate(any());
+	}
+
+	@Test
 	void Authorization_헤더가_없으면_AUTH_TOKEN_INVALID로_응답한다() {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();

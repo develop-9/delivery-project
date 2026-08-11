@@ -1,5 +1,6 @@
 package com.delivery_project.api_gateway.gateway.filter;
 
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -34,6 +35,20 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			"/api/v1/auth/refresh"
 	);
 
+	/**
+	 * 통합 Swagger 문서(/swagger-ui.html)와 그게 내부적으로 물고 오는 정적 리소스·서비스별
+	 * /v3/api-docs 프록시 경로(RouteConfig.apiDocsRoutes() 참고)는 팀원이 로그인 없이 바로
+	 * 볼 수 있어야 하는 개발 도구라 접두사째로 화이트리스트한다. WHITELIST_PATHS와 달리
+	 * 하위 경로가 계속 붙으므로(정적 리소스, /v3/api-docs/swagger-config 등) 정확히 일치가
+	 * 아니라 시작 문자열로 판단한다.
+	 */
+	private static final List<String> WHITELIST_PREFIXES = List.of(
+			"/docs/",
+			"/v3/api-docs",
+			"/swagger-ui",
+			"/webjars"
+	);
+
 	private final TokenValidator tokenValidator;
 	private final TokenBlacklistChecker tokenBlacklistChecker;
 	private final GatewayErrorResponseWriter errorResponseWriter;
@@ -46,7 +61,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 		String path = exchange.getRequest().getURI().getPath();
-		if (WHITELIST_PATHS.contains(path)) {
+		if (WHITELIST_PATHS.contains(path) || WHITELIST_PREFIXES.stream().anyMatch(path::startsWith)) {
 			return chain.filter(exchange);
 		}
 
