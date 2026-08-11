@@ -16,10 +16,6 @@ import com.delivery_project.slack_service.slack.presentation.response.SlackMessa
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageDeleteResponse;
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageQueryResponse;
 import com.delivery_project.slack_service.slack.presentation.response.SlackMessageUpdateResponse;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -39,28 +35,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-@Tag(
-        name = "Slack Message",
-        description = "Slack 메시지 생성, 조회, 수정, 삭제 API"
-)
 @RestController
 @RequestMapping("/api/v1/slack-messages")
 @RequiredArgsConstructor
-public class SlackMessageApiController {
+public class SlackMessageApiController implements SlackMessageApi {
 
     private final SlackMessageCommandService slackMessageCommandService;
     private final SlackMessageQueryService slackMessageQueryService;
 
-    @Operation(
-            summary = "Slack 메시지 생성",
-            description = "Slack 메시지를 PENDING 상태로 생성합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "메시지 생성 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
-            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
+    @Override
     @PostMapping
     public ResponseEntity<SuccessResponse<SlackMessageCreateResponse>> create(
             @Valid @RequestBody SlackMessageCreateRequest request
@@ -75,19 +58,12 @@ public class SlackMessageApiController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(SuccessResponse.success(response));
+                .body(
+                        SuccessResponse.success(response)
+                );
     }
 
-    @Operation(
-            summary = "Slack 메시지 단건 조회",
-            description = "삭제되지 않은 Slack 메시지를 ID로 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "메시지 조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
-            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
+    @Override
     @GetMapping("/{slackMessageId}")
     public ResponseEntity<SuccessResponse<SlackMessageQueryResponse>> findById(
             @PathVariable UUID slackMessageId
@@ -105,34 +81,29 @@ public class SlackMessageApiController {
         );
     }
 
-    @Operation(
-            summary = "Slack 메시지 목록 조회",
-            description = "삭제되지 않은 Slack 메시지를 최신순으로 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "메시지 목록 조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
+    @Override
     @GetMapping
     public ResponseEntity<SuccessResponse<PageResponse<SlackMessageQueryResponse>>> findAll(
             @PageableDefault(
                     page = 0,
                     size = 10,
                     sort = "createdAt"
-            ) Pageable pageable
+            )
+            Pageable pageable
     ) {
-        String sortField = pageable.getSort()
-                .stream()
-                .findFirst()
-                .map(order -> order.getProperty())
-                .orElse("createdAt");
+        String sortField =
+                pageable.getSort()
+                        .stream()
+                        .findFirst()
+                        .map(order -> order.getProperty())
+                        .orElse("createdAt");
 
-        String sortDirection = pageable.getSort()
-                .stream()
-                .findFirst()
-                .map(order -> order.getDirection().name())
-                .orElse("DESC");
+        String sortDirection =
+                pageable.getSort()
+                        .stream()
+                        .findFirst()
+                        .map(order -> order.getDirection().name())
+                        .orElse("DESC");
 
         PageData<SlackMessageQueryResult> result =
                 slackMessageQueryService.findAll(
@@ -153,17 +124,7 @@ public class SlackMessageApiController {
         );
     }
 
-    @Operation(
-            summary = "Slack 메시지 수정",
-            description = "Slack 메시지 내용을 수정합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "메시지 수정 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청값"),
-            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
-            @ApiResponse(responseCode = "404", description = "메시지를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
+    @Override
     @PatchMapping("/{slackMessageId}")
     public ResponseEntity<SuccessResponse<SlackMessageUpdateResponse>> update(
             @PathVariable UUID slackMessageId,
@@ -182,22 +143,9 @@ public class SlackMessageApiController {
         );
     }
 
-    @Operation(
-            summary = "Slack 메시지 삭제",
-            description = "Slack 메시지를 논리 삭제합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "메시지 삭제 성공"),
-            @ApiResponse(responseCode = "401", description = "인증이 필요함"),
-            @ApiResponse(responseCode = "403", description = "삭제 권한이 없음"),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "메시지가 존재하지 않거나 이미 삭제됨"
-            ),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-    })
     // TODO: Slack Service JWT 인증 연동 후
     // MASTER/비MASTER/미인증 요청 및 deletedBy 저장값 검증
+    @Override
     @PreAuthorize("hasRole('MASTER')")
     @DeleteMapping("/{slackMessageId}")
     public ResponseEntity<SuccessResponse<SlackMessageDeleteResponse>> delete(
