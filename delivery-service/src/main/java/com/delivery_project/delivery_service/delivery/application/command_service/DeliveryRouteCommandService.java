@@ -1,7 +1,9 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryRouteStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteStatusUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
@@ -31,6 +33,7 @@ public class DeliveryRouteCommandService {
     private final DeliveryManagerCommandRepository deliveryManagerCommandRepository;
     private final DeliveryManagerSequenceCommandRepository deliveryManagerSequenceCommandRepository;
     private final DeliveryCommandRepository deliveryCommandRepository;
+    private final UserPort userPort;
 
     // =========================
     // 외부 진입점
@@ -337,7 +340,10 @@ Route 조회
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: #53 완료 후 담당 Hub 기준 권한 검증 추가
+            validateHubManagerRoutePermission(
+                    command.requesterId(),
+                    route
+            );
             return;
         }
 
@@ -374,5 +380,34 @@ Route 조회
         throw new BusinessException(
                 ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
         );
+    }
+
+    private void validateHubManagerRoutePermission(
+            UUID requesterId,
+            DeliveryRoute route
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+
+        boolean relatedHub =
+                requesterHubId.equals(route.getDepartureHubId())
+                        || requesterHubId.equals(route.getArrivalHubId()
+                );
+
+        if (!relatedHub) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
     }
 }

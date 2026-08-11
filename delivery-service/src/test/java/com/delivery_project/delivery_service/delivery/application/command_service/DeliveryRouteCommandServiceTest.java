@@ -1,7 +1,9 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryRouteStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteStatusUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,6 +49,9 @@ class DeliveryRouteCommandServiceTest {
 
     @Mock
     private DeliveryCommandRepository deliveryCommandRepository;
+
+    @Mock
+    private UserPort userPort;
 
     @InjectMocks
     private DeliveryRouteCommandService deliveryRouteCommandService;
@@ -525,5 +531,320 @@ class DeliveryRouteCommandServiceTest {
                 ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN,
                 exception.getErrorCode()
         );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER는 출발 허브의 배송 경로를 시작할 수 있다")
+    void updateStatusHubManagerDepartureHubSuccess() {
+        // given
+        UUID routeId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        DeliveryRoute route =
+                DeliveryRoute.create(
+                        deliveryId,
+                        2,
+                        hubId,
+                        arrivalHubId,
+                        new BigDecimal("100.00"),
+                        60
+                );
+
+        ReflectionTestUtils.setField(
+                route,
+                "id",
+                routeId
+        );
+
+        DeliveryRoute previousRoute =
+                DeliveryRoute.create(
+                        deliveryId,
+                        1,
+                        UUID.randomUUID(),
+                        hubId,
+                        new BigDecimal("50.00"),
+                        30
+                );
+
+        // 이전 Route를 ARRIVED로 만들어줌
+        ReflectionTestUtils.setField(
+                previousRoute,
+                "status",
+                DeliveryRouteStatus.ARRIVED
+        );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        hubId,
+                        null
+                );
+
+        DeliveryManagerSequence sequence =
+                mock(DeliveryManagerSequence.class);
+
+        DeliveryManager manager =
+                mock(DeliveryManager.class);
+
+        when(manager.getId())
+                .thenReturn(managerId);
+
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
+                .thenReturn(Optional.of(route));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        when(deliveryRouteCommandRepository
+                .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                        deliveryId,
+                        DeliveryRouteStatus.IN_TRANSIT
+                ))
+                .thenReturn(List.of());
+
+        when(deliveryRouteCommandRepository
+                .findByDeliveryIdAndSequenceAndDeletedAtIsNull(
+                        deliveryId,
+                        1
+                ))
+                .thenReturn(Optional.of(previousRoute));
+
+        when(deliveryManagerSequenceCommandRepository.findForUpdate(
+                DeliveryManagerType.HUB_DELIVERY,
+                null
+        )).thenReturn(Optional.of(sequence));
+
+        when(deliveryManagerCommandRepository
+                .findNextAvailableHubManager(any()))
+                .thenReturn(Optional.of(manager));
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.IN_TRANSIT,
+                        null,
+                        null,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        // when
+        deliveryRouteCommandService.updateStatus(command);
+
+        // then
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(deliveryRouteCommandRepository)
+                .save(route);
+
+        assertEquals(
+                DeliveryRouteStatus.IN_TRANSIT,
+                route.getStatus()
+        );
+
+        assertEquals(
+                managerId,
+                route.getDeliveryManagerId()
+        );
+    }
+
+    @Test
+    @DisplayName("HUB_MANAGER는 도착 허브의 배송 경로를 시작할 수 있다")
+    void updateStatusHubManagerArrivalHubSuccess() {
+        // given
+        UUID routeId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+
+        DeliveryRoute route =
+                DeliveryRoute.create(
+                        deliveryId,
+                        2,
+                        departureHubId,
+                        arrivalHubId,
+                        new BigDecimal("100.00"),
+                        60
+                );
+
+        ReflectionTestUtils.setField(
+                route,
+                "id",
+                routeId
+        );
+
+        DeliveryRoute previousRoute =
+                DeliveryRoute.create(
+                        deliveryId,
+                        1,
+                        UUID.randomUUID(),
+                        departureHubId,
+                        new BigDecimal("50.00"),
+                        30
+                );
+
+        ReflectionTestUtils.setField(
+                previousRoute,
+                "status",
+                DeliveryRouteStatus.ARRIVED
+        );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        arrivalHubId,
+                        null
+                );
+
+        DeliveryManagerSequence sequence =
+                mock(DeliveryManagerSequence.class);
+
+        DeliveryManager manager =
+                mock(DeliveryManager.class);
+
+        when(manager.getId())
+                .thenReturn(managerId);
+
+        when(deliveryRouteCommandRepository
+                .findByIdForUpdate(routeId))
+                .thenReturn(Optional.of(route));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        when(deliveryRouteCommandRepository
+                .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                        deliveryId,
+                        DeliveryRouteStatus.IN_TRANSIT
+                ))
+                .thenReturn(List.of());
+
+        when(deliveryRouteCommandRepository
+                .findByDeliveryIdAndSequenceAndDeletedAtIsNull(
+                        deliveryId,
+                        1
+                ))
+                .thenReturn(Optional.of(previousRoute));
+
+        when(deliveryManagerSequenceCommandRepository
+                .findForUpdate(
+                        DeliveryManagerType.HUB_DELIVERY,
+                        null
+                ))
+                .thenReturn(Optional.of(sequence));
+
+        when(deliveryManagerCommandRepository
+                .findNextAvailableHubManager(any()))
+                .thenReturn(Optional.of(manager));
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.IN_TRANSIT,
+                        null,
+                        null,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        // when
+        deliveryRouteCommandService.updateStatus(command);
+
+        // then
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(deliveryRouteCommandRepository)
+                .save(route);
+
+        assertEquals(
+                DeliveryRouteStatus.IN_TRANSIT,
+                route.getStatus()
+        );
+
+        assertEquals(
+                managerId,
+                route.getDeliveryManagerId()
+        );
+    }
+
+
+    @Test
+    @DisplayName("HUB_MANAGER는 담당 허브와 관련 없는 배송 경로의 상태를 변경할 수 없다")
+    void updateStatusHubManagerUnrelatedHubForbidden() {
+        // given
+        UUID routeId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID unrelatedHubId = UUID.randomUUID();
+
+        DeliveryRoute route =
+                DeliveryRoute.create(
+                        deliveryId,
+                        1,
+                        departureHubId,
+                        arrivalHubId,
+                        new BigDecimal("100.00"),
+                        60
+                );
+
+        ReflectionTestUtils.setField(
+                route,
+                "id",
+                routeId
+        );
+
+        UserAuthorizationInfo requester =
+                new UserAuthorizationInfo(
+                        requesterId,
+                        unrelatedHubId,
+                        null
+                );
+
+        when(deliveryRouteCommandRepository.findByIdForUpdate(routeId))
+                .thenReturn(Optional.of(route));
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(requester);
+
+        DeliveryRouteStatusUpdateCommand command =
+                new DeliveryRouteStatusUpdateCommand(
+                        routeId,
+                        DeliveryRouteStatus.IN_TRANSIT,
+                        null,
+                        null,
+                        requesterId,
+                        Role.HUB_MANAGER
+                );
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryRouteCommandService
+                                .updateStatus(command)
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_ROUTE_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(deliveryRouteCommandRepository, never())
+                .save(any());
     }
 }
