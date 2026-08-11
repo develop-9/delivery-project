@@ -3,6 +3,7 @@ package com.delivery_project.order_service.order.presentation.api_controller;
 import com.delivery_project.order_service.global.response.PageResponse;
 import com.delivery_project.order_service.global.response.SuccessResponse;
 import com.delivery_project.order_service.global.security.JwtPrincipal;
+import com.delivery_project.order_service.order.application.authorization.InventoryAccessPolicy;
 import com.delivery_project.order_service.order.application.command.InventoryAdjustCommand;
 import com.delivery_project.order_service.order.application.command.InventoryCreateCommand;
 import com.delivery_project.order_service.order.application.command.InventoryDeleteCommand;
@@ -41,6 +42,7 @@ public class InventoryApiController {
 
 	private final InventoryCommandService inventoryCommandService;
 	private final InventoryQueryService inventoryQueryService;
+	private final InventoryAccessPolicy inventoryAccessPolicy;
 
 	/**
 	 * JWT 파싱 필터가 붙기 전까지 인증 주체가 없을 때 쓰는 팀 공통 시스템 주체 ID.
@@ -52,12 +54,15 @@ public class InventoryApiController {
 	@Operation(summary = "재고 등록", description = "상품을 특정 허브에 배치한다. 수량 증가가 아니다(그건 입고).")
 	@ApiResponses({
 			@ApiResponse(responseCode = "201", description = "등록 성공"),
+			@ApiResponse(responseCode = "403", description = "재고를 변경할 권한 없음"),
 			@ApiResponse(responseCode = "409", description = "같은 상품·허브 재고가 이미 있음")
 	})
 	@PostMapping
 	public ResponseEntity<SuccessResponse<InventoryResponse>> create(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@Valid @RequestBody InventoryCreateRequest request
 	) {
+		inventoryAccessPolicy.validateWritable(principal);
 		InventoryCreateCommand command = InventoryCreateCommand.from(request);
 		InventoryResponse response = InventoryResponse.from(inventoryCommandService.create(command));
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
@@ -96,9 +101,11 @@ public class InventoryApiController {
 	})
 	@PostMapping("/{inventoryId}/inbound")
 	public ResponseEntity<SuccessResponse<InventoryInboundResponse>> inbound(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID inventoryId,
 			@Valid @RequestBody InventoryInboundRequest request
 	) {
+		inventoryAccessPolicy.validateWritable(principal);
 		InventoryInboundCommand command = InventoryInboundCommand.from(inventoryId, request);
 		InventoryInboundResponse response = InventoryInboundResponse.from(inventoryCommandService.inbound(command));
 		return ResponseEntity.ok(SuccessResponse.success(response));
@@ -112,9 +119,11 @@ public class InventoryApiController {
 	})
 	@PatchMapping("/{inventoryId}/adjust")
 	public ResponseEntity<SuccessResponse<InventoryAdjustResponse>> adjust(
+			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID inventoryId,
 			@Valid @RequestBody InventoryAdjustRequest request
 	) {
+		inventoryAccessPolicy.validateWritable(principal);
 		InventoryAdjustCommand command = InventoryAdjustCommand.from(inventoryId, request);
 		InventoryAdjustResponse response = InventoryAdjustResponse.from(inventoryCommandService.adjust(command));
 		return ResponseEntity.ok(SuccessResponse.success(response));
@@ -131,8 +140,10 @@ public class InventoryApiController {
 			@AuthenticationPrincipal JwtPrincipal principal,
 			@PathVariable UUID inventoryId
 	) {
+		inventoryAccessPolicy.validateWritable(principal);
+
 		InventoryDeleteCommand command = InventoryDeleteCommand.from(
-				inventoryId, principal != null ? principal.userId() : systemUserId);
+				inventoryId, inventoryAccessPolicy.callerOrSystem(principal, systemUserId));
 		InventoryDeleteResponse response = InventoryDeleteResponse.from(inventoryCommandService.delete(command));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
