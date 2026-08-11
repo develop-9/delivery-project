@@ -1,6 +1,5 @@
 package com.delivery_project.user_service.user.application.command_service;
 
-import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,9 +27,7 @@ import com.delivery_project.user_service.user.application.result.UserUpdateMeRes
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
-import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
-import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 public class UserCommandService {
 
 	private final UserCommandRepository userCommandRepository;
-	private final RefreshTokenRepository refreshTokenRepository;
-	private final UserInvalidationRepository userInvalidationRepository;
 	private final UserPersistenceService userPersistenceService;
 	private final DeliveryManagerPort deliveryManagerPort;
 	private final CallerResolver callerResolver;
@@ -100,10 +95,12 @@ public class UserCommandService {
 	}
 
 	/**
-	 * 정지는 delete()와 달리 다른 서비스로의 Feign 호출이 없어 트랜잭션 경계를 따로 분리할
-	 * 필요가 없다. Access Token 무효화는 Redis에 직접 쓰지 않고 같은 트랜잭션 안에서 아웃박스에
-	 * 기록되므로(UserInvalidationRepositoryImpl 참고), 커밋 순서를 따로 신경 쓸 필요가 없다.
+	 * 클래스 레벨 @Transactional을 이 메서드에서만 명시적으로 비활성화한다(NOT_SUPPORTED).
+	 * DELIVERY_MANAGER 대상일 때 Delivery Service deactivate 호출이 DB 트랜잭션 밖에서
+	 * 실행되도록 하기 위함 — delete()와 같은 이유다. 실제 DB 쓰기는
+	 * userPersistenceService.commitSuspend()의 별도 트랜잭션에서 이뤄진다.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public UserSuspendResult suspend(UUID callerId, UserSuspendCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
@@ -117,26 +114,27 @@ public class UserCommandService {
 			throw new BusinessException(ErrorCode.USER_NOT_SUSPENDABLE);
 		}
 
-		// countActiveMasters() 대신 락을 거는 버전을 쓴다 — "마지막 MASTER인지 확인"과 "정지 실행"이
-		// 이 메서드 전체를 감싼 같은 트랜잭션 안에서 원자적으로 이뤄져야, 동시에 다른 MASTER를
-		// 정지/삭제하는 요청이 끼어들어 활성 MASTER가 0명이 되는 걸 막을 수 있다.
-		if (target.getRole() == Role.MASTER && userCommandRepository.countActiveMastersForUpdate() <= 1) {
-			throw new BusinessException(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
+		// 마지막 MASTER 확인은 여기서 하지 않고 commitSuspend()의 트랜잭션 안에서 락을 걸고
+		// 한다(UserPersistenceService.commitSuspend() 참고).
+
+		if (target.getRole() == Role.DELIVERY_MANAGER) {
+			deliveryManagerPort.deactivate(target.getId());
 		}
 
-		target.suspend();
-		refreshTokenRepository.deleteByUserId(target.getId());
-		userInvalidationRepository.invalidate(target.getId(), Instant.now());
+		UserSuspendResult result = userPersistenceService.commitSuspend(command.targetUserId(), caller.getId());
+
 		log.info("[User] 계정 정지 완료 targetUserId={} suspendedBy={}", command.targetUserId(), caller.getId());
 
-		return UserSuspendResult.from(target);
+		return result;
 	}
 
 	/**
-	 * 정지 해제는 CallerResolver의 승인 상태 검증(APPROVED만 통과)이 다시 걸리게 하는 것뿐이라,
-	 * 삭제/정지와 달리 Redis에 남길 것이 없다 — 무효화 기록을 지우는 게 아니라 그냥 만료를
-	 * 기다리면 되고, 재승인 이후엔 어차피 새로 로그인해서 새 토큰을 받아야 한다.
+	 * 클래스 레벨 @Transactional을 이 메서드에서만 명시적으로 비활성화한다(NOT_SUPPORTED).
+	 * DELIVERY_MANAGER 대상일 때 Delivery Service reactivate 호출이 DB 트랜잭션 밖에서
+	 * 실행되도록 하기 위함 — suspend()와 같은 이유다. 실제 DB 쓰기는
+	 * userPersistenceService.commitReinstate()의 별도 트랜잭션에서 이뤄진다.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public UserReinstateResult reinstate(UUID callerId, UserReinstateCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
@@ -150,10 +148,15 @@ public class UserCommandService {
 			throw new BusinessException(ErrorCode.USER_NOT_SUSPENDED);
 		}
 
-		target.reinstate();
+		if (target.getRole() == Role.DELIVERY_MANAGER) {
+			deliveryManagerPort.reactivate(target.getId());
+		}
+
+		UserReinstateResult result = userPersistenceService.commitReinstate(command.targetUserId(), caller.getId());
+
 		log.info("[User] 계정 정지 해제 완료 targetUserId={} reinstatedBy={}", command.targetUserId(), caller.getId());
 
-		return UserReinstateResult.from(target);
+		return result;
 	}
 
 	/**

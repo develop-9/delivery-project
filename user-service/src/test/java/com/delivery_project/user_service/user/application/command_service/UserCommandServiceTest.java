@@ -389,22 +389,21 @@ class UserCommandServiceTest {
 	}
 
 	@Test
-	void MASTER가_APPROVED_사용자를_정지하면_SUSPENDED_상태가_되고_토큰이_무효화된다() {
+	void MASTER가_APPROVED_사용자를_정지를_요청하면_userPersistenceService에_위임하고_그_결과를_그대로_반환한다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		target.approve(UUID.randomUUID());
+		UserSuspendResult expected = UserSuspendResult.from(target);
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userPersistenceService.commitSuspend(target.getId(), master.getId())).thenReturn(expected);
 
 		// when
 		UserSuspendResult result = userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
 
 		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
-		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
-		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
-				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
+		assertThat(result).isEqualTo(expected);
 	}
 
 	@Test
@@ -436,38 +435,24 @@ class UserCommandServiceTest {
 				.isEqualTo(ErrorCode.USER_NOT_SUSPENDABLE);
 	}
 
+	// 마지막 MASTER 보호 로직은 UserPersistenceService.commitSuspend()로 옮겨갔다 —
+	// 관련 테스트는 UserPersistenceServiceTest 참고.
 	@Test
-	void 마지막_남은_MASTER를_정지하려하면_LAST_MASTER_SUSPEND_FORBIDDEN_예외가_발생한다() {
+	void 정지_시_userPersistenceService가_예외를_던지면_그대로_전파된다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target-master", Role.MASTER, null);
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
+		when(userPersistenceService.commitSuspend(target.getId(), master.getId()))
+				.thenThrow(new BusinessException(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN));
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId())))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
-	}
-
-	@Test
-	void MASTER가_여러_명이면_그중_하나를_정지할_수_있다() {
-		// given
-		User master = createUser("master1", Role.MASTER, null);
-		User target = createUser("target-master", Role.MASTER, null);
-		target.approve(UUID.randomUUID());
-		when(callerResolver.resolve(master.getId())).thenReturn(master);
-		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
-
-		// when
-		UserSuspendResult result = userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
-
-		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
 	}
 
 	@Test
@@ -486,21 +471,61 @@ class UserCommandServiceTest {
 	}
 
 	@Test
-	void MASTER가_SUSPENDED_사용자를_정지_해제하면_APPROVED_상태로_돌아간다() {
+	void DELIVERY_MANAGER를_정지하면_Delivery_Service에도_비활성화를_동기화한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userPersistenceService.commitSuspend(target.getId(), master.getId()))
+				.thenReturn(UserSuspendResult.from(target));
+
+		// when
+		userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
+
+		// then
+		org.mockito.Mockito.verify(deliveryManagerPort).deactivate(target.getId());
+	}
+
+	@Test
+	void DELIVERY_MANAGER_정지_시_Delivery_Service_연동이_실패하면_정지_자체가_막힌다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE))
+				.when(deliveryManagerPort).deactivate(target.getId());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId())))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never())
+				.commitSuspend(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+	}
+
+	@Test
+	void MASTER가_SUSPENDED_사용자의_정지를_해제_요청하면_userPersistenceService에_위임하고_그_결과를_그대로_반환한다() {
 		// given
 		User master = createUser("master1", Role.MASTER, null);
 		User target = createUser("target1", Role.COMPANY_MANAGER, null);
 		target.approve(UUID.randomUUID());
 		target.suspend();
+		UserReinstateResult expected = UserReinstateResult.from(target);
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userPersistenceService.commitReinstate(target.getId(), master.getId())).thenReturn(expected);
 
 		// when
 		UserReinstateResult result =
 				userCommandService.reinstate(master.getId(), new UserReinstateCommand(target.getId()));
 
 		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+		assertThat(result).isEqualTo(expected);
 	}
 
 	@Test
@@ -546,6 +571,46 @@ class UserCommandServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
+	}
+
+	@Test
+	void DELIVERY_MANAGER_정지_해제시_Delivery_Service에도_활성화를_동기화한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		target.suspend();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userPersistenceService.commitReinstate(target.getId(), master.getId()))
+				.thenReturn(UserReinstateResult.from(target));
+
+		// when
+		userCommandService.reinstate(master.getId(), new UserReinstateCommand(target.getId()));
+
+		// then
+		org.mockito.Mockito.verify(deliveryManagerPort).reactivate(target.getId());
+	}
+
+	@Test
+	void DELIVERY_MANAGER_정지_해제_시_Delivery_Service_연동이_실패하면_정지_해제_자체가_막힌다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUserWithHub("target1", Role.DELIVERY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		target.suspend();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE))
+				.when(deliveryManagerPort).reactivate(target.getId());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.reinstate(master.getId(), new UserReinstateCommand(target.getId())))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never())
+				.commitReinstate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 	}
 
 	private User createUser(String username, Role role, UUID companyId) {
