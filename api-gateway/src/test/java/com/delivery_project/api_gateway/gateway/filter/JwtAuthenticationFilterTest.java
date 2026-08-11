@@ -104,8 +104,8 @@ class JwtAuthenticationFilterTest {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
 		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "valid-token");
-		when(tokenValidator.validate("valid-token")).thenReturn(new ValidatedToken("user1", 1000L));
-		when(tokenBlacklistChecker.isRevoked("user1", 1000L)).thenReturn(Mono.just(false));
+		when(tokenValidator.validate("valid-token")).thenReturn(new ValidatedToken("user1", 1000L, "session1"));
+		when(tokenBlacklistChecker.isRevoked("user1", 1000L, "session1")).thenReturn(Mono.just(false));
 		when(chain.filter(exchange)).thenReturn(Mono.empty());
 
 		// when & then
@@ -118,8 +118,8 @@ class JwtAuthenticationFilterTest {
 		// given
 		JwtAuthenticationFilter filter = filterUnderTest();
 		ServerWebExchange exchange = exchangeFor("/api/v1/users/me", "revoked-token");
-		when(tokenValidator.validate("revoked-token")).thenReturn(new ValidatedToken("user1", 1000L));
-		when(tokenBlacklistChecker.isRevoked("user1", 1000L)).thenReturn(Mono.just(true));
+		when(tokenValidator.validate("revoked-token")).thenReturn(new ValidatedToken("user1", 1000L, "session1"));
+		when(tokenBlacklistChecker.isRevoked("user1", 1000L, "session1")).thenReturn(Mono.just(true));
 		when(errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_REVOKED)).thenReturn(Mono.empty());
 
 		// when & then

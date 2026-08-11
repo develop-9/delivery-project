@@ -64,7 +64,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			return errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_INVALID);
 		}
 
-		return tokenBlacklistChecker.isRevoked(validatedToken.userId(), validatedToken.issuedAtMillis())
+		return tokenBlacklistChecker.isRevoked(validatedToken.userId(), validatedToken.issuedAtMillis(), validatedToken.sessionId())
 				.flatMap(revoked -> revoked
 						? errorResponseWriter.write(exchange, ErrorCode.AUTH_TOKEN_REVOKED)
 						: chain.filter(exchange));
