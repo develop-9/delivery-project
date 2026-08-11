@@ -7,8 +7,6 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,19 +15,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.command.UserApproveCommand;
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserReinstateCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
+import com.delivery_project.user_service.user.application.command.UserSuspendCommand;
 import com.delivery_project.user_service.user.application.command.UserUpdateMeCommand;
 import com.delivery_project.user_service.user.application.port.DeliveryManagerPort;
 import com.delivery_project.user_service.user.application.result.UserApproveResult;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
+import com.delivery_project.user_service.user.application.result.UserReinstateResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
+import com.delivery_project.user_service.user.application.result.UserSuspendResult;
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.application.support.CallerResolver;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
@@ -62,23 +62,6 @@ class UserCommandServiceTest {
 
 	@InjectMocks
 	private UserCommandService userCommandService;
-
-	@BeforeEach
-	void setUpTransactionSynchronization() {
-		TransactionSynchronizationManager.initSynchronization();
-	}
-
-	@AfterEach
-	void clearTransactionSynchronization() {
-		TransactionSynchronizationManager.clearSynchronization();
-	}
-
-	/** delete()가 afterCommit으로 미룬 콜백을 실제 커밋이 일어난 것처럼 실행시킨다. */
-	private void simulateCommit() {
-		for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-			synchronization.afterCommit();
-		}
-	}
 
 	@Test
 	void 이름과_Slack_ID를_모두_수정하면_둘_다_반영된다() {
@@ -172,12 +155,6 @@ class UserCommandServiceTest {
 		assertThat(result.userId()).isEqualTo(target.getId());
 		assertThat(target.isDeleted()).isTrue();
 		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
-		// 무효화 기록은 커밋 성공이 확정된 뒤에만 실행되도록 미뤄뒀으므로, 커밋 전엔 아직 호출 안 된다.
-		org.mockito.Mockito.verify(userInvalidationRepository, org.mockito.Mockito.never())
-				.invalidate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
-
-		simulateCommit();
-
 		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
 				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}
@@ -262,7 +239,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
 
 		// when & then
 		assertThatThrownBy(() -> userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId())))
@@ -279,7 +256,7 @@ class UserCommandServiceTest {
 		target.approve(UUID.randomUUID());
 		when(callerResolver.resolve(master.getId())).thenReturn(master);
 		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
-		when(userCommandRepository.countActiveMasters()).thenReturn(2L);
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
 
 		// when
 		UserDeleteResult result = userCommandService.delete(master.getId(), new UserDeleteCommand(target.getId()));
@@ -440,6 +417,166 @@ class UserCommandServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.REJECT_USER_FORBIDDEN);
+	}
+
+	@Test
+	void MASTER가_APPROVED_사용자를_정지하면_SUSPENDED_상태가_되고_토큰이_무효화된다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target1", Role.COMPANY_MANAGER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserSuspendResult result = userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(target.getId());
+		org.mockito.Mockito.verify(userInvalidationRepository).invalidate(
+				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
+	}
+
+	@Test
+	void MASTER가_아니면_정지_권한이_없다() {
+		// given
+		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.suspend(hubManager.getId(), new UserSuspendCommand(targetId)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.SUSPEND_USER_FORBIDDEN);
+	}
+
+	@Test
+	void APPROVED가_아닌_사용자를_정지하려하면_USER_NOT_SUSPENDABLE_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target1", Role.COMPANY_MANAGER, null);
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId())))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_SUSPENDABLE);
+	}
+
+	@Test
+	void 마지막_남은_MASTER를_정지하려하면_LAST_MASTER_SUSPEND_FORBIDDEN_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId())))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
+	}
+
+	@Test
+	void MASTER가_여러_명이면_그중_하나를_정지할_수_있다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
+
+		// when
+		UserSuspendResult result = userCommandService.suspend(master.getId(), new UserSuspendCommand(target.getId()));
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+	}
+
+	@Test
+	void 정지_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.suspend(master.getId(), new UserSuspendCommand(targetId)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
+	}
+
+	@Test
+	void MASTER가_SUSPENDED_사용자를_정지_해제하면_APPROVED_상태로_돌아간다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target1", Role.COMPANY_MANAGER, null);
+		target.approve(UUID.randomUUID());
+		target.suspend();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserReinstateResult result =
+				userCommandService.reinstate(master.getId(), new UserReinstateCommand(target.getId()));
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+	}
+
+	@Test
+	void MASTER가_아니면_정지_해제_권한이_없다() {
+		// given
+		User hubManager = createUserWithHub("hub1", Role.HUB_MANAGER, UUID.randomUUID());
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(hubManager.getId())).thenReturn(hubManager);
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.reinstate(hubManager.getId(), new UserReinstateCommand(targetId)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.REINSTATE_USER_FORBIDDEN);
+	}
+
+	@Test
+	void SUSPENDED가_아닌_사용자를_정지_해제하려하면_USER_NOT_SUSPENDED_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		User target = createUser("target1", Role.COMPANY_MANAGER, null);
+		target.approve(UUID.randomUUID());
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.reinstate(master.getId(), new UserReinstateCommand(target.getId())))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_SUSPENDED);
+	}
+
+	@Test
+	void 정지_해제_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		User master = createUser("master1", Role.MASTER, null);
+		UUID targetId = UUID.randomUUID();
+		when(callerResolver.resolve(master.getId())).thenReturn(master);
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userCommandService.reinstate(master.getId(), new UserReinstateCommand(targetId)))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
 	}
 
 	private User createUser(String username, Role role, UUID companyId) {

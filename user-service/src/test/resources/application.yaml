@@ -31,6 +31,9 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+encryption:
+  key: ${ENCRYPTION_KEY:local-dev-only-encryption-key-please-override-in-env-file}
+
 system:
   id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
 

@@ -16,6 +16,8 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -41,7 +43,24 @@ public class AuthCommandService {
 	private final UserInvalidationRepository userInvalidationRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
+	private final HubPort hubPort;
+	private final CompanyPort companyPort;
 
+	/**
+	 * hubId/companyId 존재 검증(Hub/Company Service Feign 호출)을 DB 쓰기보다 먼저 수행한다 —
+	 * 존재하지 않는 허브/업체로 가입을 시도하는 실패 케이스에서 불필요한 DB 쓰기를 막기 위함이다.
+	 *
+	 * TODO: 이 Feign 호출들이 클래스 레벨 @Transactional 안에서 실행돼 DB 커넥션을 붙잡은 채
+	 * 대기한다(UserCommandService.delete()가 이미 겪었던 것과 같은 종류의 문제 — Hub/Company
+	 * Service가 느려지면 커넥션 풀 고갈로 이어질 수 있음). delete()처럼 Feign 호출을 트랜잭션
+	 * 밖으로 빼는 방향도 검토했으나, 그러면 실제 DB 쓰기가 별도의 새 트랜잭션으로 분리돼야 해서
+	 * Spring 테스트의 @Transactional 롤백으로 정리되지 않고 실제로 커밋돼버린다 — 이 메서드를
+	 * 호출하는 기존 통합 테스트(AuthApiControllerTest/UserApiControllerTest) 다수가 "매 테스트가
+	 * 깨끗한 DB에서 시작한다"는 전제에 기대고 있어 파급 범위가 큼. 지금은 존재확인용 Feign 호출
+	 * 1~2번이라 delete()의 상황보다는 위험도가 낮다고 보고 이대로 두지만, 실제로 커넥션 풀 고갈이
+	 * 문제가 되면 테스트 격리 방안(예: 트랜잭션 분리 + 테스트에서 실제 커밋된 데이터 정리)까지
+	 * 같이 정리해서 재적용해야 한다.
+	 */
 	public UserSignupResult signup(UserSignupCommand command) {
 		log.info("[Auth] 회원가입 시도 username={}", command.username());
 
@@ -54,7 +73,12 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.USER_DUPLICATE_SLACK_ID);
 		}
 
-		// TODO: hubId/companyId 존재 검증 (Hub/Company Internal API 연동 후 추가, 현재는 입력값 그대로 저장)
+		if (command.hubId() != null) {
+			hubPort.validateExists(command.hubId());
+		}
+		if (command.companyId() != null) {
+			companyPort.validateExists(command.companyId());
+		}
 
 		User user = User.builder()
 				.username(command.username())
@@ -81,7 +105,7 @@ public class AuthCommandService {
 	/**
 	 * existsByUsername/existsBySlackId 사전 체크와 저장 사이에 동시에 같은 값으로 가입 요청이
 	 * 들어오면, 사전 체크를 통과하고도 DB의 부분 유니크 인덱스(삭제되지 않은 행에만 적용 —
-	 * User.java, UserTableIndexInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
+	 * User.java, UserTableSchemaInitializer 참고)에서 걸릴 수 있다. 이 경우를 여기서 구체적인
 	 * ErrorCode로 변환한다(그 외 제약 위반은 GlobalExceptionHandler의 일반 처리로 위임).
 	 *
 	 * 삭제된 사용자와 같은 username/slackId로 재가입하는 것은 더 이상 막히지 않는다 — 부분
@@ -153,14 +177,23 @@ public class AuthCommandService {
 		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
-	@Transactional(readOnly = true)
+	/**
+	 * Access Token 무효화 기록을 Refresh Token 삭제보다 먼저 한다.
+	 * 아웃박스 DB insert라 Redis 상태와 무관하게 항상 성공하므로,
+	 * 뒤이은 Refresh Token 삭제가 실패해도 이 기록만은 반드시 남아야 한다.
+	 * noRollbackFor로 그 실패가 이 기록까지 롤백시키지 않게 막는다.
+	 */
+	@Transactional(noRollbackFor = IllegalStateException.class)
 	public void logout(UUID callerId) {
-		refreshTokenRepository.deleteByUserId(callerId);
 		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
 		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
-		// 이 메서드는 DB 쓰기가 없는 읽기 전용 트랜잭션이라 롤백으로 무효화 시각만 앞서가는
-		// 문제가 없으므로, delete()와 달리 커밋 이후로 미룰 필요가 없다.
 		userInvalidationRepository.invalidate(callerId, Instant.now());
+
+		// 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태
+		// 재검증으로 방어가 안 된다 — Redis 삭제가 실패해도 성공으로 위장하면 안 되므로
+		// fail-open인 deleteByUserId() 대신 실패를 그대로 던지는 쪽을 쓴다.
+		refreshTokenRepository.deleteByUserIdOrThrow(callerId);
+
 		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
 	}
 
