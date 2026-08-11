@@ -80,4 +80,35 @@ class OrderInternalControllerTest {
 
 		then(orderCommandService).should().complete(orderId);
 	}
+
+	@Test
+	@DisplayName("업체와 엮인 주문 ID 를 목록으로 돌려준다")
+	void relatedOrderIds() throws Exception {
+		// given
+		UUID companyId = UUID.randomUUID();
+		UUID otherOrderId = UUID.randomUUID();
+		given(orderQueryService.getRelatedOrderIds(companyId))
+				.willReturn(List.of(orderId, otherOrderId));
+
+		// when & then
+		mockMvc.perform(get("/internal/v1/orders/related-order-ids")
+						.param("companyId", companyId.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.orderIds.length()").value(2))
+				.andExpect(jsonPath("$.data.orderIds[0]").value(orderId.toString()));
+	}
+
+	@Test
+	@DisplayName("엮인 주문이 없으면 빈 배열이다 — 404 가 아니다")
+	void relatedOrderIdsEmpty() throws Exception {
+		// given
+		UUID companyId = UUID.randomUUID();
+		given(orderQueryService.getRelatedOrderIds(companyId)).willReturn(List.of());
+
+		// when & then — 호출 측이 빈 결과로 다룰 수 있어야 한다
+		mockMvc.perform(get("/internal/v1/orders/related-order-ids")
+						.param("companyId", companyId.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.orderIds").isEmpty());
+	}
 }

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -61,6 +62,20 @@ public class OrderQueryService {
 	 * 검색 + 페이징.
 	 * 정렬 컬럼과 페이지 크기는 PageableUtil 화이트리스트로 제한한다.
 	 */
+	/**
+	 * 업체와 엮인 주문 ID 전체 (내부 API — delivery 의 COMPANY_MANAGER 배송 목록 필터용).
+	 *
+	 * <p>인가를 걸지 않는다. 내부 호출에는 사용자 토큰이 없고, 호출 측이 이미 자기 업체의
+	 * {@code companyId} 로만 물어보기 때문이다.
+	 */
+	public List<UUID> getRelatedOrderIds(UUID companyId) {
+		List<UUID> orderIds = orderQueryRepository.findRelatedOrderIds(companyId);
+
+		log.info("[주문] 업체 관련 주문 ID 조회(내부) : companyId={} count={}", companyId, orderIds.size());
+
+		return orderIds;
+	}
+
 	public Page<OrderSummaryResult> searchOrders(OrderSearchCondition condition, Pageable pageable,
 			JwtPrincipal principal) {
 		// 남의 주문이 목록에 섞이지 않도록 조건 단계에서 좁힌다
