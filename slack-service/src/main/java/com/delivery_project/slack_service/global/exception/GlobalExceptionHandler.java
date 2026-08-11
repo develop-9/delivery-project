@@ -69,6 +69,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException exception
+    ) {
+        log.warn(
+                "[IllegalArgumentException] {}",
+                exception.getMessage()
+        );
+
+        return createResponse(
+                ErrorCode.INVALID_INPUT_VALUE
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException exception
@@ -85,8 +99,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
-            MethodArgumentTypeMismatchException.class,
-            IllegalArgumentException.class
+            MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ErrorResponse> handleInvalidRequestException(
             Exception exception
@@ -97,7 +110,7 @@ public class GlobalExceptionHandler {
         );
 
         return createResponse(
-                ErrorCode.INVALID_REQUEST
+                ErrorCode.INVALID_INPUT_VALUE
         );
     }
 

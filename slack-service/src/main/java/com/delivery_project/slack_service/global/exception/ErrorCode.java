@@ -25,12 +25,6 @@ public enum ErrorCode {
             "INVALID_AI_HISTORY_SEARCH_CONDITION"
     ),
 
-    INVALID_REQUEST(
-            HttpStatus.BAD_REQUEST,
-            "요청 형식이 올바르지 않습니다.",
-            "INVALID_REQUEST"
-    ),
-
     // 401
     AUTH_UNAUTHORIZED(
             HttpStatus.UNAUTHORIZED,
