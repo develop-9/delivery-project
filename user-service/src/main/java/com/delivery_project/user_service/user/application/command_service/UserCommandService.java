@@ -5,9 +5,12 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
@@ -42,6 +45,7 @@ public class UserCommandService {
 	private final UserInvalidationRepository userInvalidationRepository;
 	private final DeliveryManagerPort deliveryManagerPort;
 	private final CallerResolver callerResolver;
+	private final PlatformTransactionManager transactionManager;
 
 	public UserUpdateMeResult updateMe(UUID callerId, UserUpdateMeCommand command) {
 		User caller = callerResolver.resolve(callerId);
@@ -102,6 +106,14 @@ public class UserCommandService {
 		return UserRejectResult.from(target);
 	}
 
+	/**
+	 * 클래스 레벨 @Transactional을 이 메서드에서만 명시적으로 비활성화한다(NOT_SUPPORTED).
+	 * syncDeleteDeliveryManager()의 동기 Feign 호출이 DB 트랜잭션 밖에서 실행되도록 하기 위함 —
+	 * delivery-service가 느리거나 다운되면 DB 커넥션을 붙잡은 채로 대기하게 되어 커넥션 풀
+	 * 고갈로 이어질 수 있고, Feign은 성공했는데 이후 DB 커밋이 실패하면 두 서비스 데이터가
+	 * 어긋난다. 실제 DB 쓰기(commitDelete)만 TransactionTemplate으로 별도 트랜잭션에 담는다.
+	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public UserDeleteResult delete(UUID callerId, UserDeleteCommand command) {
 		User caller = callerResolver.resolve(callerId);
 		if (!caller.isMaster()) {
@@ -122,7 +134,24 @@ public class UserCommandService {
 			syncDeleteDeliveryManager(target.getId());
 		}
 
-		target.delete(caller.getId());
+		UserDeleteResult result = new TransactionTemplate(transactionManager)
+				.execute(status -> commitDelete(command.targetUserId(), caller.getId()));
+
+		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", command.targetUserId(), caller.getId());
+
+		return result;
+	}
+
+	/**
+	 * delete()가 연 별도 트랜잭션 안에서만 실행되는 실제 DB 쓰기. Feign 호출 이후 다시 조회하는
+	 * 이유는, 트랜잭션 밖에서 읽은 target은 이 시점엔 이미 영속성 컨텍스트가 닫힌 detached
+	 * 상태라 여기서 그대로 변경 감지(dirty checking)에 태울 수 없기 때문이다.
+	 */
+	private UserDeleteResult commitDelete(UUID targetUserId, UUID callerId) {
+		User target = userCommandRepository.findById(targetUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		target.delete(callerId);
 		refreshTokenRepository.deleteByUserId(target.getId());
 		// Refresh Token 삭제만으로는 이미 발급된 Access Token까지 막지 못하므로, 무효화 시각을
 		// 별도로 기록해서 Gateway가 만료 전 토큰도 차단할 수 있게 한다(Gateway JWT 인증 필터 참고).
@@ -136,7 +165,6 @@ public class UserCommandService {
 				userInvalidationRepository.invalidate(targetId, invalidatedAt);
 			}
 		});
-		log.info("[User] 사용자 삭제 완료 targetUserId={} deletedBy={}", command.targetUserId(), caller.getId());
 
 		return UserDeleteResult.from(target);
 	}

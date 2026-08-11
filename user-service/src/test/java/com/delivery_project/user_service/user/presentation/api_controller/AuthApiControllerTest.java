@@ -277,7 +277,7 @@ class AuthApiControllerTest {
 	}
 
 	@Test
-	void 소프트_삭제된_사용자와_같은_username으로_재가입하면_500이_아니라_409를_반환한다() {
+	void 소프트_삭제된_사용자와_같은_username으로_재가입하면_새_계정으로_201을_반환한다() {
 		// given: 삭제 API가 아직 없어서 JDBC로 소프트 삭제 상태를 직접 재현
 		String signupBody = """
 				{
@@ -308,13 +308,16 @@ class AuthApiControllerTest {
 				}
 				""".formatted(UUID.randomUUID());
 
-		// when & then
+		// when & then: username/slack_id의 유일성은 삭제되지 않은 행에만 적용되는 부분 유니크
+		// 인덱스(UserTableIndexInitializer)라, 삭제된 사용자의 username 재사용은 더 이상 막히지 않는다.
 		assertThat(mvc.post().uri("/api/v1/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(reSignupBody))
-				.hasStatus(409)
+				.hasStatus(201)
 				.bodyJson()
-				.extractingPath("$.error.errorCode").isEqualTo("USER_DUPLICATE_USERNAME");
+				.extractingPath("$.data.approvalStatus").isEqualTo("PENDING");
+
+		assertThat(userCommandRepository.existsByUsername("softdel1")).isTrue();
 	}
 
 	@Test

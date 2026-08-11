@@ -2,7 +2,7 @@ package com.delivery_project.company_service.company.presentation.api_controller
 
 import com.delivery_project.company_service.company.application.command.CompanyCreateCommand;
 import com.delivery_project.company_service.company.application.command.CompanyDeleteCommand;
-import com.delivery_project.company_service.company.application.command.CompanyGetCommand;
+import com.delivery_project.company_service.company.application.query.CompanyGetQuery;
 import com.delivery_project.company_service.company.application.command.CompanyUpdateCommand;
 import com.delivery_project.company_service.company.application.command_service.CompanyCommandService;
 import com.delivery_project.company_service.company.application.query_service.CompanyQueryService;
@@ -317,7 +317,7 @@ class CompanyApiControllerTest {
             );
 
             when(companyQueryService.getCompany(
-                    any(CompanyGetCommand.class)
+                    any(CompanyGetQuery.class)
             )).thenReturn(result);
 
             // When & Then
@@ -363,7 +363,7 @@ class CompanyApiControllerTest {
             UUID companyId = UUID.randomUUID();
 
             when(companyQueryService.getCompany(
-                    any(CompanyGetCommand.class)
+                    any(CompanyGetQuery.class)
             )).thenThrow(
                     new BusinessException(ErrorCode.COMPANY_NOT_FOUND)
             );
@@ -393,7 +393,7 @@ class CompanyApiControllerTest {
             // Given
             UUID hubId = UUID.randomUUID();
 
-            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+            CompanySearchResult result = mock(CompanySearchResult.class);
 
             when(result.content())
                     .thenReturn(Collections.emptyList());
@@ -445,7 +445,7 @@ class CompanyApiControllerTest {
         void getAllCompany_success_withDefaultParameter() throws Exception {
 
             // Given
-            CompanyGetAllResult result = mock(CompanyGetAllResult.class);
+            CompanySearchResult result = mock(CompanySearchResult.class);
 
             when(result.content())
                     .thenReturn(Collections.emptyList());

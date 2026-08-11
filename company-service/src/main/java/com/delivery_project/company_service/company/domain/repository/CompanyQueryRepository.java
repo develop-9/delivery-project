@@ -13,4 +13,6 @@ public interface CompanyQueryRepository {
     Optional<Company> findById(UUID companyId);
 
     Page<Company> search(String name, CompanyType type, UUID hubId, Pageable pageable);
+
+    Boolean existsById(UUID companyId);
 }

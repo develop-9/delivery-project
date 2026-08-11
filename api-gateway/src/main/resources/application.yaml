@@ -8,6 +8,11 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: 6379
+      # 미설정 시 Redis가 죽으면 Lettuce가 재연결/큐잉을 계속 시도하며 커맨드가 거의
+      # 무한정 대기한다. RedisTokenBlacklistChecker가 이 타임아웃을 RedisCommandTimeoutException으로
+      # 받아 fail-open으로 넘어가므로, 값이 너무 크면 그동안 모든 인증 요청이 지연된다.
+      # 아래 httpclient 타임아웃(connect-timeout 2000ms)과 맞춘다.
+      timeout: 2000ms
   cloud:
     gateway:
       server:
@@ -35,6 +40,15 @@ eureka:
     prefer-ip-address: true
 
 management:
+  # 라우팅 디버깅용 — 실제 등록된 Route 상태를 /actuator/gateway/routes로 바로 확인할 수 있게 한다.
+  # (PR #61에서 Delivery 라우팅 추가 중 확인할 방법이 없어서 요청받음, 이슈 #65)
+  endpoint:
+    gateway:
+      access: read-only
+  endpoints:
+    web:
+      exposure:
+        include: health,gateway
   tracing:
     sampling:
       probability: 1.0

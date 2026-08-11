@@ -114,4 +114,29 @@ public class DeliveryManager extends BaseDeletableEntity {
 
         super.delete(deletedBy);
     }   // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
+
+    public void releaseFromDelivery() {
+        validateDelivering();
+        this.status = DeliveryManagerStatus.AVAILABLE;
+    }
+
+    private void validateDelivering() {
+        if (this.status != DeliveryManagerStatus.DELIVERING) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING
+            );
+        }
+    }
+
+    public void assignToDelivery() {
+        if (this.status != DeliveryManagerStatus.AVAILABLE) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_AVAILABLE
+            );
+        }
+
+        this.status = DeliveryManagerStatus.DELIVERING;
+    }
+
+
 }
