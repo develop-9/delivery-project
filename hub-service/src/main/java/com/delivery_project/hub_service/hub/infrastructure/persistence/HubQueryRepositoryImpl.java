@@ -53,6 +53,20 @@ public class HubQueryRepositoryImpl implements HubQueryRepository {
 		return springDataHubRepository.findByIdIn(hubIds);
 	}
 
+	/**
+	 * ID 컬럼만 프로젝션한다. {@code findAll()} 로 엔티티를 다 읽어 ID 만 뽑으면 쓰지 않을 객체가
+	 * 영속성 컨텍스트에 올라간다.
+	 *
+	 * <p>정렬을 걸지 않는다 — 호출 측은 ID 집합만 쓰고 순서에 의미가 없다 (03_internal.md 15번).
+	 */
+	@Override
+	public List<UUID> findAllIds() {
+		return queryFactory
+				.select(hub.id)
+				.from(hub)
+				.fetch();
+	}
+
 	@Override
 	public Page<Hub> search(HubSearchCondition condition, Pageable pageable) {
 		List<Hub> content = queryFactory

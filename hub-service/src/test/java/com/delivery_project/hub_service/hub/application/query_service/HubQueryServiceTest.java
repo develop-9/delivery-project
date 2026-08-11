@@ -24,16 +24,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 import com.delivery_project.hub_service.hub.application.query.HubBatchQuery;
+import com.delivery_project.hub_service.hub.application.result.HubIdsResult;
 import com.delivery_project.hub_service.hub.domain.repository.HubQueryRepository;
 
 /**
- * 내부 다건 조회의 요청 크기 상한 (03_internal.md 13번).
+ * 내부 조회 단위 테스트.
  *
- * <p>상한은 허브 개수가 아니라 설정값 {@code hub.internal.batch-max-size} 에서 온다.
- * 허브가 늘어도 이 값이 따라 바뀌지 않는다는 것을 여기서 고정한다.
+ * <p>다건 조회(13번)의 요청 크기 상한은 허브 개수가 아니라 설정값
+ * {@code hub.internal.batch-max-size} 에서 온다. 허브가 늘어도 이 값이 따라 바뀌지 않는다는 것을
+ * 여기서 고정한다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("HubQueryService - 다건 조회 요청 크기 상한")
+@DisplayName("HubQueryService - 내부 조회")
 class HubQueryServiceTest {
 
 	@Mock
@@ -158,6 +160,54 @@ class HubQueryServiceTest {
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
 
+			verify(hubQueryRepository, never()).findAllByIds(any());
+		}
+	}
+
+	@Nested
+	@DisplayName("전체 허브 ID 조회 (03_internal.md 15번)")
+	class GetHubIds {
+
+		@Test
+		@DisplayName("저장소가 준 ID 를 그대로 돌려준다")
+		void returnsAllIds() {
+			// given
+			HubQueryService hubQueryService = serviceWithLimit(100);
+			List<UUID> stored = hubIds(3);
+			when(hubQueryRepository.findAllIds()).thenReturn(stored);
+
+			// when
+			HubIdsResult result = hubQueryService.getHubIds();
+
+			// then
+			assertThat(result.hubIds()).containsExactlyInAnyOrderElementsOf(stored);
+		}
+
+		@Test
+		@DisplayName("허브가 하나도 없어도 예외가 아니라 빈 목록이다")
+		void emptyIsNotAnError() {
+			// given: 0건은 "조회 실패"가 아니라 "아직 허브가 없다"이고, 그 판단은 호출 측 몫이다
+			HubQueryService hubQueryService = serviceWithLimit(100);
+			when(hubQueryRepository.findAllIds()).thenReturn(List.of());
+
+			// when
+			HubIdsResult result = hubQueryService.getHubIds();
+
+			// then
+			assertThat(result.hubIds()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("ID 만 읽는다 — 엔티티를 통째로 읽지 않는다")
+		void doesNotLoadEntities() {
+			// given
+			HubQueryService hubQueryService = serviceWithLimit(100);
+			when(hubQueryRepository.findAllIds()).thenReturn(hubIds(2));
+
+			// when
+			hubQueryService.getHubIds();
+
+			// then
 			verify(hubQueryRepository, never()).findAllByIds(any());
 		}
 	}

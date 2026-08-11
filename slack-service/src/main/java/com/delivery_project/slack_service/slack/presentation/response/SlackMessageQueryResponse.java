@@ -26,7 +26,7 @@ public record SlackMessageQueryResponse(
             SlackMessageQueryResult result
     ) {
         return new SlackMessageQueryResponse(
-                result.id(),
+                result.slackMessageId(),
                 result.senderUserId(),
                 result.senderType(),
                 result.receiverUserId(),

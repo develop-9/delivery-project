@@ -8,8 +8,6 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.delivery_project.hub_service.global.security.JwtPrincipal;
-import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.global.exception.BusinessException;
 import com.delivery_project.hub_service.global.exception.ErrorCode;
 
@@ -29,7 +27,7 @@ import io.jsonwebtoken.security.Keys;
  * 모든 요청이 401 이 된다.
  */
 @Component
-public class JwtProvider {
+public class JwtTokenParser {
 
 	private static final String ROLE_CLAIM = "role";
 	private static final String BEARER_PREFIX = "Bearer ";
@@ -43,7 +41,7 @@ public class JwtProvider {
 	 * {@code Keys.hmacShaKeyFor} 가 내는 메시지만으로는 원인을 찾기 어렵다.
 	 * 인증이 전부 401 로 무너지는 것보다 뜨지 않는 편이 낫다.
 	 */
-	public JwtProvider(@Value("${jwt.secret}") String secret) {
+	public JwtTokenParser(@Value("${jwt.secret}") String secret) {
 		if (secret == null || secret.isBlank()) {
 			throw new IllegalStateException(
 					"jwt.secret 이 비어 있다. 루트 .env 의 JWT_SECRET 을 user-service 와 같은 값으로 채운다");
@@ -62,9 +60,10 @@ public class JwtProvider {
 	/**
 	 * 서명을 검증하고 클레임을 한 번만 읽어 {@code userId} · {@code role} 을 함께 돌려준다.
 	 *
-	 * <p>Refresh Token 에는 {@code role} 클레임이 없어 {@code role} 이 {@code null} 일 수 있다.
-	 * hub-service 는 Refresh Token 을 받을 일이 없지만, 잘못 온 토큰이 권한 없는 사용자로
-	 * 취급되도록 예외 대신 {@code null} 을 둔다.
+	 * <p>{@code role} 클레임이 없으면 예외 대신 {@code null} 을 둬서 권한 없는 사용자로 취급한다.
+	 * user-service 는 Access 와 Refresh 를 서로 다른 시크릿으로 서명하므로
+	 * ({@code jwt.secret} / {@code jwt.refresh-secret}) Refresh Token 은 여기 오면 서명 검증에서
+	 * 먼저 걸린다. 이 분기는 role 없는 Access Token 이 들어오는 경우에 대한 방어다.
 	 */
 	public JwtPrincipal parse(String token) {
 		Claims claims = parseClaims(token);
