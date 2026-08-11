@@ -74,7 +74,7 @@ class UserApiControllerTest {
 
 	@AfterEach
 	void cleanUpRefreshTokens() {
-		loggedInUserIds.forEach(refreshTokenRepository::deleteByUserId);
+		loggedInUserIds.forEach(refreshTokenRepository::deleteAllByUserId);
 	}
 
 	/**

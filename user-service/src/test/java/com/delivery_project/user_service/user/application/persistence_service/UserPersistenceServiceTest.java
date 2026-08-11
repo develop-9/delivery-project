@@ -153,7 +153,7 @@ class UserPersistenceServiceTest {
 		// then
 		assertThat(result.userId()).isEqualTo(target.getId());
 		assertThat(target.isDeleted()).isTrue();
-		verify(refreshTokenRepository).deleteByUserId(target.getId());
+		verify(refreshTokenRepository).deleteAllByUserId(target.getId());
 		verify(userInvalidationRepository).invalidate(
 				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}
@@ -227,7 +227,7 @@ class UserPersistenceServiceTest {
 
 		// then
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
-		verify(refreshTokenRepository).deleteByUserId(target.getId());
+		verify(refreshTokenRepository).deleteAllByUserId(target.getId());
 		verify(userInvalidationRepository).invalidate(
 				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
 	}

@@ -17,8 +17,10 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.delivery_project.user_service.global.security.JwtPrincipal;
 import com.delivery_project.user_service.user.application.port.CompanyPort;
 import com.delivery_project.user_service.user.application.port.HubPort;
+import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
@@ -50,6 +52,9 @@ class AuthApiControllerTest {
 
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Autowired
+	private TokenProvider tokenProvider;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -250,16 +255,19 @@ class AuthApiControllerTest {
 
 		try {
 			// when & then
-			assertThat(mvc.post().uri("/api/v1/auth/login")
+			MvcTestResult loginResult = mvc.post().uri("/api/v1/auth/login")
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(loginBody))
-					.hasStatus(200)
-					.bodyJson()
-					.extractingPath("$.data.accessToken").isNotNull();
+					.content(loginBody)
+					.exchange();
+			assertThat(loginResult).hasStatus(200);
+			JsonNode data = objectMapper.readTree(loginResult.getResponse().getContentAsString()).get("data");
+			UUID sessionId = tokenProvider.parseAccessToken(data.get("accessToken").asText()).sessionId();
 
-			assertThat(refreshTokenRepository.findByUserId(userId)).isPresent();
+			assertThat(refreshTokenRepository.existsByUserIdAndSessionId(userId, sessionId)).isTrue();
+		} catch (Exception e) {
+			throw new IllegalStateException("로그인 응답 파싱 실패", e);
 		} finally {
-			refreshTokenRepository.deleteByUserId(userId);
+			refreshTokenRepository.deleteAllByUserId(userId);
 		}
 	}
 
@@ -423,7 +431,7 @@ class AuthApiControllerTest {
 					.bodyJson()
 					.extractingPath("$.error.errorCode").isEqualTo("AUTH_TOKEN_EXPIRED");
 		} finally {
-			refreshTokenRepository.deleteByUserId(tokens.userId());
+			refreshTokenRepository.deleteAllByUserId(tokens.userId());
 		}
 	}
 
@@ -449,13 +457,14 @@ class AuthApiControllerTest {
 	void 정상_로그아웃시_204를_반환하고_RefreshToken이_삭제된다() {
 		// given
 		Tokens tokens = signupApprovedUserAndLogin("logoutuser", "U6666666666");
+		UUID sessionId = tokenProvider.parseAccessToken(tokens.accessToken()).sessionId();
 
 		// when & then
 		assertThat(mvc.post().uri("/api/v1/auth/logout")
 				.header("Authorization", "Bearer " + tokens.accessToken()))
 				.hasStatus(204);
 
-		assertThat(refreshTokenRepository.findByUserId(tokens.userId())).isEmpty();
+		assertThat(refreshTokenRepository.existsByUserIdAndSessionId(tokens.userId(), sessionId)).isFalse();
 	}
 
 	@Test
