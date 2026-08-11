@@ -5,6 +5,8 @@ import com.delivery_project.company_service.company.application.result.ProductDe
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
+import com.delivery_project.company_service.global.exception.BusinessException;
+import com.delivery_project.company_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,13 +57,19 @@ public class ProductPersistenceService {
     }
 
     @Transactional
-    public ProductUpdateResult updateProduct(Product product, UUID companyId, String name, Integer price) {
+    public ProductUpdateResult updateProduct(UUID productId, UUID companyId, String name, Integer price) {
+        // 상품 조회
+        Product product = validateProduct(productId);
+
         // 상품 정보 변경
         product.update(
                 companyId,
                 name,
                 price
         );
+
+        // 수정된 내용 저장
+        Product updatedProduct = productCommandRepository.save(product);
 
         log.info(
                 "상품 수정 완료. productId={}, updatedBy={}",
@@ -70,17 +78,23 @@ public class ProductPersistenceService {
         );
 
         // 결과 반환
-        return ProductUpdateResult.from(product);
+        return ProductUpdateResult.from(updatedProduct);
     }
 
     @Transactional
-    public ProductDeleteResult deleteProduct(Product product, UUID callerId) {
+    public ProductDeleteResult deleteProduct(UUID productId, UUID callerId) {
+        // 상품 조회
+        Product product = validateProduct(productId);
+
         // 상품의 재고 삭제 요청
         // TODO: Order Service 연동 후 주석 제거
         // orderPort.deleteInventory(product.getId());
 
         // 상품 제거
         product.delete(callerId);
+
+        // 삭제된 내용 저장
+        Product deletedProduct = productCommandRepository.save(product);
 
         log.info(
                 "상품 논리 삭제 완료. productId={}, deletedBy={}",
@@ -89,11 +103,18 @@ public class ProductPersistenceService {
         );
 
         // 결과 반환
-        return ProductDeleteResult.from(product);
+        return ProductDeleteResult.from(deletedProduct);
     }
 
     @Transactional(readOnly = true)
     public Optional<Product> getProductById(UUID productId) {
         return productCommandRepository.findById(productId);
+    }
+
+
+    // Validation Check - 상품 조회
+    private Product validateProduct(UUID productId) {
+        return productCommandRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 }

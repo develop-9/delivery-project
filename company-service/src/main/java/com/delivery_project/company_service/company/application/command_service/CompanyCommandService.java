@@ -151,7 +151,7 @@ public class CompanyCommandService {
 
         // 실제 DB 수정 시점부터 트랜잭션 시작
         return companyPersistenceService.updateCompany(
-                company,
+                company.getId(),
                 companyUpdateCommand.hubId(),
                 companyUpdateCommand.type(),
                 companyUpdateCommand.name(),
@@ -219,7 +219,7 @@ public class CompanyCommandService {
 
         // 실제 DB 논리 삭제 시점부터 트랜잭션 시작
         return companyPersistenceService.deleteCompany(
-                company,
+                company.getId(),
                 companyDeleteCommand.callerId()
         );
     }

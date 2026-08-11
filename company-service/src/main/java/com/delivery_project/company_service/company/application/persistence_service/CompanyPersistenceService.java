@@ -7,6 +7,8 @@ import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import com.delivery_project.company_service.company.domain.repository.ProductQueryRepository;
+import com.delivery_project.company_service.global.exception.BusinessException;
+import com.delivery_project.company_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,7 +57,10 @@ public class CompanyPersistenceService {
     }
 
     @Transactional
-    public CompanyUpdateResult updateCompany(Company company, UUID hubId, CompanyType type, String name, String address) {
+    public CompanyUpdateResult updateCompany(UUID companyId, UUID hubId, CompanyType type, String name, String address) {
+        // 업체 조회
+        Company company = validateCompany(companyId);
+
         // 업체 정보 수정
         company.update(
                 hubId,
@@ -64,6 +69,9 @@ public class CompanyPersistenceService {
                 address
         );
 
+        // 수정된 내용 저장
+        Company updatedCompany = companyCommandRepository.save(company);
+
         log.info(
                 "업체 수정 완료. companyId={}, updatedBy={}",
                 company.getId(),
@@ -71,11 +79,14 @@ public class CompanyPersistenceService {
         );
 
         // 결과 반환
-        return CompanyUpdateResult.from(company.getId());
+        return CompanyUpdateResult.from(updatedCompany.getId());
     }
 
     @Transactional
-    public CompanyDeleteResult deleteCompany(Company company, UUID callerId) {
+    public CompanyDeleteResult deleteCompany(UUID companyId, UUID callerId) {
+        // 업체 조회
+        Company company = validateCompany(companyId);
+
         productQueryRepository
                 // 업체가 가지고 있는 상품들 조회
                 .findByCompanyId(company.getId())
@@ -91,6 +102,9 @@ public class CompanyPersistenceService {
         // 업체 논리 삭제
         company.delete(callerId);
 
+        // 삭제된 내용 저장
+        Company deletedCompany = companyCommandRepository.save(company);
+
         log.info(
                 "업체 논리 삭제 완료. companyId={}, deletedBy={}",
                 company.getId(),
@@ -98,11 +112,18 @@ public class CompanyPersistenceService {
         );
 
         // 결과 반환
-        return CompanyDeleteResult.from(company.getId(), company.getDeletedAt());
+        return CompanyDeleteResult.from(deletedCompany.getId(), deletedCompany.getDeletedAt());
     }
 
     @Transactional(readOnly = true)
     public Optional<Company> getCompanyById(UUID companyId) {
         return companyCommandRepository.findById(companyId);
+    }
+
+
+    // Validation Check - 업체 조회
+    private Company validateCompany(UUID companyId) {
+        return companyCommandRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
     }
 }

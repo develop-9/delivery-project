@@ -174,7 +174,7 @@ public class ProductCommandService {
 
         // 실제 DB 수정 시점부터 트랜잭션 시작
         return productPersistenceService.updateProduct(
-                product,
+                product.getId(),
                 productUpdateCommand.companyId(),
                 productUpdateCommand.name(),
                 productUpdateCommand.price()
@@ -247,7 +247,7 @@ public class ProductCommandService {
 
         // 실제 DB 삭제 시점부터 트랜잭션 시작
         return productPersistenceService.deleteProduct(
-                product,
+                product.getId(),
                 productDeleteCommand.callerId()
         );
     }
