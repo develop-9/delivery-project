@@ -1,4 +1,4 @@
-package com.delivery_project.slack_service.ai_history.application.command_service;
+package com.delivery_project.slack_service.ai_history.application.persistence_service;
 
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.repository.AiHistoryCommandRepository;
@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class AiHistoryStatusCommandService {
+public class AiHistoryPersistenceService {
 
     private final AiHistoryCommandRepository aiHistoryCommandRepository;
     private final AiHistoryQueryRepository aiHistoryQueryRepository;

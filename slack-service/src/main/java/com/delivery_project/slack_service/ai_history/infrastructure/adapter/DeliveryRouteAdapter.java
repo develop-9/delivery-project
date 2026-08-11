@@ -1,7 +1,8 @@
-package com.delivery_project.slack_service.ai_history.infrastructure.external;
+package com.delivery_project.slack_service.ai_history.infrastructure.adapter;
 
-import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
+import com.delivery_project.slack_service.ai_history.infrastructure.client.delivery.DeliveryRouteFeignClient;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import feign.FeignException;
@@ -14,8 +15,8 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class DeliveryRouteClientImpl
-        implements DeliveryRouteClient {
+public class DeliveryRouteAdapter
+        implements DeliveryRoutePort {
 
     private final DeliveryRouteFeignClient deliveryRouteFeignClient;
 

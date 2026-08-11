@@ -1,13 +1,15 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
-import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
-import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
-import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
+import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
+import com.delivery_project.slack_service.ai_history.support.ai.AiPromptGenerator;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -20,22 +22,22 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiHistoryCommandService {
 
-    private final OrderSummaryClient orderSummaryClient;
-    private final DeliveryRouteClient deliveryRouteClient;
-    private final AiGenerationClient aiGenerationClient;
+    private final OrderSummaryPort orderSummaryPort;
+    private final DeliveryRoutePort deliveryRoutePort;
+    private final AiGeneratePort aiGeneratePort;
     private final AiPromptGenerator aiPromptGenerator;
-    private final AiHistoryStatusCommandService aiHistoryStatusCommandService;
+    private final AiHistoryPersistenceService aiHistoryPersistenceService;
 
     public AiHistoryCreateResult create(
             AiHistoryCreateCommand command
     ) {
         OrderSummaryResult orderSummary =
-                orderSummaryClient.getOrderSummary(
+                orderSummaryPort.getOrderSummary(
                         command.orderId()
                 );
 
         DeliveryRouteResult deliveryRoute =
-                deliveryRouteClient.getRoutesByOrderId(
+                deliveryRoutePort.getRoutesByOrderId(
                         command.orderId()
                 );
 
@@ -50,7 +52,7 @@ public class AiHistoryCommandService {
         Instant requestedAt = Instant.now();
 
         UUID aiHistoryId =
-                aiHistoryStatusCommandService.createPending(
+                aiHistoryPersistenceService.createPending(
                         command.orderId(),
                         prompt,
                         requestedAt
@@ -60,7 +62,7 @@ public class AiHistoryCommandService {
 
         try {
             generationResult =
-                    aiGenerationClient
+                    aiGeneratePort
                             .generateFinalDispatchDeadline(
                                     prompt
                             );
@@ -83,7 +85,7 @@ public class AiHistoryCommandService {
         }
 
         return AiHistoryCreateResult.from(
-                aiHistoryStatusCommandService.complete(
+                aiHistoryPersistenceService.complete(
                         aiHistoryId,
                         generationResult.modelName(),
                         generationResult.finalDispatchDeadline(),
@@ -109,7 +111,7 @@ public class AiHistoryCommandService {
             UUID aiHistoryId,
             String modelName
     ) {
-        aiHistoryStatusCommandService.fail(
+        aiHistoryPersistenceService.fail(
                 aiHistoryId,
                 modelName,
                 Instant.now()

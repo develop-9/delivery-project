@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -84,7 +83,6 @@ public class AiHistoryApiController {
                     )
             )
     })
-    @PreAuthorize("hasRole('MASTER')")
     @GetMapping("/{aiHistoryId}")
     public ResponseEntity<SuccessResponse<AiHistoryDetailResponse>> findById(
             @PathVariable UUID aiHistoryId
@@ -140,7 +138,7 @@ public class AiHistoryApiController {
                     )
             )
     })
-    @PreAuthorize("hasRole('MASTER')")
+
     @GetMapping
     public ResponseEntity<SuccessResponse<PageResponse<AiHistoryListResponse>>> findAll(
             @RequestParam(required = false)

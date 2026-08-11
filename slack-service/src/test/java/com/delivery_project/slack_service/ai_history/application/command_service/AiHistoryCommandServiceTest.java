@@ -1,15 +1,17 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
-import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
-import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
-import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
+import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
+import com.delivery_project.slack_service.ai_history.support.ai.AiPromptGenerator;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -33,19 +35,19 @@ import static org.mockito.Mockito.*;
 class AiHistoryCommandServiceTest {
 
     @Mock
-    private OrderSummaryClient orderSummaryClient;
+    private OrderSummaryPort orderSummaryPort;
 
     @Mock
-    private DeliveryRouteClient deliveryRouteClient;
+    private DeliveryRoutePort deliveryRoutePort;
 
     @Mock
-    private AiGenerationClient aiGenerationClient;
+    private AiGeneratePort aiGeneratePort;
 
     @Mock
     private AiPromptGenerator aiPromptGenerator;
 
     @Mock
-    private AiHistoryStatusCommandService aiHistoryPersistenceService;
+    private AiHistoryPersistenceService aiHistoryPersistenceService;
 
     @InjectMocks
     private AiHistoryCommandService aiHistoryCommandService;
@@ -76,10 +78,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoute.routes())
                 .thenReturn(List.of(route));
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(aiPromptGenerator.generate(orderSummary, deliveryRoute))
@@ -91,7 +93,7 @@ class AiHistoryCommandServiceTest {
                 any(Instant.class)
         )).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient.generateFinalDispatchDeadline(prompt))
+        when(aiGeneratePort.generateFinalDispatchDeadline(prompt))
                 .thenReturn(
                         new AiGenerationResult(
                                 "gemini-2.5-flash",
@@ -118,15 +120,15 @@ class AiHistoryCommandServiceTest {
         // then
         assertThat(result).isNotNull();
 
-        verify(orderSummaryClient).getOrderSummary(orderId);
-        verify(deliveryRouteClient).getRoutesByOrderId(orderId);
+        verify(orderSummaryPort).getOrderSummary(orderId);
+        verify(deliveryRoutePort).getRoutesByOrderId(orderId);
         verify(aiPromptGenerator).generate(orderSummary, deliveryRoute);
         verify(aiHistoryPersistenceService).createPending(
                 eq(orderId),
                 eq(prompt),
                 any(Instant.class)
         );
-        verify(aiGenerationClient).generateFinalDispatchDeadline(prompt);
+        verify(aiGeneratePort).generateFinalDispatchDeadline(prompt);
         verify(aiHistoryPersistenceService).complete(
                 eq(aiHistoryId),
                 eq("gemini-2.5-flash"),
@@ -162,10 +164,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoute.routes())
                 .thenReturn(List.of(route));
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(aiPromptGenerator.generate(orderSummary, deliveryRoute))
@@ -177,7 +179,7 @@ class AiHistoryCommandServiceTest {
                 any(Instant.class)
         )).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient.generateFinalDispatchDeadline(prompt))
+        when(aiGeneratePort.generateFinalDispatchDeadline(prompt))
                 .thenThrow(
                         new BusinessException(
                                 ErrorCode.AI_REQUEST_FAILED
@@ -212,10 +214,10 @@ class AiHistoryCommandServiceTest {
         OrderSummaryResult orderSummary = mock(OrderSummaryResult.class);
         DeliveryRouteResult deliveryRoute = mock(DeliveryRouteResult.class);
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(deliveryRoute.routes())
@@ -233,7 +235,7 @@ class AiHistoryCommandServiceTest {
         verify(aiHistoryPersistenceService, never())
                 .createPending(any(), any(), any());
 
-        verify(aiGenerationClient, never())
+        verify(aiGeneratePort, never())
                 .generateFinalDispatchDeadline(any());
     }
 }

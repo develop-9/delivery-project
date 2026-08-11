@@ -1,4 +1,4 @@
-package com.delivery_project.slack_service.ai_history.application.command_service;
+package com.delivery_project.slack_service.ai_history.support.ai;
 
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;

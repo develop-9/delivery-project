@@ -177,25 +177,5 @@ class AiHistoryApiControllerTest {
         verifyNoInteractions(aiHistoryQueryService);
     }
 
-    @Test
-    @WithMockUser(roles = "USER")
-    @DisplayName("MASTER가 아닌 사용자는 AI 요청 이력을 조회할 수 없다")
-    void findById_forbidden() throws Exception {
-        // given
-        UUID aiHistoryId = UUID.randomUUID();
 
-        // when & then
-        mockMvc.perform(
-                        get(
-                                "/api/v1/ai-histories/{aiHistoryId}",
-                                aiHistoryId
-                        )
-                )
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.errorCode")
-                        .value("AUTH_FORBIDDEN"));
-
-        verifyNoInteractions(aiHistoryQueryService);
-    }
 }

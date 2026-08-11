@@ -4,7 +4,7 @@ import com.delivery_project.slack_service.ai_history.application.result.Delivery
 
 import java.util.UUID;
 
-public interface DeliveryRouteClient {
+public interface DeliveryRoutePort {
 
     DeliveryRouteResult getRoutesByOrderId(
             UUID orderId

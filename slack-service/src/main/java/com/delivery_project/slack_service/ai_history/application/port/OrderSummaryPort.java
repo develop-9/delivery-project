@@ -4,7 +4,7 @@ import com.delivery_project.slack_service.ai_history.application.result.OrderSum
 
 import java.util.UUID;
 
-public interface OrderSummaryClient {
+public interface OrderSummaryPort {
 
     OrderSummaryResult getOrderSummary(
             UUID orderId

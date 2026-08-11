@@ -1,7 +1,8 @@
-package com.delivery_project.slack_service.ai_history.infrastructure.external;
+package com.delivery_project.slack_service.ai_history.infrastructure.adapter;
 
-import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
+import com.delivery_project.slack_service.ai_history.infrastructure.client.order.OrderSummaryFeignClient;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import feign.FeignException;
@@ -12,8 +13,8 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class OrderSummaryClientImpl
-        implements OrderSummaryClient {
+public class OrderSummaryAdapter
+        implements OrderSummaryPort {
 
     private static final String INCLUDE_OPTIONS =
             "snapshot,requester";

@@ -1,7 +1,5 @@
-package com.delivery_project.slack_service.ai_history.infrastructure.external;
+package com.delivery_project.slack_service.ai_history.infrastructure.client.gemini;
 
-import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
-import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,8 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class GeminiAiGenerationClient
-        implements AiGenerationClient {
+public class GeminiClient {
 
     private static final Pattern INSTANT_PATTERN =
             Pattern.compile(
@@ -30,7 +27,7 @@ public class GeminiAiGenerationClient
     private final String apiKey;
     private final String modelName;
 
-    public GeminiAiGenerationClient(
+    public GeminiClient(
             RestClient.Builder restClientBuilder,
             @Value(
                     "${gemini.base-url:"
@@ -50,8 +47,7 @@ public class GeminiAiGenerationClient
         this.modelName = modelName;
     }
 
-    @Override
-    public AiGenerationResult generateFinalDispatchDeadline(
+    public GeminiGenerationResponse generateFinalDispatchDeadline(
             String prompt
     ) {
         validateApiKey();
@@ -82,6 +78,7 @@ public class GeminiAiGenerationClient
                     .body(request)
                     .retrieve()
                     .body(GeminiResponse.class);
+
         } catch (RestClientException exception) {
             throw new BusinessException(
                     ErrorCode.AI_REQUEST_FAILED
@@ -94,7 +91,7 @@ public class GeminiAiGenerationClient
         Instant finalDispatchDeadline =
                 parseFinalDispatchDeadline(responseText);
 
-        return new AiGenerationResult(
+        return new GeminiGenerationResponse(
                 modelName,
                 finalDispatchDeadline
         );
@@ -134,23 +131,21 @@ public class GeminiAiGenerationClient
             );
         }
 
-        String text =
-                candidate.content()
-                        .parts()
-                        .stream()
-                        .map(ResponsePart::text)
-                        .filter(value ->
-                                value != null
-                                        && !value.isBlank()
+        return candidate.content()
+                .parts()
+                .stream()
+                .map(ResponsePart::text)
+                .filter(value ->
+                        value != null
+                                && !value.isBlank()
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.AI_RESPONSE_PARSE_FAILED
                         )
-                        .findFirst()
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.AI_RESPONSE_PARSE_FAILED
-                                )
-                        );
-
-        return text.trim();
+                )
+                .trim();
     }
 
     private Instant parseFinalDispatchDeadline(
@@ -169,11 +164,18 @@ public class GeminiAiGenerationClient
             return Instant.parse(
                     matcher.group()
             );
+
         } catch (DateTimeParseException exception) {
             throw new BusinessException(
                     ErrorCode.AI_RESPONSE_PARSE_FAILED
             );
         }
+    }
+
+    public record GeminiGenerationResponse(
+            String modelName,
+            Instant finalDispatchDeadline
+    ) {
     }
 
     private record GeminiRequest(
