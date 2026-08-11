@@ -24,19 +24,22 @@ jobs:
     # GitHub Actions가 실행될 서버 환경
     runs-on: ubuntu-latest
 
-    # Order Service는 JPA/Redis를 쓰기 때문에 테스트가 Spring Context를 띄울 때
-    # 실제 연결 가능한 DB/Redis가 필요함 (eureka-server와 다른 점)
+    # 현재 테스트는 @DataJpaTest(H2 로 대체)와 smoke 프로파일이라 실제 DB/Redis 없이도 통과한다.
+    # Postgres 실물이 필요한 테스트(부분 인덱스·CHECK 제약 검증 등)를 붙일 때를 위해 컨테이너는 유지한다.
+    # DB 이름은 팀 확정값 delivery_db, 스키마는 order_schema 로 전 환경(로컬·CI)을 맞춘다.
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: order
+          POSTGRES_DB: delivery_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
+        # DB 이름까지 확인한다. pg_isready 만 쓰면 서버가 떴는지만 보고
+        # delivery_db 가 안 만들어진 상태로도 다음 스텝이 진행된다.
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d delivery_db"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -76,12 +79,25 @@ jobs:
       - name: Gradle 실행 권한 부여
         run: chmod +x gradlew
 
-      # 5. Application Build 및 Test 실행
+      # 5. Order Service 스키마 생성
+      # Hibernate는 CREATE SCHEMA를 내지 않으므로 스키마는 미리 만들어야 한다.
+      # 로컬은 docker/postgres/init.sql이, CI는 이 스텝이 담당한다.
+      # psql은 ubuntu-latest 러너에 기본 설치돼 있다.
+      - name: Order Schema 생성
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost \
+            -U postgres \
+            -d delivery_db \
+            -c "CREATE SCHEMA IF NOT EXISTS order_schema;"
+
+      # 6. Application Build 및 Test 실행
       # application.yaml의 DB 접속값은 기본값이 없으므로 여기서 명시적으로 주입한다.
       # services.postgres.env는 컨테이너 내부 설정이라 러너 프로세스에는 전달되지 않음
       - name: Order Service 빌드 및 테스트
         env:
-          POSTGRES_DB: order
+          POSTGRES_DB: delivery_db
           POSTGRES_USERNAME: postgres
           POSTGRES_PASSWORD: postgres
           # CI에는 Zipkin 수집기가 없으므로 트레이스 전송을 끔
@@ -89,7 +105,7 @@ jobs:
 
         run: ./gradlew build --no-daemon
 
-      # 6. 테스트 실패 시 결과 업로드
+      # 7. 테스트 실패 시 결과 업로드
       - name: 테스트 리포트 업로드
         if: failure()
         uses: actions/upload-artifact@v4

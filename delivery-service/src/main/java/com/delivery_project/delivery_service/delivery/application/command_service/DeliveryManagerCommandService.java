@@ -1,41 +1,50 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDeleteResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.command.*;
+import com.delivery_project.delivery_service.delivery.application.port.HubPort;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
+import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerCommandRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryManagerSequenceCommandRepository;
+import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
 import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import jakarta.transaction.Transactional;
-import org.hibernate.exception.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class DeliveryManagerCommandService {
-    private final DeliveryManagerCommandRepository
-            deliveryManagerCommandRepository;
+    private final DeliveryManagerCommandRepository deliveryManagerCommandRepository;
+    private final DeliveryManagerSequenceCommandRepository deliveryManagerSequenceCommandRepository;
+    private final DeliveryCommandRepository deliveryCommandRepository;
+    private final DeliveryRouteCommandRepository deliveryRouteCommandRepository;
+    private final HubPort hubPort;
+
     @Value("${system.id}")
     private UUID systemId;
 
     public DeliveryManagerCreateResult create(
             DeliveryManagerCreateCommand command
     ){
+        validateManagePermission(command.requesterRole());
+
+        if (command.type() == DeliveryManagerType.COMPANY_DELIVERY) {
+            hubPort.validateHubExists(command.hubId());
+        }
+
         validateDuplicateUser(command);
 
         int nextSequence = calculateNextSequence(command);
@@ -58,51 +67,11 @@ public class DeliveryManagerCommandService {
         }
     }
 
-    private void validateDuplicateUser(
-            DeliveryManagerCreateCommand command
-    ){
-        boolean alreadyExists =
-                deliveryManagerCommandRepository.existsByUserId(command.userId());
-
-        if (alreadyExists) {
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
-            );
-        }
-    }
-
-    private int calculateNextSequence(
-            DeliveryManagerCreateCommand command
-    ) {
-        return calculateNextSequence(
-                command.hubId(),
-                command.type()
-        );
-    }
-
-    private int calculateNextSequence(
-            UUID hubId,
-            DeliveryManagerType type
-    ) {
-        Optional<Integer> maxSequence;
-
-        if (type == DeliveryManagerType.HUB_DELIVERY) {
-            maxSequence =
-                    deliveryManagerCommandRepository.findMaxSequenceByType(type);
-        } else {
-            maxSequence =
-                    deliveryManagerCommandRepository.findMaxSequenceByHubIdAndType(
-                            hubId,
-                            type
-                    );
-        }
-
-        return maxSequence.orElse(-1) + 1;
-    }
-
     public DeliveryManagerUpdateResult update(
             DeliveryManagerUpdateCommand command
     ) {
+        validateManagePermission(command.requesterRole());
+
         validateUpdateRequest(command);
 
         DeliveryManager deliveryManager =
@@ -133,9 +102,9 @@ public class DeliveryManagerCommandService {
                         updatedHubId
                 );
 
-        // TODO: COMPANY_DELIVERY인 경우 Hub Service에서
-        //       updatedHubId 존재 여부를 검증한다.
-        //       존재하지 않으면 BusinessException(ErrorCode.HUB_NOT_FOUND) 발생
+        if (updatedType == DeliveryManagerType.COMPANY_DELIVERY) {
+            hubPort.validateHubExists(updatedHubId);
+        }
 
         deliveryManager.update(
                 updatedHubId,
@@ -152,6 +121,134 @@ public class DeliveryManagerCommandService {
         }
 
         return DeliveryManagerUpdateResult.from(deliveryManager);
+    }
+
+    public DeliveryManagerDeleteResult delete(
+            DeliveryManagerDeleteCommand command
+    ){
+        validateManagePermission(command.requesterRole());
+
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository.findById(command.managerId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        validateNoActiveAssignment(deliveryManager);
+
+        deliveryManager.deleteManager(command.deletedBy());
+
+        return DeliveryManagerDeleteResult.from(deliveryManager);
+    }
+
+    public DeliveryManagerInternalDeleteResult deleteByUserId(
+            DeliveryManagerInternalDeleteCommand command
+    ) {
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository.findByUserId(command.userId())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        validateNoActiveAssignment(deliveryManager);
+
+        deliveryManager.deleteManager(systemId);
+
+        return DeliveryManagerInternalDeleteResult.from(
+                deliveryManager
+        );
+    }
+
+    public DeliveryManagerActiveStatusResult deactivate(
+            DeliveryManagerDeactivateCommand command
+    ){
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findByUserIdForUpdate(command.userId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        deliveryManager.deactivate();
+
+        return DeliveryManagerActiveStatusResult.from(
+                deliveryManager
+        );
+    }
+
+    public DeliveryManagerActiveStatusResult reactivate(
+            DeliveryManagerReactivateCommand command
+    ){
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findByUserIdForUpdate(command.userId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+        deliveryManager.reactivate();
+
+        return DeliveryManagerActiveStatusResult.from(
+                deliveryManager
+        );
+    }
+
+    private void validateDuplicateUser(
+            DeliveryManagerCreateCommand command
+    ){
+        boolean alreadyExists =
+                deliveryManagerCommandRepository.existsByUserId(command.userId());
+
+        if (alreadyExists) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
+            );
+        }
+    }
+
+    private int calculateNextSequence(
+            DeliveryManagerCreateCommand command
+    ) {
+        return calculateNextSequence(
+                command.hubId(),
+                command.type()
+        );
+    }
+
+    private int calculateNextSequence(
+            UUID hubId,
+            DeliveryManagerType type
+    ) {
+        UUID sequenceHubId =
+                type == DeliveryManagerType.HUB_DELIVERY
+                ? null : hubId;
+
+        deliveryManagerSequenceCommandRepository
+                .createIfAbsent(
+                        type,
+                        sequenceHubId
+                );
+
+        DeliveryManagerSequence sequence =
+                deliveryManagerSequenceCommandRepository
+                        .findForUpdate(
+                                type,
+                                sequenceHubId
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_SEQUENCE_CONFLICT
+                                )
+                        );
+
+        return sequence.issueNextSequence();
     }
 
     private void validateUpdateRequest(
@@ -179,48 +276,6 @@ public class DeliveryManagerCommandService {
                 : deliveryManager.getHubId();
     }
 
-    public DeliveryManagerDeleteResult delete(
-            DeliveryManagerDeleteCommand command
-    ){
-        DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findById(command.managerId())
-                        .orElseThrow(()->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
-                                )
-                        );
-        // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
-        // 존재하면 ACTIVE_DELIVERY_EXISTS 예외 발생
-
-        deliveryManager.deleteManager(command.deletedBy());
-
-        return DeliveryManagerDeleteResult.from(deliveryManager);
-    }
-
-    public DeliveryManagerInternalDeleteResult deleteByUserId(
-            DeliveryManagerInternalDeleteCommand command
-    ) {
-        DeliveryManager deliveryManager =
-                deliveryManagerCommandRepository.findByUserId(command.userId())
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
-                                )
-                        );
-
-        /*
-         * TODO:
-         * Delivery / DeliveryRoute 구현 후
-         * 진행 중인 배송 배정 여부 검증
-         */
-
-        deliveryManager.deleteManager(systemId);
-
-        return DeliveryManagerInternalDeleteResult.from(
-                deliveryManager
-        );
-    }
-
     private BusinessException convertDataIntegrityException(
             DataIntegrityViolationException exception
     ) {
@@ -245,6 +300,48 @@ public class DeliveryManagerCommandService {
 
         return new BusinessException(
                 ErrorCode.DELIVERY_MANAGER_ALREADY_EXISTS
+        );
+    }
+
+    private void validateNoActiveAssignment(
+            DeliveryManager deliveryManager
+    ) {
+        boolean activeAssignmentExists;
+
+        if (deliveryManager.getType()
+                == DeliveryManagerType.COMPANY_DELIVERY) {
+
+            activeAssignmentExists =
+                    deliveryCommandRepository
+                            .existsActiveByCompanyDeliveryManagerId(
+                                    deliveryManager.getId()
+                            );
+
+        } else {
+            activeAssignmentExists =
+                    deliveryRouteCommandRepository
+                            .existsInTransitByDeliveryManagerId(
+                                    deliveryManager.getId()
+                            );
+        }
+
+        if (activeAssignmentExists) {
+            throw new BusinessException(
+                    ErrorCode.ACTIVE_DELIVERY_EXISTS
+            );
+        }
+    }
+
+    private void validateManagePermission(
+            Role requesterRole
+    ) {
+        if (requesterRole == Role.MASTER
+                || requesterRole == Role.HUB_MANAGER) {
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.MANAGE_DELIVERY_MANAGER_FORBIDDEN
         );
     }
 }

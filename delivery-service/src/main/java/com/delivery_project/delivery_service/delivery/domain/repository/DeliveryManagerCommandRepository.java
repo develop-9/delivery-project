@@ -1,7 +1,6 @@
 package com.delivery_project.delivery_service.delivery.domain.repository;
 
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
-import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -16,12 +15,20 @@ public interface DeliveryManagerCommandRepository {
 
     Optional<DeliveryManager> findByUserId(UUID userId);
 
-    Optional<Integer> findMaxSequenceByType(
-            DeliveryManagerType type
+    Optional<DeliveryManager> findByUserIdForUpdate(UUID userId);
+
+    Optional<DeliveryManager> findNextAvailableHubManager(
+            Integer lastAssignedSequence
     );
 
-    Optional<Integer> findMaxSequenceByHubIdAndType(
+    Optional<DeliveryManager> findFirstAvailableHubManager();
+
+    Optional<DeliveryManager> findNextAvailableCompanyManager(
             UUID hubId,
-            DeliveryManagerType type
+            Integer lastAssignedSequence
+    );
+
+    Optional<DeliveryManager> findFirstAvailableCompanyManager(
+            UUID hubId
     );
 }

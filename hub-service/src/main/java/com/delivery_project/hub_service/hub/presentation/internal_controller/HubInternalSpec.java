@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.delivery_project.hub_service.global.response.SuccessResponse;
 import com.delivery_project.hub_service.hub.presentation.response.internal.HubBatchResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubIdsResponse;
 import com.delivery_project.hub_service.hub.presentation.response.internal.HubSummaryResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,22 @@ public interface HubInternalSpec {
 			@ApiResponse(responseCode = "404", description = "HUB_NOT_FOUND — 없거나 논리 삭제됨")
 	})
 	ResponseEntity<SuccessResponse<HubSummaryResponse>> getHub(UUID hubId);
+
+	@Operation(
+			summary = "전체 허브 ID 조회 (내부)",
+			description = """
+					살아 있는 허브의 ID 를 전부 돌려준다. Order 가 재고를 등록할 때
+					모든 허브에 행을 만들어야 해서 호출한다.
+
+					ID 만 내려간다. 허브명·좌표가 필요하면 이 응답의 ID 로 13번 다건 조회를 부른다.
+					순서는 보장하지 않는다.
+
+					허브가 하나도 없으면 404 가 아니라 200 + 빈 배열이다."""
+	)
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "조회 성공 (0건이면 빈 배열)")
+	})
+	ResponseEntity<SuccessResponse<HubIdsResponse>> getHubIds();
 
 	@Operation(
 			summary = "허브 다건 조회 (내부)",

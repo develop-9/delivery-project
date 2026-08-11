@@ -33,7 +33,7 @@ import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
-import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
+import com.delivery_project.hub_service.hub.application.port.HubCachePort;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
@@ -55,7 +55,7 @@ class HubCommandServiceTest {
 	private HubRouteCommandRepository hubRouteCommandRepository;
 
 	@Mock
-	private HubCacheEvictor HubCacheEvictor;
+	private HubCachePort hubCachePort;
 
 	@InjectMocks
 	private HubCommandService hubCommandService;
@@ -269,8 +269,8 @@ class HubCommandServiceTest {
 			hubCommandService.update(CALLER_ID, command);
 
 			// then: 자기 키만 지우면 하위 허브 캐시에 옛 이름이 남는다
-			verify(HubCacheEvictor).evictAllHubs();
-			verify(HubCacheEvictor).evictAllHubPaths();
+			verify(hubCachePort).evictAllHubs();
+			verify(hubCachePort).evictAllHubPaths();
 		}
 
 		@Test
@@ -323,8 +323,8 @@ class HubCommandServiceTest {
 			assertThat(outbound.isDeleted()).isTrue();
 			assertThat(inbound.isDeleted()).isTrue();
 
-			verify(HubCacheEvictor).evictAllHubs();
-			verify(HubCacheEvictor).evictAllHubPaths();
+			verify(hubCachePort).evictAllHubs();
+			verify(hubCachePort).evictAllHubPaths();
 		}
 
 		@Test

@@ -6,8 +6,11 @@ import java.util.UUID;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.delivery_project.user_service.global.common.BaseDeletableEntity;
+import com.delivery_project.user_service.user.infrastructure.persistence.converter.NameConverter;
+import com.delivery_project.user_service.user.infrastructure.persistence.converter.SlackIdConverter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -33,7 +36,7 @@ public class User extends BaseDeletableEntity {
 	private UUID id;
 
 	// username/slack_id의 유일성은 Hibernate가 관리하는 전체 테이블 UNIQUE 제약이 아니라,
-	// deleted_at IS NULL 조건의 부분 유니크 인덱스(UserTableIndexInitializer)로 강제한다.
+	// deleted_at IS NULL 조건의 부분 유니크 인덱스(UserTableSchemaInitializer)로 강제한다.
 	// 전체 테이블 제약이면 Soft Delete된 행까지 유일성 검사에 포함되어 탈퇴한 사용자의 값을
 	// 영구히 재사용할 수 없다.
 	@Column(name = "username", nullable = false, length = 50)
@@ -42,10 +45,14 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "password", nullable = false, length = 255)
 	private String password;
 
-	@Column(name = "name", nullable = false, length = 100)
+	// name/slack_id는 AttributeConverter로 저장 시 AES-256-GCM 암호화된다(AesGcmCipher 참고).
+	// 컬럼 길이는 원문보다 암호문(IV+태그 포함, Base64)이 더 길어지는 걸 감안해 넉넉히 잡는다.
+	@Convert(converter = NameConverter.class)
+	@Column(name = "name", nullable = false, length = 255)
 	private String name;
 
-	@Column(name = "slack_id", nullable = false, length = 100)
+	@Convert(converter = SlackIdConverter.class)
+	@Column(name = "slack_id", nullable = false, length = 255)
 	private String slackId;
 
 	@Enumerated(EnumType.STRING)
@@ -109,6 +116,20 @@ public class User extends BaseDeletableEntity {
 			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
 		}
 		this.approvalStatus = ApprovalStatus.REJECTED;
+	}
+
+	public void suspend() {
+		if (this.approvalStatus != ApprovalStatus.APPROVED) {
+			throw new IllegalStateException("승인된 사용자만 정지할 수 있습니다.");
+		}
+		this.approvalStatus = ApprovalStatus.SUSPENDED;
+	}
+
+	public void reinstate() {
+		if (this.approvalStatus != ApprovalStatus.SUSPENDED) {
+			throw new IllegalStateException("정지된 사용자만 정지 해제할 수 있습니다.");
+		}
+		this.approvalStatus = ApprovalStatus.APPROVED;
 	}
 
 	public void updateProfile(String name, String slackId) {

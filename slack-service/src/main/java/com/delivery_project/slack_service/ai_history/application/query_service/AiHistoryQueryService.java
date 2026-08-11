@@ -9,6 +9,7 @@ import com.delivery_project.slack_service.global.common.PageData;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class AiHistoryQueryService {
 
     private final AiHistoryQueryRepository aiHistoryQueryRepository;
 
+    @PreAuthorize("hasRole('MASTER')")
     public AiHistoryDetailResult findById(
             UUID aiHistoryId
     ) {
@@ -53,6 +55,7 @@ public class AiHistoryQueryService {
         return AiHistoryDetailResult.from(aiHistory);
     }
 
+    @PreAuthorize("hasRole('MASTER')")
     public PageData<AiHistoryListResult> findAll(
             AiHistorySearchQuery query
     ) {

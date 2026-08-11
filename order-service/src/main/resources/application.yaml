@@ -1,22 +1,50 @@
 server:
-  port: 9004
+  port: ${SERVER_PORT:9004}
 
 spring:
   application:
     name: order-service
+
+  # 호스트에서 직접 띄울 때만 쓰인다. 저장소 루트의 .env 를 프로퍼티로 읽는다.
+  # 실행 위치가 저장소 루트일 수도, order-service 일 수도 있어 두 경로를 모두 건다.
+  # 컨테이너에는 .env 파일이 없고 compose 의 env_file · environment 가 값을 넣으므로 무관하다.
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+
+  # 프로파일 기본값을 두지 않는다. 기본값이 있으면 배포 때 SPRING_PROFILES_ACTIVE 를
+  # 빼먹어도 조용히 개발 설정(ddl-auto: update)으로 떠서 운영 스키마가 자동 변경된다.
+  #   컨테이너 : docker-compose-service.yaml 의 environment 가 local 을 지정
+  #   IDE 실행 : 실행 구성에 -Dspring.profiles.active=local
+
+  # 전 서비스가 DB 하나(delivery_db)를 공유하고 스키마로 분리한다.
+  # DB 를 나누지 않으므로 POSTGRES_DB 기본값은 서비스마다 같아야 하고,
+  # 서비스를 가르는 것은 default_schema 다.
   datasource:
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
-    username: ${POSTGRES_USERNAME}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:delivery_db}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+
+  # ddl-auto 는 프로파일별로 다르므로 여기에 두지 않는다.
+  # 프로파일 없이 뜨면 스키마를 건드리지 않는 쪽(Hibernate 기본값)으로 동작한다.
   jpa:
-    hibernate:
-      ddl-auto: update
     open-in-view: false
+    properties:
+      hibernate:
+        # order-service 소유 스키마. Hibernate 는 스키마를 만들지 않으므로
+        # docker/postgres/init.sql 이 CREATE SCHEMA 로 미리 만들어 둔다.
+        # 이름은 팀 컨벤션 {서비스}_schema 를 따른다 (init.sql 주석 기준).
+        # 스키마명을 order 로 하면 SQL 예약어라 from order.p_orders 가 문법 오류로 깨진다.
+        default_schema: order_schema
+        # 컬렉션 N+1 완화 (주문 여러 건의 items 를 IN 절로 묶어 가져온다)
+        default_batch_fetch_size: 100
+
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 eureka:
   client:
@@ -25,11 +53,32 @@ eureka:
   instance:
     prefer-ip-address: true
 
+# 인증된 행위자가 없는 상태에서 생성되는 행의 created_by/updated_by 에 쓰는
+# 팀 공통 시스템 주체 ID. 전 서비스가 같은 값을 쓰도록 .env 에서 관리한다.
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
+order:
+  idempotency:
+    # 처리 중 표시가 남는 시간. 서버가 죽어 정리를 못 해도 이 시간이 지나면 풀린다.
+    # 주문 한 건 처리(업체·사용자·배송 호출)보다 넉넉해야 하고, 너무 길면 재시도가 막힌다.
+    in-progress-ttl-seconds: ${ORDER_IDEMPOTENCY_IN_PROGRESS_TTL:300}
+    # 완료 기록이 남는 시간. 이 안에 같은 키로 오면 만들어진 주문을 그대로 돌려준다.
+    completed-ttl-hours: ${ORDER_IDEMPOTENCY_COMPLETED_TTL:24}
+
+# 게이트웨이가 검증한 토큰을 이 서비스에서 다시 파싱한다.
+# 전 서비스가 같은 비밀키를 써야 하므로 루트 .env 의 JWT_SECRET 을 그대로 받는다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
   tracing:
     sampling:
       # 개발 단계에서는 전량 수집, 운영 전환 시 0.1 수준으로 조정
@@ -37,4 +86,63 @@ management:
     export:
       zipkin:
         # Boot 4 기준 프로퍼티 (구 management.zipkin.tracing.*은 deprecation level=error)
-        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+        endpoint: http://${ZIPKIN_HOST:localhost}:${ZIPKIN_PORT:9411}/api/v2/spans
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    # 태그·오퍼레이션을 알파벳순으로 정렬해 화면 순서가 매번 바뀌지 않게 한다
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.delivery_project.order_service: debug
+
+---
+# 로컬 개발. 실행 수단이 docker 든 IDE 든 개발 환경이면 이 프로파일이다.
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  # ddl-auto 가 테이블을 만든 뒤 db/schema.sql 이 제약을 덧붙인다.
+  # 부분 인덱스·CHECK 는 ddl-auto 가 만들지 못해 이 스크립트가 없으면 안전망이 비는 상태가 된다.
+  # defer-datasource-initialization 이 있어야 Hibernate 다음에 실행된다 (기본은 그 전).
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+
+  jpa:
+    defer-datasource-initialization: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        # docker/postgres/init.sql 이 스키마를 미리 만들어 두는 것이 원칙이지만,
+        # 볼륨이 이미 있으면 init.sql 은 다시 실행되지 않는다.
+        # 로컬에서만 Hibernate 가 스키마를 만들도록 열어 둔다.
+        hbm2ddl:
+          create_namespaces: true
+
+---
+# 배포. 스키마는 별도 DDL 로 관리하고 앱은 검증만 한다.
+# 부분 인덱스·CHECK 제약은 ddl-auto 가 만들지 못하기 때문이다.
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    com.delivery_project.order_service: info

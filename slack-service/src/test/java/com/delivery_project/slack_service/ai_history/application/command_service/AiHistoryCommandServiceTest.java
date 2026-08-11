@@ -1,11 +1,12 @@
 package com.delivery_project.slack_service.ai_history.application.command_service;
 
 import com.delivery_project.slack_service.ai_history.application.command.AiHistoryCreateCommand;
-import com.delivery_project.slack_service.ai_history.application.port.AiGenerationClient;
-import com.delivery_project.slack_service.ai_history.application.port.DeliveryRouteClient;
+import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
+import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
+import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
 import com.delivery_project.slack_service.ai_history.application.port.HubClient;
 import com.delivery_project.slack_service.ai_history.application.port.HubManagerClient;
-import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryClient;
+import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
@@ -14,6 +15,7 @@ import com.delivery_project.slack_service.ai_history.application.result.HubManag
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistory;
 import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
+import com.delivery_project.slack_service.ai_history.support.ai.AiPromptGenerator;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.slack.application.command.SlackInternalMessageCreateCommand;
@@ -45,10 +47,10 @@ import static org.mockito.Mockito.when;
 class AiHistoryCommandServiceTest {
 
     @Mock
-    private OrderSummaryClient orderSummaryClient;
+    private OrderSummaryPort orderSummaryPort;
 
     @Mock
-    private DeliveryRouteClient deliveryRouteClient;
+    private DeliveryRoutePort deliveryRoutePort;
 
     @Mock
     private HubClient hubClient;
@@ -57,13 +59,13 @@ class AiHistoryCommandServiceTest {
     private HubManagerClient hubManagerClient;
 
     @Mock
-    private AiGenerationClient aiGenerationClient;
+    private AiGeneratePort aiGeneratePort;
 
     @Mock
     private AiPromptGenerator aiPromptGenerator;
 
     @Mock
-    private AiHistoryStatusCommandService aiHistoryPersistenceService;
+    private AiHistoryPersistenceService aiHistoryPersistenceService;
 
     @Mock
     private SlackInternalMessageCommandService slackInternalMessageCommandService;
@@ -132,10 +134,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoute.routes())
                 .thenReturn(List.of(route));
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(hubClient.getHubs(anyList()))
@@ -144,26 +146,30 @@ class AiHistoryCommandServiceTest {
         when(hubManagerClient.getHubManager(departureHubId))
                 .thenReturn(hubManager);
 
-        when(aiPromptGenerator.generate(
-                orderSummary,
-                deliveryRoute,
-                hubBatch
-        )).thenReturn(prompt);
+        when(
+                aiPromptGenerator.generate(
+                        orderSummary,
+                        deliveryRoute,
+                        hubBatch
+                )
+        ).thenReturn(prompt);
 
-        when(aiHistoryPersistenceService.createPending(
-                eq(orderId),
-                eq(prompt),
-                any(Instant.class)
-        )).thenReturn(aiHistoryId);
+        when(
+                aiHistoryPersistenceService.createPending(
+                        eq(orderId),
+                        eq(prompt),
+                        any(Instant.class)
+                )
+        ).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient
-                .generateFinalDispatchDeadline(prompt))
-                .thenReturn(
-                        new AiGenerationResult(
-                                "gemini-2.5-flash",
-                                deadline
-                        )
-                );
+        when(
+                aiGeneratePort.generateFinalDispatchDeadline(prompt)
+        ).thenReturn(
+                new AiGenerationResult(
+                        "gemini-3.6-flash",
+                        deadline
+                )
+        );
 
         AiHistory completedHistory =
                 org.mockito.Mockito.mock(AiHistory.class);
@@ -171,12 +177,14 @@ class AiHistoryCommandServiceTest {
         when(completedHistory.getStatus())
                 .thenReturn(AiHistoryStatus.SUCCESS);
 
-        when(aiHistoryPersistenceService.complete(
-                eq(aiHistoryId),
-                eq("gemini-2.5-flash"),
-                eq(deadline),
-                any(Instant.class)
-        )).thenReturn(completedHistory);
+        when(
+                aiHistoryPersistenceService.complete(
+                        eq(aiHistoryId),
+                        eq("gemini-3.6-flash"),
+                        eq(deadline),
+                        any(Instant.class)
+                )
+        ).thenReturn(completedHistory);
 
         // when
         AiHistoryCreateResult result =
@@ -185,28 +193,30 @@ class AiHistoryCommandServiceTest {
         // then
         assertThat(result).isNotNull();
 
-        verify(orderSummaryClient)
+        verify(orderSummaryPort)
                 .getOrderSummary(orderId);
 
-        verify(deliveryRouteClient)
+        verify(deliveryRoutePort)
                 .getRoutesByOrderId(orderId);
 
-        verify(hubClient).getHubs(
-                argThat(hubIds ->
-                        hubIds.size() == 2
-                                && hubIds.contains(departureHubId)
-                                && hubIds.contains(arrivalHubId)
-                )
-        );
+        verify(hubClient)
+                .getHubs(
+                        argThat(hubIds ->
+                                hubIds.size() == 2
+                                        && hubIds.contains(departureHubId)
+                                        && hubIds.contains(arrivalHubId)
+                        )
+                );
 
         verify(hubManagerClient)
                 .getHubManager(departureHubId);
 
-        verify(aiPromptGenerator).generate(
-                orderSummary,
-                deliveryRoute,
-                hubBatch
-        );
+        verify(aiPromptGenerator)
+                .generate(
+                        orderSummary,
+                        deliveryRoute,
+                        hubBatch
+                );
 
         verify(aiHistoryPersistenceService)
                 .createPending(
@@ -215,13 +225,13 @@ class AiHistoryCommandServiceTest {
                         any(Instant.class)
                 );
 
-        verify(aiGenerationClient)
+        verify(aiGeneratePort)
                 .generateFinalDispatchDeadline(prompt);
 
         verify(aiHistoryPersistenceService)
                 .complete(
                         eq(aiHistoryId),
-                        eq("gemini-2.5-flash"),
+                        eq("gemini-3.6-flash"),
                         eq(deadline),
                         any(Instant.class)
                 );
@@ -239,7 +249,11 @@ class AiHistoryCommandServiceTest {
                 );
 
         verify(aiHistoryPersistenceService, never())
-                .fail(any(), any(), any());
+                .fail(
+                        any(),
+                        any(),
+                        any()
+                );
     }
 
     @Test
@@ -300,10 +314,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoute.routes())
                 .thenReturn(List.of(route));
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(hubClient.getHubs(anyList()))
@@ -312,25 +326,29 @@ class AiHistoryCommandServiceTest {
         when(hubManagerClient.getHubManager(departureHubId))
                 .thenReturn(hubManager);
 
-        when(aiPromptGenerator.generate(
-                orderSummary,
-                deliveryRoute,
-                hubBatch
-        )).thenReturn(prompt);
+        when(
+                aiPromptGenerator.generate(
+                        orderSummary,
+                        deliveryRoute,
+                        hubBatch
+                )
+        ).thenReturn(prompt);
 
-        when(aiHistoryPersistenceService.createPending(
-                eq(orderId),
-                eq(prompt),
-                any(Instant.class)
-        )).thenReturn(aiHistoryId);
+        when(
+                aiHistoryPersistenceService.createPending(
+                        eq(orderId),
+                        eq(prompt),
+                        any(Instant.class)
+                )
+        ).thenReturn(aiHistoryId);
 
-        when(aiGenerationClient
-                .generateFinalDispatchDeadline(prompt))
-                .thenThrow(
-                        new BusinessException(
-                                ErrorCode.AI_REQUEST_FAILED
-                        )
-                );
+        when(
+                aiGeneratePort.generateFinalDispatchDeadline(prompt)
+        ).thenThrow(
+                new BusinessException(
+                        ErrorCode.AI_REQUEST_FAILED
+                )
+        );
 
         // when & then
         assertThatThrownBy(
@@ -357,7 +375,9 @@ class AiHistoryCommandServiceTest {
                 );
 
         verify(slackInternalMessageCommandService, never())
-                .createAndPublish(any(SlackInternalMessageCreateCommand.class));
+                .createAndPublish(
+                        any(SlackInternalMessageCreateCommand.class)
+                );
     }
 
     @Test
@@ -375,10 +395,10 @@ class AiHistoryCommandServiceTest {
         DeliveryRouteResult deliveryRoute =
                 org.mockito.Mockito.mock(DeliveryRouteResult.class);
 
-        when(orderSummaryClient.getOrderSummary(orderId))
+        when(orderSummaryPort.getOrderSummary(orderId))
                 .thenReturn(orderSummary);
 
-        when(deliveryRouteClient.getRoutesByOrderId(orderId))
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
         when(deliveryRoute.routes())
@@ -397,7 +417,11 @@ class AiHistoryCommandServiceTest {
                 .getHubManager(any());
 
         verify(aiPromptGenerator, never())
-                .generate(any(), any(), any());
+                .generate(
+                        any(),
+                        any(),
+                        any()
+                );
 
         verify(aiHistoryPersistenceService, never())
                 .createPending(
@@ -406,10 +430,12 @@ class AiHistoryCommandServiceTest {
                         any()
                 );
 
-        verify(aiGenerationClient, never())
+        verify(aiGeneratePort, never())
                 .generateFinalDispatchDeadline(any());
 
         verify(slackInternalMessageCommandService, never())
-                .createAndPublish(any(SlackInternalMessageCreateCommand.class));
+                .createAndPublish(
+                        any(SlackInternalMessageCreateCommand.class)
+                );
     }
 }

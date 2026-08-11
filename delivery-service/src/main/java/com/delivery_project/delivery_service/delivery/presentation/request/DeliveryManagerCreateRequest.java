@@ -2,6 +2,7 @@ package com.delivery_project.delivery_service.delivery.presentation.request;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerCreateCommand;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
+import com.delivery_project.delivery_service.global.security.Role;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
@@ -18,11 +19,16 @@ public record DeliveryManagerCreateRequest(
 
 ) {
 
-    public DeliveryManagerCreateCommand toCommand() {
+    public DeliveryManagerCreateCommand toCommand(
+            UUID requesterId,
+            Role requesterRole
+    ) {
         return new DeliveryManagerCreateCommand(
                 userId,
                 hubId,
-                type
+                type,
+                requesterId,
+                requesterRole
         );
     }
 }
