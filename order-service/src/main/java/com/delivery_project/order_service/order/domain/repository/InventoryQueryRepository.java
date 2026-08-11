@@ -4,6 +4,7 @@ import com.delivery_project.order_service.order.domain.entity.Inventory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,9 @@ import java.util.UUID;
 public interface InventoryQueryRepository {
 
 	Optional<Inventory> findDetailById(UUID inventoryId);
+
+	/** 상품의 허브별 재고 전체. 상품 하나의 행 수는 허브 수로 고정돼 있어 페이징하지 않는다 */
+	List<Inventory> findAllByProductId(UUID productId);
 
 	Page<Inventory> search(InventorySearchCondition condition, Pageable pageable);
 

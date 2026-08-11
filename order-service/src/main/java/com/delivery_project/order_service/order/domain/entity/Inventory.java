@@ -34,7 +34,14 @@ public class Inventory extends BaseDeletableEntity {
     @Column(name = "hub_id", nullable = false)
     private UUID hubId;
 
-    @Column(name = "company_id", nullable = false)
+    /**
+     * 재고를 소유한 업체.
+     *
+     * <p>내부 API(상품 등록 연동)는 {@code productId} 만 받는다 — 명세상 company 가 업체 ID 를
+     * 보내지 않고, 상품 조회 응답에도 업체 정보가 없어 order 가 알아낼 방법이 없다.
+     * 그래서 이 컬럼은 비어 있을 수 있고, 값이 채워지는 것은 외부 API 로 직접 등록할 때뿐이다.
+     */
+    @Column(name = "company_id")
     private UUID companyId;
 
     /** 창고에 실제로 있는 개수 */

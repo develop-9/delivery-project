@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,11 @@ public class InventoryQueryRepositoryImpl implements InventoryQueryRepository {
 	@Override
 	public Optional<Inventory> findDetailById(UUID inventoryId) {
 		return springDataInventoryRepository.findByIdAndDeletedAtIsNull(inventoryId);
+	}
+
+	@Override
+	public List<Inventory> findAllByProductId(UUID productId) {
+		return springDataInventoryRepository.findByProductIdAndDeletedAtIsNullOrderByHubIdAsc(productId);
 	}
 
 	@Override

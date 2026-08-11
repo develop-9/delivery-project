@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.presentation.internal_controller;
 
 import com.delivery_project.order_service.order.application.command_service.InventoryCommandService;
+import com.delivery_project.order_service.order.application.query_service.InventoryQueryService;
 import com.delivery_project.order_service.order.application.result.InventoryInternalDeleteResult;
 import com.delivery_project.order_service.order.application.result.InventoryInternalSummaryResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -44,6 +46,9 @@ class InventoryInternalControllerTest {
 	@MockitoBean
 	private InventoryCommandService inventoryCommandService;
 
+	@MockitoBean
+	private InventoryQueryService inventoryQueryService;
+
 	private final UUID productId = UUID.randomUUID();
 	private final UUID hubId = UUID.randomUUID();
 	private final UUID companyId = UUID.randomUUID();
@@ -57,8 +62,7 @@ class InventoryInternalControllerTest {
 				.willReturn(List.of(new InventoryInternalSummaryResult(
 						inventoryId, productId, hubId, 0, 0, Instant.now())));
 
-		String body = objectMapper.writeValueAsString(
-				Map.of("productId", productId, "companyId", companyId));
+		String body = objectMapper.writeValueAsString(Map.of("productId", productId));
 
 		// when & then
 		mockMvc.perform(post("/internal/v1/inventories")
@@ -75,7 +79,7 @@ class InventoryInternalControllerTest {
 	@DisplayName("필수값이 빠지면 400 을 돌려준다")
 	void createInitialWithoutProductId() throws Exception {
 		// given — productId 누락
-		String body = objectMapper.writeValueAsString(Map.of("companyId", companyId));
+		String body = objectMapper.writeValueAsString(Map.of());
 
 		// when & then
 		mockMvc.perform(post("/internal/v1/inventories")
@@ -94,7 +98,7 @@ class InventoryInternalControllerTest {
 						inventoryId, hubId, 30, Instant.now())));
 
 		// when & then — company 의 InventoryDeleteFeignResponse 와 필드명이 맞아야 한다
-		mockMvc.perform(delete("/internal/v1/inventories/products/{productId}", productId))
+		mockMvc.perform(delete("/internal/v1/inventories/{productId}", productId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.inventoryList[0].inventoryId").value(inventoryId.toString()))
 				.andExpect(jsonPath("$.data.inventoryList[0].remainingQuantity").value(30))
@@ -108,8 +112,26 @@ class InventoryInternalControllerTest {
 		given(inventoryCommandService.deleteByProduct(any(), any())).willReturn(List.of());
 
 		// when & then
-		mockMvc.perform(delete("/internal/v1/inventories/products/{productId}", productId))
+		mockMvc.perform(delete("/internal/v1/inventories/{productId}", productId))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.inventoryList").isEmpty());
+	}
+
+	@Test
+	@DisplayName("상품별 허브 재고를 목록으로 돌려주고 선점 수량은 내보내지 않는다")
+	void getByProduct() throws Exception {
+		// given
+		given(inventoryQueryService.getInventoriesByProduct(productId))
+				.willReturn(List.of(new InventoryInternalSummaryResult(
+						inventoryId, productId, hubId, 100, 70, Instant.now())));
+
+		// when & then
+		mockMvc.perform(get("/internal/v1/inventories").param("productId", productId.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.inventoryList[0].hubId").value(hubId.toString()))
+				.andExpect(jsonPath("$.data.inventoryList[0].quantity").value(100))
+				.andExpect(jsonPath("$.data.inventoryList[0].availableQuantity").value(70))
+				// 선점은 order 내부 사정이라 내보내지 않는다
+				.andExpect(jsonPath("$.data.inventoryList[0].reservedQuantity").doesNotExist());
 	}
 }

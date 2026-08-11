@@ -51,7 +51,7 @@ class InventoryFanOutTest {
 	private final UUID companyId = UUID.randomUUID();
 
 	private InventoryInternalCreateCommand command() {
-		return new InventoryInternalCreateCommand(productId, companyId);
+		return new InventoryInternalCreateCommand(productId);
 	}
 
 	private List<UUID> hubs(int count) {
