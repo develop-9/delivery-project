@@ -140,7 +140,6 @@ public class DeliveryCommandService {
         );
     }
 
-    @Transactional
     public DeliveryUpdateResult update(
             DeliveryUpdateCommand command
     ){
@@ -153,26 +152,24 @@ public class DeliveryCommandService {
                                 )
                         );
 
-        validateUpdatePermission(command, delivery);
+        validateUpdatePermission(
+                command,
+                delivery
+        );
 
         ReceiverInfo receiver = null;
 
         if(command.receiverUserId() != null){
-            receiver = userPort.getReceiver(
-                    command.receiverUserId()
-            );
+            receiver =
+                    userPort.getReceiver(
+                            command.receiverUserId()
+                    );
         }
 
-        delivery.update(
-                command.deliveryAddress(),
-                receiver != null ? receiver.name() : null,
-                receiver != null ? receiver.slackId() : null
+        return deliveryPersistenceService.update(
+                command,
+                receiver
         );
-
-        Delivery savedDelivery =
-                deliveryCommandRepository.save(delivery);
-
-        return DeliveryUpdateResult.from(savedDelivery);
     }
 
     @Transactional

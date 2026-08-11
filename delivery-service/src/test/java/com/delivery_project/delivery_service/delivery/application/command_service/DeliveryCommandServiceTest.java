@@ -995,8 +995,10 @@ class DeliveryCommandServiceTest {
                 ))
                 .thenReturn(true);
 
-        when(deliveryCommandRepository.save(delivery))
-                .thenReturn(delivery);
+        when(deliveryPersistenceService.update(
+                command,
+                null
+        )).thenReturn(mock(DeliveryUpdateResult.class));
 
         deliveryCommandService.update(command);
 
@@ -1006,8 +1008,11 @@ class DeliveryCommandServiceTest {
                         hubId
                 );
 
-        verify(deliveryCommandRepository)
-                .save(delivery);
+        verify(deliveryPersistenceService)
+                .update(
+                        command,
+                        null
+                );
     }
 
     @Test
@@ -1217,8 +1222,10 @@ class DeliveryCommandServiceTest {
                         )
                 );
 
-        when(deliveryCommandRepository.save(delivery))
-                .thenReturn(delivery);
+        when(deliveryPersistenceService.update(
+                command,
+                null
+        )).thenReturn(mock(DeliveryUpdateResult.class));
 
         deliveryCommandService.update(command);
 
@@ -1228,8 +1235,11 @@ class DeliveryCommandServiceTest {
         verify(orderPort)
                 .getOrderCompanyInfo(orderId);
 
-        verify(deliveryCommandRepository)
-                .save(delivery);
+        verify(deliveryPersistenceService)
+                .update(
+                        command,
+                        null
+                );
     }
 
     @Test
@@ -1275,16 +1285,21 @@ class DeliveryCommandServiceTest {
                         )
                 );
 
-        when(deliveryCommandRepository.save(delivery))
-                .thenReturn(delivery);
+        when(deliveryPersistenceService.update(
+                command,
+                null
+        )).thenReturn(mock(DeliveryUpdateResult.class));
 
         deliveryCommandService.update(command);
 
         verify(orderPort)
                 .getOrderCompanyInfo(orderId);
 
-        verify(deliveryCommandRepository)
-                .save(delivery);
+        verify(deliveryPersistenceService)
+                .update(
+                        command,
+                        null
+                );
     }
 
     @Test
