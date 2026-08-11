@@ -1,7 +1,8 @@
-package com.delivery_project.slack_service.ai_history.infrastructure.external;
+package com.delivery_project.slack_service.ai_history.infrastructure.adapter;
 
-import com.delivery_project.slack_service.ai_history.application.port.HubClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubPort;
 import com.delivery_project.slack_service.ai_history.application.result.HubBatchResult;
+import com.delivery_project.slack_service.ai_history.infrastructure.client.hub.HubFeignClient;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +13,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class HubClientImpl implements HubClient {
+public class HubAdapter implements HubPort {
 
     private final HubFeignClient hubFeignClient;
 

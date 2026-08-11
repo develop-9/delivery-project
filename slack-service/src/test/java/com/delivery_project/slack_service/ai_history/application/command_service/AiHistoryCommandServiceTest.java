@@ -4,8 +4,8 @@ import com.delivery_project.slack_service.ai_history.application.command.AiHisto
 import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
 import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
 import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
-import com.delivery_project.slack_service.ai_history.application.port.HubClient;
-import com.delivery_project.slack_service.ai_history.application.port.HubManagerClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubPort;
+import com.delivery_project.slack_service.ai_history.application.port.HubManagerPort;
 import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
@@ -53,10 +53,10 @@ class AiHistoryCommandServiceTest {
     private DeliveryRoutePort deliveryRoutePort;
 
     @Mock
-    private HubClient hubClient;
+    private HubPort hubPort;
 
     @Mock
-    private HubManagerClient hubManagerClient;
+    private HubManagerPort hubManagerPort;
 
     @Mock
     private AiGeneratePort aiGeneratePort;
@@ -140,10 +140,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
-        when(hubClient.getHubs(anyList()))
+        when(hubPort.getHubs(anyList()))
                 .thenReturn(hubBatch);
 
-        when(hubManagerClient.getHubManager(departureHubId))
+        when(hubManagerPort.getHubManager(departureHubId))
                 .thenReturn(hubManager);
 
         when(
@@ -199,7 +199,7 @@ class AiHistoryCommandServiceTest {
         verify(deliveryRoutePort)
                 .getRoutesByOrderId(orderId);
 
-        verify(hubClient)
+        verify(hubPort)
                 .getHubs(
                         argThat(hubIds ->
                                 hubIds.size() == 2
@@ -208,7 +208,7 @@ class AiHistoryCommandServiceTest {
                         )
                 );
 
-        verify(hubManagerClient)
+        verify(hubManagerPort)
                 .getHubManager(departureHubId);
 
         verify(aiPromptGenerator)
@@ -320,10 +320,10 @@ class AiHistoryCommandServiceTest {
         when(deliveryRoutePort.getRoutesByOrderId(orderId))
                 .thenReturn(deliveryRoute);
 
-        when(hubClient.getHubs(anyList()))
+        when(hubPort.getHubs(anyList()))
                 .thenReturn(hubBatch);
 
-        when(hubManagerClient.getHubManager(departureHubId))
+        when(hubManagerPort.getHubManager(departureHubId))
                 .thenReturn(hubManager);
 
         when(
@@ -356,7 +356,7 @@ class AiHistoryCommandServiceTest {
         )
                 .isInstanceOf(BusinessException.class);
 
-        verify(hubManagerClient)
+        verify(hubManagerPort)
                 .getHubManager(departureHubId);
 
         verify(aiHistoryPersistenceService)
@@ -410,10 +410,10 @@ class AiHistoryCommandServiceTest {
         )
                 .isInstanceOf(BusinessException.class);
 
-        verify(hubClient, never())
+        verify(hubPort, never())
                 .getHubs(anyList());
 
-        verify(hubManagerClient, never())
+        verify(hubManagerPort, never())
                 .getHubManager(any());
 
         verify(aiPromptGenerator, never())

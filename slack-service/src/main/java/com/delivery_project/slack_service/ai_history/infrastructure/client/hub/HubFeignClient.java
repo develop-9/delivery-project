@@ -1,4 +1,4 @@
-package com.delivery_project.slack_service.ai_history.infrastructure.external;
+package com.delivery_project.slack_service.ai_history.infrastructure.client.hub;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

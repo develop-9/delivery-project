@@ -4,7 +4,7 @@ import com.delivery_project.slack_service.ai_history.application.result.HubManag
 
 import java.util.UUID;
 
-public interface HubManagerClient {
+public interface HubManagerPort {
 
     HubManagerResult getHubManager(UUID hubId);
 }

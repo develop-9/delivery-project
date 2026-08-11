@@ -4,8 +4,8 @@ import com.delivery_project.slack_service.ai_history.application.command.AiHisto
 import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
 import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
 import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
-import com.delivery_project.slack_service.ai_history.application.port.HubClient;
-import com.delivery_project.slack_service.ai_history.application.port.HubManagerClient;
+import com.delivery_project.slack_service.ai_history.application.port.HubPort;
+import com.delivery_project.slack_service.ai_history.application.port.HubManagerPort;
 import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
@@ -33,8 +33,8 @@ public class AiHistoryCommandService {
 
     private final OrderSummaryPort orderSummaryPort;
     private final DeliveryRoutePort deliveryRoutePort;
-    private final HubClient hubClient;
-    private final HubManagerClient hubManagerClient;
+    private final HubPort hubPort;
+    private final HubManagerPort hubManagerPort;
     private final AiGeneratePort aiGeneratePort;
     private final AiPromptGenerator aiPromptGenerator;
     private final AiHistoryPersistenceService aiHistoryPersistenceService;
@@ -59,7 +59,7 @@ public class AiHistoryCommandService {
                 extractHubIds(deliveryRoute);
 
         HubBatchResult hubBatch =
-                hubClient.getHubs(hubIds);
+                hubPort.getHubs(hubIds);
 
         validateHubBatch(hubBatch);
 
@@ -69,7 +69,7 @@ public class AiHistoryCommandService {
                 );
 
         HubManagerResult hubManager =
-                hubManagerClient.getHubManager(
+                hubManagerPort.getHubManager(
                         firstDepartureHubId
                 );
 
