@@ -11,6 +11,8 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.port.MasterBootstrapLockPort;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
+import com.delivery_project.user_service.user.application.result.UserReinstateResult;
+import com.delivery_project.user_service.user.application.result.UserSuspendResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
@@ -92,7 +94,7 @@ public class UserPersistenceService {
 	 *
 	 * 마지막 MASTER 확인도 일부러 여기서 한다 — countActiveMastersForUpdate()가 활성 MASTER
 	 * 행에 거는 락이 이 트랜잭션이 커밋될 때까지 유지돼야, 동시에 다른 MASTER를 정지/삭제하는
-	 * 요청이 끼어들어 활성 MASTER가 0명이 되는 걸 막을 수 있다(suspend()와 동일한 이유).
+	 * 요청이 끼어들어 활성 MASTER가 0명이 되는 걸 막을 수 있다(commitSuspend()와 동일한 이유).
 	 */
 	public UserDeleteResult commitDelete(UUID targetUserId, UUID callerId) {
 		User target = userCommandRepository.findById(targetUserId)
@@ -113,5 +115,41 @@ public class UserPersistenceService {
 		userInvalidationRepository.invalidate(target.getId(), Instant.now());
 
 		return UserDeleteResult.from(target);
+	}
+
+	/**
+	 * suspend()가 DELIVERY_MANAGER인 대상에 한해 Delivery Service deactivate 호출을 끝낸
+	 * 뒤에만 부르는 실제 DB 쓰기. ID로 다시 조회하는 이유는 클래스 상단 설명 참고.
+	 *
+	 * 마지막 MASTER 확인을 여기서 하는 이유는 commitDelete()와 동일하다 — 락이 이 트랜잭션
+	 * 커밋까지 유지돼야 동시에 다른 MASTER를 정지/삭제하는 요청과의 경합을 막을 수 있다.
+	 */
+	public UserSuspendResult commitSuspend(UUID targetUserId, UUID callerId) {
+		User target = userCommandRepository.findById(targetUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		if (target.getRole() == Role.MASTER && userCommandRepository.countActiveMastersForUpdate() <= 1) {
+			throw new BusinessException(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
+		}
+
+		target.suspend();
+		refreshTokenRepository.deleteByUserId(target.getId());
+		userInvalidationRepository.invalidate(target.getId(), Instant.now());
+
+		return UserSuspendResult.from(target);
+	}
+
+	/**
+	 * reinstate()가 DELIVERY_MANAGER인 대상에 한해 Delivery Service reactivate 호출을 끝낸
+	 * 뒤에만 부르는 실제 DB 쓰기. ID로 다시 조회하는 이유는 클래스 상단 설명 참고. 정지와 달리
+	 * 락이 필요한 검증이 없다.
+	 */
+	public UserReinstateResult commitReinstate(UUID targetUserId, UUID callerId) {
+		User target = userCommandRepository.findById(targetUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		target.reinstate();
+
+		return UserReinstateResult.from(target);
 	}
 }

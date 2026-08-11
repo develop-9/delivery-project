@@ -21,6 +21,8 @@ import com.delivery_project.user_service.global.exception.BusinessException;
 import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.application.port.MasterBootstrapLockPort;
 import com.delivery_project.user_service.user.application.result.UserDeleteResult;
+import com.delivery_project.user_service.user.application.result.UserReinstateResult;
+import com.delivery_project.user_service.user.application.result.UserSuspendResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
@@ -208,6 +210,94 @@ class UserPersistenceServiceTest {
 
 		// when & then
 		assertThatThrownBy(() -> userPersistenceService.commitDelete(targetId, UUID.randomUUID()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
+	}
+
+	@Test
+	void APPROVED_사용자를_정지하면_SUSPENDED_상태가_되고_Refresh_Token도_제거된다() {
+		// given
+		User target = createUser("target1", Role.COMPANY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserSuspendResult result = userPersistenceService.commitSuspend(target.getId(), UUID.randomUUID());
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+		verify(refreshTokenRepository).deleteByUserId(target.getId());
+		verify(userInvalidationRepository).invalidate(
+				org.mockito.ArgumentMatchers.eq(target.getId()), org.mockito.ArgumentMatchers.any());
+	}
+
+	@Test
+	void 마지막_남은_MASTER를_정지하려하면_LAST_MASTER_SUSPEND_FORBIDDEN_예외가_발생한다() {
+		// given
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(1L);
+
+		// when & then
+		assertThatThrownBy(() -> userPersistenceService.commitSuspend(target.getId(), UUID.randomUUID()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.LAST_MASTER_SUSPEND_FORBIDDEN);
+	}
+
+	@Test
+	void MASTER가_여러_명이면_그중_하나를_정지할_수_있다() {
+		// given
+		User target = createUser("target-master", Role.MASTER, null);
+		target.approve(UUID.randomUUID());
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+		when(userCommandRepository.countActiveMastersForUpdate()).thenReturn(2L);
+
+		// when
+		UserSuspendResult result = userPersistenceService.commitSuspend(target.getId(), UUID.randomUUID());
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.SUSPENDED);
+	}
+
+	@Test
+	void 정지_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID targetId = UUID.randomUUID();
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userPersistenceService.commitSuspend(targetId, UUID.randomUUID()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
+	}
+
+	@Test
+	void SUSPENDED_사용자를_정지_해제하면_APPROVED_상태로_돌아간다() {
+		// given
+		User target = createUser("target1", Role.COMPANY_MANAGER, UUID.randomUUID());
+		target.approve(UUID.randomUUID());
+		target.suspend();
+		when(userCommandRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+		// when
+		UserReinstateResult result = userPersistenceService.commitReinstate(target.getId(), UUID.randomUUID());
+
+		// then
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+	}
+
+	@Test
+	void 정지_해제_대상_사용자가_없으면_USER_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID targetId = UUID.randomUUID();
+		when(userCommandRepository.findById(targetId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> userPersistenceService.commitReinstate(targetId, UUID.randomUUID()))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_NOT_FOUND);
