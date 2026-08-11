@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.global.config;
 
 import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.order_service.global.security.SecurityErrorResponder;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final SecurityErrorResponder securityErrorResponder;
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(
@@ -66,6 +68,11 @@ public class SecurityConfig {
 
 				// 토큰 파싱 필터. 인증 여부 판단보다 앞서야 SecurityContext 가 채워진다
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+				// 인증 실패(401)와 권한 부족(403)을 나눈다. 기본 설정은 토큰이 없어도 403 을 준다
+				.exceptionHandling(handler -> handler
+						.authenticationEntryPoint(securityErrorResponder)
+						.accessDeniedHandler(securityErrorResponder))
 
 				// 기본 CORS 설정
 				.cors(Customizer.withDefaults());
