@@ -6,5 +6,5 @@ import java.util.UUID;
 
 public interface HubPort {
 
-    HubInfo getHub(UUID hubId);
+    HubInfo validateHub(UUID hubId);
 }

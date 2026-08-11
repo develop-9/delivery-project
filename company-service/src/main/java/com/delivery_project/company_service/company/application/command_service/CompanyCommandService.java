@@ -39,41 +39,44 @@ public class CompanyCommandService {
         );
 
         /*
-         * 업체 생성 검증
-         * 1. 권한 검증
-         *  - Master, 담당 Hub Manager만 가능
+         * 업체 생성 검증 순서
          *
-         * 2. 존재 여부 검증
-         *  - 실제 존재하는 Hub인지 확인
+         * 1. 요청자 정보 조회
+         *
+         * 2. 생성 대상 Company의 소속 Hub 존재 여부 확인
+         *  - Company는 실제 존재하는 Hub에 소속되어 있어야 함
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 3. Company 생성 권한 검증
+         *  - Master: 모든 Company 생성 가능
+         *  - Hub Manager: 담당 Hub의 Company만 생성 가능
          */
 
-        // 요청자 정보 조회
+        // 1. 요청자 정보 조회
         CallerInfo callerInfo =
                 userPort.getCaller(companyCreateCommand.callerId());
 
-        // Master, 담당 Hub Manager만 가능하도록 검증
+        // 2. 생성 대상 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(companyCreateCommand.hubId());
+
+        // 3. Company 생성 권한 검증
         boolean hasPermission =
                 callerInfo.role() == Role.MASTER
                         || (
                         callerInfo.role() == Role.HUB_MANAGER
                                 && Objects.equals(
                                 callerInfo.hubId(),
-                                companyCreateCommand.hubId()
+                                hubInfo.hubId()
                         )
                 );
 
-        // 권한이 없을 경우 오류 반환
+        // 셍성 권한이 없는 경우
         if (!hasPermission) {
             throw new BusinessException(
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
-
-        /*
-         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
-         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
-         */
-        HubInfo hubInfo = hubPort.getHub(companyCreateCommand.hubId());
 
         // 실제 DB 저장 시점부터 트랜잭션 시작
         return companyPersistenceService.createCompany(
@@ -93,39 +96,50 @@ public class CompanyCommandService {
         );
 
         /*
-         * 업체 수정 검증
-         * 1. 존재 여부 검증
+         * 업체 수정 검증 순서
+         *
+         * 1. 요청자 정보 조회
+         *
+         * 2. 수정 대상 Company 존재 여부 확인
          *  - 실제 존재하는 Company인지 확인
-         *  - 이때, 존재 여부가 권한이 없는 사용자에게 리소스가 노출되지 않도록 권한 오류와 동일하게 처리
+         *  - Company가 존재하지 않는 경우 AUHT_FORBIDDEN으로 처리하여
+         *    Company 존재 여부가 외부에 노출되지 않도록 함
          *
-         * 2. 권한 검증
-         *  - Master, 담당 Hub Manager, 담당 Company Manager만 가능
+         * 3. 기존 Company의 소속 Hub 존재 여부 확인
+         *  - Company는 실제 존재하는 Hub에 소속되어 있어야 함
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
          *
-         * 3. 존재 여부 검증
-         *  - 실제 존재하는 Hub인지 확인
+         * 4. Company 수정 권한 검증
+         *  - Master: 모든 Company 수정 가능
+         *  - Hub Manager: 담당 Hub의 Company만 수정 가능
+         *  - Company Manager: 담당 Company만 수정 가능
+         *
+         * 5. Company의 소속 Hub 변경 여부 확인
+         *  - 소속 Hub 변경은 Master만 가능
+         *  - 변경 대상 Hub가 실제 존재하는지 확인
          */
 
-        /*
-         * 업체 존재 여부를 확인
-         * 존재하지 않는 경우에도 Company의 존재 여부가
-         * 권한이 없는 사용자에게 노출되지 않도록 AUTH_FORBIDDEN으로 처리
-         */
+        // 1. 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(companyUpdateCommand.callerId());
+
+        // 2. 수정 대상 Company 존재 여부 확인
         Company company = companyPersistenceService
                 .getCompanyById(companyUpdateCommand.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
 
-        // 요청자 정보 조회
-        CallerInfo callerInfo =
-                userPort.getCaller(companyUpdateCommand.callerId());
+        // 3. 기존 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(company.getHubId());
 
-        // Master, 담당 Hub Manager, 담당 Company Manager만 가능하도록 검증
+        // 4. Company 수정 권한 검증
         boolean hasPermission =
                 callerInfo.role() == Role.MASTER
                         || (
                         callerInfo.role() == Role.HUB_MANAGER
                                 && Objects.equals(
                                 callerInfo.hubId(),
-                                company.getHubId()
+                                hubInfo.hubId()
                         )
                 )
                         || (
@@ -136,18 +150,31 @@ public class CompanyCommandService {
                         )
                 );
 
-        // 권한이 없을 경우 오류 반환
+        // 수정 권한이 없는 경우
         if (!hasPermission) {
             throw new BusinessException(
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
 
-        /*
-         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
-         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
-         */
-        HubInfo hubInfo = hubPort.getHub(companyUpdateCommand.hubId());
+        // 5. Company의 소속 Hub 변경 여부 확인
+        boolean isHubChanged =
+                !Objects.equals(
+                        company.getHubId(),
+                        companyUpdateCommand.hubId()
+                );
+
+        // 소속 Hub가 변경된 경우
+        if (isHubChanged) {
+
+            // 업체의 소속 Hub 변경은 Master만 가능
+            if (callerInfo.role() != Role.MASTER) {
+                throw new BusinessException(ErrorCode.AUTH_FORBIDDEN);
+            }
+
+            // 변경 대상 Hub가 존재하는지 확인
+            hubPort.validateHub(companyUpdateCommand.hubId());
+        }
 
         // 실제 DB 수정 시점부터 트랜잭션 시작
         return companyPersistenceService.updateCompany(
@@ -168,54 +195,55 @@ public class CompanyCommandService {
         );
 
         /*
-         * 업체 삭제 검증
-         * 1. 존재 여부 검증
+         * 업체 삭제 검증 순서
+         *
+         * 1. 요청자 정보 조회
+         *
+         * 2. 삭제 대상 Company 존재 여부 확인
          *  - 실제 존재하는 Company인지 확인
-         *  - 이때, 존재 여부가 권한이 없는 사용자에게 리소스가 노출되지 않도록 권한 오류와 동일하게 처리
+         *  - Company가 존재하지 않는 경우 AUHT_FORBIDDEN으로 처리하여
+         *    Company 존재 여부가 외부에 노출되지 않도록 함
          *
-         * 2. 권한 검증
-         *  - Master, 담당 Hub Manager만 가능
+         * 3. 기존 Company의 소속 Hub 존재 여부 확인
+         *  - 삭제 대상 Company가 현재 접근 가능한 Hub에 소속되어 있는지 확인
+         *  - Hub가 삭제된 경우 소속된 Company에도 접근할 수 없음
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
          *
-         * 3. 존재 여부 검증
-         *  - 실제 존재하는 Hub인지 확인
+         * 4. Company 삭제 권한 검증
+         *  - Master: 모든 Company 삭제 가능
+         *  - Hub Manager: 담당 Hub의 Company만 삭제 가능
          */
 
-        /*
-         * 업체 존재 여부를 확인
-         * 존재하지 않는 경우에도 Company의 존재 여부가
-         * 권한이 없는 사용자에게 노출되지 않도록 AUTH_FORBIDDEN으로 처리
-         */
+        // 1. 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(companyDeleteCommand.callerId());
+
+        // 2. 삭제 대상 Company 존재 여부 확인
         Company company = companyPersistenceService
                 .getCompanyById(companyDeleteCommand.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
 
-        // 요청자 정보 조회
-        CallerInfo callerInfo =
-                userPort.getCaller(companyDeleteCommand.callerId());
+        // 3. 기존 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(company.getHubId());
 
-        // Master, 담당 Hub Manager만 가능하도록 검증
+        // 4. Company 삭제 권한 검증
         boolean hasPermission =
                 callerInfo.role() == Role.MASTER
                         || (
                         callerInfo.role() == Role.HUB_MANAGER
                                 && Objects.equals(
                                 callerInfo.hubId(),
-                                company.getHubId()
+                                hubInfo.hubId()
                         )
                 );
 
-        // 권한이 없을 경우 오류 반환
+        // 삭제 권한이 없는 경우
         if (!hasPermission) {
             throw new BusinessException(
                     ErrorCode.AUTH_FORBIDDEN
             );
         }
-
-        /*
-         * Hub Service를 통해 요청한 Hub의 존재 여부를 검증
-         * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
-         */
-        HubInfo hubInfo = hubPort.getHub(company.getHubId());
 
         // 실제 DB 논리 삭제 시점부터 트랜잭션 시작
         return companyPersistenceService.deleteCompany(

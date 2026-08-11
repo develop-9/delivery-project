@@ -21,7 +21,7 @@ public class HubAdapter implements HubPort {
     private final HubClient hubClient;
 
     @Override
-    public HubInfo getHub(UUID hubId) {
+    public HubInfo validateHub(UUID hubId) {
 
         try {
             HubFeignResponse hubFeignResponse = hubClient.getHub(hubId).data();
@@ -37,7 +37,7 @@ public class HubAdapter implements HubPort {
             );
 
             throw new BusinessException(
-                    ErrorCode.HUB_NOT_FOUND
+                    ErrorCode.AUTH_FORBIDDEN
             );
         } catch (FeignException e) {
             log.error(
