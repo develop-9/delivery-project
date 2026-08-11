@@ -3,8 +3,8 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
-import com.delivery_project.company_service.company.application.pesistence_service.CompanyPersistenceService;
-import com.delivery_project.company_service.company.application.pesistence_service.ProductPersistenceService;
+import com.delivery_project.company_service.company.application.persistence_service.CompanyPersistenceService;
+import com.delivery_project.company_service.company.application.persistence_service.ProductPersistenceService;
 import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.UserPort;
 import com.delivery_project.company_service.company.application.port.dto.CallerInfo;

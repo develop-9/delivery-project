@@ -1,4 +1,4 @@
-package com.delivery_project.company_service.company.application.pesistence_service;
+package com.delivery_project.company_service.company.application.persistence_service;
 
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.Product;
