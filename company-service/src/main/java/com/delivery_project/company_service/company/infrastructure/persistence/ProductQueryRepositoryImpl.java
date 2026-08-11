@@ -100,7 +100,7 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
             QProduct product,
             String name
     ) {
-        return name != null
+        return name != null && !name.isBlank()
                 ? product.name.contains(name)
                 : null;
     }
