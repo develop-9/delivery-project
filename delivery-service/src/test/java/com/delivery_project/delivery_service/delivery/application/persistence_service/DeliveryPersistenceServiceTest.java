@@ -1,16 +1,17 @@
-package com.delivery_project.delivery_service.delivery.application.command_service;
+package com.delivery_project.delivery_service.delivery.application.persistence_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.DeliveryCreationLockPort;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryPathSegment;
-import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryRouteCommandRepository;
+import com.delivery_project.delivery_service.global.exception.BusinessException;
+import com.delivery_project.delivery_service.global.exception.ErrorCode;
+import com.delivery_project.delivery_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,9 +26,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DeliveryPersistenceServiceTest {
@@ -193,5 +194,124 @@ class DeliveryPersistenceServiceTest {
                 2,
                 result.routeCount()
         );
+    }
+
+    @Test
+    @DisplayName("배송 수정 시 Delivery를 다시 조회하여 정보를 변경하고 저장한다")
+    void updateDeliverySuccess() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID receiverUserId = UUID.randomUUID();
+
+        Delivery delivery =
+                Delivery.create(
+                        orderId,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "기존 배송지",
+                        "기존 수령인",
+                        "old-slack"
+                );
+
+        ReflectionTestUtils.setField(
+                delivery,
+                "id",
+                deliveryId
+        );
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 배송지",
+                        receiverUserId,
+                        UUID.randomUUID(),
+                        Role.MASTER
+                );
+
+        ReceiverInfo receiver =
+                new ReceiverInfo(
+                        receiverUserId,
+                        "변경된 수령인",
+                        "new-slack"
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(java.util.Optional.of(delivery));
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        // when
+        DeliveryUpdateResult result =
+                deliveryPersistenceService.update(
+                        command,
+                        receiver
+                );
+
+        // then
+        assertEquals(
+                "변경된 배송지",
+                delivery.getDeliveryAddress()
+        );
+
+        assertEquals(
+                "변경된 수령인",
+                delivery.getReceiverName()
+        );
+
+        assertEquals(
+                "new-slack",
+                delivery.getReceiverSlackId()
+        );
+
+        assertEquals(
+                deliveryId,
+                result.deliveryId()
+        );
+
+        verify(deliveryCommandRepository)
+                .findById(deliveryId);
+
+        verify(deliveryCommandRepository)
+                .save(delivery);
+    }
+
+    @Test
+    @DisplayName("수정할 배송이 존재하지 않으면 배송 수정에 실패한다")
+    void updateDeliveryNotFound() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 배송지",
+                        null,
+                        UUID.randomUUID(),
+                        Role.MASTER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(java.util.Optional.empty());
+
+        // when
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryPersistenceService.update(
+                                command,
+                                null
+                        )
+                );
+
+        // then
+        assertEquals(
+                ErrorCode.DELIVERY_NOT_FOUND,
+                exception.getErrorCode()
+        );
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
     }
 }

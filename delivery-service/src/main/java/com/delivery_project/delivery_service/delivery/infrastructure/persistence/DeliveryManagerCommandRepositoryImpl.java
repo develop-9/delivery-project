@@ -40,11 +40,17 @@ public class DeliveryManagerCommandRepositoryImpl
     }
 
     @Override
+    public Optional<DeliveryManager> findByUserIdForUpdate(UUID userId){
+        return springDataRepository
+                .findByUserIdForUpdate(userId);
+    }
+
+    @Override
     public Optional<DeliveryManager> findNextAvailableHubManager(
             Integer lastAssignedSequence
     ){
         return springDataRepository
-                .findFirstByTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                .findFirstByTypeAndStatusAndActiveTrueAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
                         DeliveryManagerType.HUB_DELIVERY,
                         DeliveryManagerStatus.AVAILABLE,
                         lastAssignedSequence
@@ -54,7 +60,7 @@ public class DeliveryManagerCommandRepositoryImpl
     @Override
     public Optional<DeliveryManager> findFirstAvailableHubManager(){
         return springDataRepository
-                .findFirstByTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                .findFirstByTypeAndStatusAndActiveTrueAndDeletedAtIsNullOrderByDeliverySequenceAsc(
                         DeliveryManagerType.HUB_DELIVERY,
                         DeliveryManagerStatus.AVAILABLE
                 );
@@ -66,7 +72,7 @@ public class DeliveryManagerCommandRepositoryImpl
             Integer lastAssignedSequence
     ){
         return springDataRepository
-                .findFirstByHubIdAndTypeAndStatusAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                .findFirstByHubIdAndTypeAndStatusAndActiveTrueAndDeliverySequenceGreaterThanAndDeletedAtIsNullOrderByDeliverySequenceAsc(
                         hubId,
                         DeliveryManagerType.COMPANY_DELIVERY,
                         DeliveryManagerStatus.AVAILABLE,
@@ -79,7 +85,7 @@ public class DeliveryManagerCommandRepositoryImpl
             UUID hubId
     ) {
         return springDataRepository
-                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByDeliverySequenceAsc(
+                .findFirstByHubIdAndTypeAndStatusAndActiveTrueAndDeletedAtIsNullOrderByDeliverySequenceAsc(
                         hubId,
                         DeliveryManagerType.COMPANY_DELIVERY,
                         DeliveryManagerStatus.AVAILABLE

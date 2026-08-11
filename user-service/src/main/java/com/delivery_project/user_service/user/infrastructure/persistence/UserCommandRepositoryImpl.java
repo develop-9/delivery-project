@@ -50,4 +50,9 @@ public class UserCommandRepositoryImpl implements UserCommandRepository {
 	public long countActiveMasters() {
 		return springDataUserRepository.countByRoleAndApprovalStatus(Role.MASTER, ApprovalStatus.APPROVED);
 	}
+
+	@Override
+	public long countActiveMastersForUpdate() {
+		return springDataUserRepository.findByRoleAndApprovalStatusForUpdate(Role.MASTER, ApprovalStatus.APPROVED).size();
+	}
 }

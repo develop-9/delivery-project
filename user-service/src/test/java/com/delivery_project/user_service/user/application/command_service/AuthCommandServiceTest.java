@@ -24,6 +24,8 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -52,6 +54,12 @@ class AuthCommandServiceTest {
 
 	@Mock
 	private TokenProvider tokenProvider;
+
+	@Mock
+	private HubPort hubPort;
+
+	@Mock
+	private CompanyPort companyPort;
 
 	@InjectMocks
 	private AuthCommandService authCommandService;
@@ -218,6 +226,95 @@ class AuthCommandServiceTest {
 
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
+	}
+
+	@Test
+	void 존재하지_않는_hubId로_가입하면_HUB_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub1", "Abcd1234!", "허브담당자", "U0000000003",
+				Role.HUB_MANAGER, hubId, null);
+
+		when(userCommandRepository.existsByUsername("hub1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000003")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND))
+				.when(hubPort).validateExists(hubId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.HUB_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+	}
+
+	@Test
+	void 존재하지_않는_companyId로_가입하면_COMPANY_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID companyId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"company1", "Abcd1234!", "업체담당자", "U0000000004",
+				Role.COMPANY_MANAGER, null, companyId);
+
+		when(userCommandRepository.existsByUsername("company1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000004")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.COMPANY_NOT_FOUND))
+				.when(companyPort).validateExists(companyId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+	}
+
+	@Test
+	void 존재하는_hubId로_가입하면_검증을_통과하고_정상_가입된다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub2", "Abcd1234!", "허브담당자2", "U0000000005",
+				Role.HUB_MANAGER, hubId, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("hub2")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000005")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.userId()).isEqualTo(saved.getId());
+		org.mockito.Mockito.verify(hubPort).validateExists(hubId);
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+	}
+
+	@Test
+	void MASTER는_hubId_companyId_검증_호출_없이_가입된다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master3", "Abcd1234!", "관리자3", "U0000000006",
+				Role.MASTER, null, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("master3")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000006")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
+		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+
+		// when
+		authCommandService.signup(command);
+
+		// then
+		org.mockito.Mockito.verify(hubPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
 	}
 
 	@Test
@@ -463,7 +560,7 @@ class AuthCommandServiceTest {
 		authCommandService.logout(userId);
 
 		// then
-		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserId(userId);
+		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserIdOrThrow(userId);
 	}
 
 	@Test
@@ -473,6 +570,44 @@ class AuthCommandServiceTest {
 
 		// when
 		authCommandService.logout(userId);
+
+		// then
+		org.mockito.Mockito.verify(userInvalidationRepository)
+				.invalidate(org.mockito.Mockito.eq(userId), any(java.time.Instant.class));
+	}
+
+	/**
+	 * 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태 재검증으로
+	 * 방어가 안 된다 — Redis 삭제 실패를 성공으로 위장하면 안 되므로 예외가 그대로 올라와야 한다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패하면_로그아웃도_실패한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.logout(userId))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * Access Token 무효화는 Redis가 아니라 DB 아웃박스에 기록되므로, 뒤이은 Refresh Token
+	 * 삭제가 Redis 장애로 실패해도 이 기록 자체는 이미 남아 있어야 한다(호출까지는 됐는지 확인).
+	 * 실제로 그 기록이 롤백되지 않고 커밋까지 되는지는 @Transactional(noRollbackFor=...)에
+	 * 의존하는 부분이라 이 단위 테스트로는 못 보고, 실제 DB로 검증해야 한다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패해도_무효화_기록_시도는_이미_끝난_뒤다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+
+		// when
+		assertThatThrownBy(() -> authCommandService.logout(userId))
+				.isInstanceOf(IllegalStateException.class);
 
 		// then
 		org.mockito.Mockito.verify(userInvalidationRepository)

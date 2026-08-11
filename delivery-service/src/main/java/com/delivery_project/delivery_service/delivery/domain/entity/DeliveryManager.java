@@ -35,6 +35,9 @@ public class DeliveryManager extends BaseDeletableEntity {
     @Column(name = "status", nullable = false, length = 30)
     private DeliveryManagerStatus status;
 
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
     @Column(name = "delivery_sequence", nullable = false)
     private Integer deliverySequence;
 
@@ -48,6 +51,7 @@ public class DeliveryManager extends BaseDeletableEntity {
         this.hubId = hubId;
         this.type = type;
         this.status = DeliveryManagerStatus.AVAILABLE;
+        this.active = true;
         this.deliverySequence = deliverySequence;
     }
 
@@ -64,20 +68,6 @@ public class DeliveryManager extends BaseDeletableEntity {
                 hubId,
                 type,
                 deliverySequence);
-    }
-
-    private static void validateHubId(DeliveryManagerType type, UUID hubId){
-        if(type == DeliveryManagerType.HUB_DELIVERY && hubId != null){
-            throw new BusinessException(
-                    ErrorCode.INVALID_HUB_DELIVERY_MANAGER
-            );
-        }
-
-        if(type == DeliveryManagerType.COMPANY_DELIVERY && hubId == null){
-            throw new BusinessException(
-                    ErrorCode.INVALID_COMPANY_DELIVERY_MANAGER
-            );
-        }
     }
 
     public void update(
@@ -97,14 +87,6 @@ public class DeliveryManager extends BaseDeletableEntity {
         this.deliverySequence = deliverySequence;
     }
 
-    private void validateNotDelivering(){
-        if(this.status == DeliveryManagerStatus.DELIVERING){
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_MANAGER_IS_DELIVERING
-            );
-        }
-    }
-
     public void deleteManager(UUID deletedBy) {
         if (this.status == DeliveryManagerStatus.DELIVERING) {
             throw new BusinessException(
@@ -113,22 +95,28 @@ public class DeliveryManager extends BaseDeletableEntity {
         }
 
         super.delete(deletedBy);
-    }   // TODO: 진행 중인 Delivery 또는 DeliveryRoute 배정 여부 검증
+    }
 
     public void releaseFromDelivery() {
         validateDelivering();
         this.status = DeliveryManagerStatus.AVAILABLE;
     }
 
-    private void validateDelivering() {
-        if (this.status != DeliveryManagerStatus.DELIVERING) {
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING
-            );
-        }
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void reactivate() {
+        this.active = true;
     }
 
     public void assignToDelivery() {
+        if(!active){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_ACTIVE
+            );
+        }
+
         if (this.status != DeliveryManagerStatus.AVAILABLE) {
             throw new BusinessException(
                     ErrorCode.DELIVERY_MANAGER_NOT_AVAILABLE
@@ -138,5 +126,34 @@ public class DeliveryManager extends BaseDeletableEntity {
         this.status = DeliveryManagerStatus.DELIVERING;
     }
 
+    private static void validateHubId(DeliveryManagerType type, UUID hubId){
+        if(type == DeliveryManagerType.HUB_DELIVERY && hubId != null){
+            throw new BusinessException(
+                    ErrorCode.INVALID_HUB_DELIVERY_MANAGER
+            );
+        }
 
+        if(type == DeliveryManagerType.COMPANY_DELIVERY && hubId == null){
+            throw new BusinessException(
+                    ErrorCode.INVALID_COMPANY_DELIVERY_MANAGER
+            );
+        }
+    }
+
+    private void validateNotDelivering(){
+        if(this.status == DeliveryManagerStatus.DELIVERING){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_IS_DELIVERING
+            );
+        }
+    }
+
+    private void validateDelivering() {
+        if (this.status != DeliveryManagerStatus.DELIVERING) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_MANAGER_NOT_DELIVERING
+            );
+        }
+    }
 }
+

@@ -27,6 +27,26 @@ public class RouteConfig {
 	}
 
 	@Bean
+	public RouteLocator deliveryServiceRoutes(
+			RouteLocatorBuilder builder
+	) {
+		return builder.routes()
+				.route("delivery-service", r -> r
+						.path(
+								"/api/v1/delivery-managers/**",
+								"/api/v1/deliveries/**",
+								"/api/v1/delivery-routes/**"
+						)
+						.uri("lb://DELIVERY-SERVICE"))
+				.build();
+	}
+
+	/**
+	 * {@code /internal/v1/hubs/**} · {@code /internal/v1/hub-routes/**} 는 여기 넣지 않는다.
+	 * 내부 API 는 Feign 직접 호출 전용이고, hub-service 가 그 경로를 permitAll 로 여는 근거가
+	 * "Gateway 라우팅에 없어서 외부에서 닿을 수 없다" 는 것이라 등록하는 순간 무인증으로 열린다.
+	 */
+	@Bean
 	public RouteLocator hubServiceRoutes(RouteLocatorBuilder builder) {
 		return builder.routes()
 				.route("hub-service", r -> r

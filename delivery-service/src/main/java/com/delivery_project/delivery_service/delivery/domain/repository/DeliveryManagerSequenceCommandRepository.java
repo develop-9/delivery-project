@@ -15,4 +15,9 @@ public interface DeliveryManagerSequenceCommandRepository {
             DeliveryManagerType managerType,
             UUID hubId
     );
+
+    void createIfAbsent(
+            DeliveryManagerType managerType,
+            UUID hubId
+    );
 }

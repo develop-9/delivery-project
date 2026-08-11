@@ -2,6 +2,7 @@ package com.delivery_project.delivery_service.delivery.infrastructure.adapter;
 
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
+import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.infrastructure.client.UserInternalClient;
 import com.delivery_project.delivery_service.delivery.infrastructure.client.dto.InternalApiResponse;
 import com.delivery_project.delivery_service.delivery.infrastructure.client.dto.UserInfoResponse;
@@ -62,5 +63,32 @@ public class UserFeignAdapter implements UserPort {
                     ErrorCode.USER_SERVICE_UNAVAILABLE
             );
         }
+    }
+
+    @Override
+    public UserAuthorizationInfo getUserAuthorizationInfo(
+            UUID userId
+    ){
+        try {
+            InternalApiResponse<UserInfoResponse> response =
+                    userInternalClient.getUser(userId);
+
+            UserInfoResponse user = response.data();
+            return new UserAuthorizationInfo(
+                    user.userId(),
+                    user.hubId(),
+                    user.companyId()
+            );
+        } catch (FeignException.NotFound exception){
+            throw new BusinessException(
+                    ErrorCode.USER_NOT_FOUND
+            );
+        } catch (FeignException exception){
+            throw new BusinessException(
+                    ErrorCode.USER_SERVICE_UNAVAILABLE
+            );
+        }
+
+
     }
 }
