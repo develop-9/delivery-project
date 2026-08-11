@@ -4,7 +4,8 @@ import com.delivery_project.order_service.global.response.SuccessResponse;
 import com.delivery_project.order_service.order.application.command.InventoryInternalCreateCommand;
 import com.delivery_project.order_service.order.application.command_service.InventoryCommandService;
 import com.delivery_project.order_service.order.presentation.request.InventoryInternalCreateRequest;
-import com.delivery_project.order_service.order.presentation.response.InventoryInternalSummaryResponse;
+import com.delivery_project.order_service.order.presentation.response.InventoryInternalCreateResponse;
+import com.delivery_project.order_service.order.presentation.response.InventoryInternalDeleteResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,6 +15,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.beans.factory.annotation.Value;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,21 +47,44 @@ public class InventoryInternalController {
 
 	private final InventoryCommandService inventoryCommandService;
 
+	/** 내부 호출에는 인증 주체가 없어 감사 필드에 쓰는 팀 공통 시스템 ID */
+	@Value("${system.id}")
+	private UUID systemUserId;
+
 	@Operation(summary = "초기 재고 레코드 생성",
-			description = "상품 생성 시 1회 호출한다. 보유 수량은 항상 0 으로 시작하고, 수량은 입고 API 로만 올라간다. "
-					+ "409 가 나가면 호출한 쪽이 상품 생성을 롤백한다.")
+			description = "상품이 등록됐음을 알린다. order 가 hub-service 에서 허브 목록을 받아 "
+					+ "모든 허브에 수량 0 인 재고 행을 하나씩 만든다. 이미 있는 허브는 건너뛰므로 "
+					+ "같은 상품으로 다시 호출해도 안전하다. 수량은 받지 않으며 입고 API 로만 올라간다.")
 	@ApiResponses({
-			@ApiResponse(responseCode = "201", description = "생성 성공"),
-			@ApiResponse(responseCode = "400", description = "필수값 누락"),
-			@ApiResponse(responseCode = "409", description = "같은 상품·허브 재고가 이미 있음")
+			@ApiResponse(responseCode = "201", description = "생성 성공 (허브가 없으면 빈 목록)"),
+			@ApiResponse(responseCode = "400", description = "입력값 오류"),
+			@ApiResponse(responseCode = "503", description = "허브 목록을 가져올 수 없음")
 	})
 	@PostMapping
-	public ResponseEntity<SuccessResponse<InventoryInternalSummaryResponse>> create(
+	public ResponseEntity<SuccessResponse<InventoryInternalCreateResponse>> createInitial(
 			@Valid @RequestBody InventoryInternalCreateRequest request
 	) {
 		InventoryInternalCreateCommand command = InventoryInternalCreateCommand.from(request);
-		InventoryInternalSummaryResponse response = InventoryInternalSummaryResponse.from(
+		InventoryInternalCreateResponse response = InventoryInternalCreateResponse.from(
 				inventoryCommandService.createInitial(command));
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
+	}
+
+	@Operation(summary = "상품 재고 일괄 삭제",
+			description = "상품이 삭제됐음을 알린다. 그 상품의 재고를 허브 구분 없이 모두 논리 삭제한다. "
+					+ "선점된 재고가 있으면 400 으로 막는다 — 진행 중인 주문이 잡고 있는 물량을 지우면 "
+					+ "배송 완료 시 차감할 대상이 사라진다. 지울 재고가 없어도 오류가 아니다.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "삭제 성공 (지울 것이 없으면 빈 목록)"),
+			@ApiResponse(responseCode = "400", description = "선점된 재고가 있어 삭제할 수 없음")
+	})
+	@DeleteMapping("/products/{productId}")
+	public ResponseEntity<SuccessResponse<InventoryInternalDeleteResponse>> deleteByProduct(
+			@PathVariable UUID productId
+	) {
+		// 내부 호출에는 사용자 토큰이 없어 감사 주체를 팀 공통 시스템 ID 로 남긴다
+		InventoryInternalDeleteResponse response = InventoryInternalDeleteResponse.from(
+				inventoryCommandService.deleteByProduct(productId, systemUserId));
+		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 }

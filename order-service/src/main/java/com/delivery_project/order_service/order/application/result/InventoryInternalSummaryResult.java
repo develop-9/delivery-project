@@ -2,6 +2,7 @@ package com.delivery_project.order_service.order.application.result;
 
 import com.delivery_project.order_service.order.domain.entity.Inventory;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -16,7 +17,8 @@ public record InventoryInternalSummaryResult(
         UUID productId,
         UUID hubId,
         Integer quantity,
-        Integer availableQuantity
+        Integer availableQuantity,
+        Instant createdAt
 ) {
     public static InventoryInternalSummaryResult from(Inventory inventory) {
         return new InventoryInternalSummaryResult(
@@ -24,6 +26,7 @@ public record InventoryInternalSummaryResult(
                 inventory.getProductId(),
                 inventory.getHubId(),
                 inventory.getQuantity(),
-                inventory.getAvailableQuantity());
+                inventory.getAvailableQuantity(),
+                inventory.getCreatedAt());
     }
 }

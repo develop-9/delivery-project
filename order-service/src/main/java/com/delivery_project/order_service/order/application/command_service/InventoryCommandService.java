@@ -7,6 +7,8 @@ import com.delivery_project.order_service.order.application.command.InventoryCre
 import com.delivery_project.order_service.order.application.command.InventoryDeleteCommand;
 import com.delivery_project.order_service.order.application.command.InventoryInboundCommand;
 import com.delivery_project.order_service.order.application.command.InventoryInternalCreateCommand;
+import com.delivery_project.order_service.order.application.port.HubPort;
+import com.delivery_project.order_service.order.application.result.InventoryInternalDeleteResult;
 import com.delivery_project.order_service.order.application.result.InventoryAdjustResult;
 import com.delivery_project.order_service.order.application.result.InventoryDeleteResult;
 import com.delivery_project.order_service.order.application.result.InventoryInboundResult;
@@ -19,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,6 +37,7 @@ import java.util.UUID;
 public class InventoryCommandService {
 
 	private final InventoryCommandRepository inventoryCommandRepository;
+	private final HubPort hubPort;
 
 	/** 재고 등록 — 상품을 특정 허브에 배치한다. 수량 증가가 아니다(그건 입고) */
 	public InventoryResult create(InventoryCreateCommand command) {
@@ -64,18 +68,72 @@ public class InventoryCommandService {
 	 * 여기서 나가는 예외가 곧 호출한 쪽의 롤백 신호다 — company 는 이 호출이 실패하면
 	 * 상품 생성 자체를 롤백한다(팀문서 서비스 간 호출 표).
 	 */
-	public InventoryInternalSummaryResult createInitial(InventoryInternalCreateCommand command) {
-		InventoryResult created = create(command.toCreateCommand());
+	public List<InventoryInternalSummaryResult> createInitial(InventoryInternalCreateCommand command) {
+		List<UUID> hubIds = hubPort.getAllHubIds();
 
-		log.info("[재고] 초기 레코드 생성(내부) : [{}] productId={} hubId={}",
-				created.inventoryId(), created.productId(), created.hubId());
+		if (hubIds.isEmpty()) {
+			// 허브가 없으면 만들 재고도 없다. 상품 등록까지 막을 이유는 아니라 빈 목록을 돌려준다
+			log.warn("[재고] 허브가 없어 초기 재고를 만들지 않는다 : productId={}", command.productId());
+			return List.of();
+		}
 
+		List<InventoryInternalSummaryResult> created = hubIds.stream()
+				.filter(hubId -> notAlreadyRegistered(command.productId(), hubId))
+				.map(hubId -> toSummary(create(command.toCreateCommand(hubId))))
+				.toList();
+
+		log.info("[재고] 초기 레코드 생성(내부) : productId={} hubCount={} createdCount={}",
+				command.productId(), hubIds.size(), created.size());
+
+		return created;
+	}
+
+	/**
+	 * 상품의 재고를 허브 구분 없이 모두 지운다 (company 가 상품을 삭제할 때 호출).
+	 *
+	 * <p>선점된 재고가 있으면 {@link Inventory#validateDeletable()} 이 막는다. 진행 중인 주문이
+	 * 잡고 있는 물량을 지우면 그 주문이 배송될 때 차감할 대상이 사라진다.
+	 *
+	 * <p>지울 것이 없어도 오류가 아니다. 재고가 만들어지기 전에 상품이 지워졌을 수 있다.
+	 */
+	public List<InventoryInternalDeleteResult> deleteByProduct(UUID productId, UUID deletedBy) {
+		List<Inventory> inventories = inventoryCommandRepository.findAllByProductId(productId);
+
+		List<InventoryInternalDeleteResult> deleted = inventories.stream()
+				.peek(Inventory::validateDeletable)
+				.peek(inventory -> inventory.delete(deletedBy))
+				.map(InventoryInternalDeleteResult::from)
+				.toList();
+
+		log.info("[재고] 상품 재고 일괄 삭제(내부) : productId={} deletedCount={}",
+				productId, deleted.size());
+
+		return deleted;
+	}
+
+	/**
+	 * 이미 있는 허브는 건너뛴다.
+	 *
+	 * <p>company 가 같은 상품으로 다시 호출하면(재시도 등) 중복 등록 예외가 나면서 앞서 만든
+	 * 행까지 롤백된다. 건너뛰면 빠진 허브만 채워지고 재호출이 안전해진다.
+	 */
+	private boolean notAlreadyRegistered(UUID productId, UUID hubId) {
+		boolean exists = inventoryCommandRepository.existsByProductIdAndHubId(productId, hubId);
+
+		if (exists) {
+			log.debug("[재고] 이미 등록된 허브라 건너뛴다 : productId={} hubId={}", productId, hubId);
+		}
+		return !exists;
+	}
+
+	private InventoryInternalSummaryResult toSummary(InventoryResult created) {
 		return new InventoryInternalSummaryResult(
 				created.inventoryId(),
 				created.productId(),
 				created.hubId(),
 				created.quantity(),
-				created.availableQuantity());
+				created.availableQuantity(),
+				created.createdAt());
 	}
 
 	/** 입고 — 보유 수량에 누적한다 */

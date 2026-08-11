@@ -1,6 +1,7 @@
 package com.delivery_project.order_service.order.presentation.internal_controller;
 
 import com.delivery_project.order_service.order.application.command_service.InventoryCommandService;
+import com.delivery_project.order_service.order.application.result.InventoryInternalDeleteResult;
 import com.delivery_project.order_service.order.application.result.InventoryInternalSummaryResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -15,11 +16,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,17 +47,18 @@ class InventoryInternalControllerTest {
 	private final UUID productId = UUID.randomUUID();
 	private final UUID hubId = UUID.randomUUID();
 	private final UUID companyId = UUID.randomUUID();
+	private final UUID inventoryId = UUID.randomUUID();
 
 	@Test
 	@DisplayName("초기 재고 레코드를 만들면 201 과 수량 0 을 돌려준다")
 	void createInitial() throws Exception {
 		// given
-		UUID inventoryId = UUID.randomUUID();
 		given(inventoryCommandService.createInitial(any()))
-				.willReturn(new InventoryInternalSummaryResult(inventoryId, productId, hubId, 0, 0));
+				.willReturn(List.of(new InventoryInternalSummaryResult(
+						inventoryId, productId, hubId, 0, 0, Instant.now())));
 
 		String body = objectMapper.writeValueAsString(
-				Map.of("productId", productId, "hubId", hubId, "companyId", companyId));
+				Map.of("productId", productId, "companyId", companyId));
 
 		// when & then
 		mockMvc.perform(post("/internal/v1/inventories")
@@ -61,16 +66,16 @@ class InventoryInternalControllerTest {
 						.content(body))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.success").value(true))
-				.andExpect(jsonPath("$.data.inventoryId").value(inventoryId.toString()))
-				.andExpect(jsonPath("$.data.quantity").value(0))
-				.andExpect(jsonPath("$.data.availableQuantity").value(0));
+				// company 의 InventorySaveFeignResponse 와 필드명이 맞아야 한다
+				.andExpect(jsonPath("$.data.inventoryList[0].inventoryId").value(inventoryId.toString()))
+				.andExpect(jsonPath("$.data.inventoryList[0].createdAt").exists());
 	}
 
 	@Test
 	@DisplayName("필수값이 빠지면 400 을 돌려준다")
 	void createInitialWithoutProductId() throws Exception {
 		// given — productId 누락
-		String body = objectMapper.writeValueAsString(Map.of("hubId", hubId, "companyId", companyId));
+		String body = objectMapper.writeValueAsString(Map.of("companyId", companyId));
 
 		// when & then
 		mockMvc.perform(post("/internal/v1/inventories")
@@ -80,4 +85,31 @@ class InventoryInternalControllerTest {
 				.andExpect(jsonPath("$.success").value(false));
 	}
 
+	@Test
+	@DisplayName("상품 재고 일괄 삭제는 지운 목록을 돌려준다")
+	void deleteByProduct() throws Exception {
+		// given
+		given(inventoryCommandService.deleteByProduct(any(), any()))
+				.willReturn(List.of(new InventoryInternalDeleteResult(
+						inventoryId, hubId, 30, Instant.now())));
+
+		// when & then — company 의 InventoryDeleteFeignResponse 와 필드명이 맞아야 한다
+		mockMvc.perform(delete("/internal/v1/inventories/products/{productId}", productId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.inventoryList[0].inventoryId").value(inventoryId.toString()))
+				.andExpect(jsonPath("$.data.inventoryList[0].remainingQuantity").value(30))
+				.andExpect(jsonPath("$.data.inventoryList[0].deletedAt").exists());
+	}
+
+	@Test
+	@DisplayName("지울 재고가 없어도 오류가 아니다")
+	void deleteByProductWithoutInventory() throws Exception {
+		// given — 재고가 만들어지기 전에 상품이 지워졌을 수 있다
+		given(inventoryCommandService.deleteByProduct(any(), any())).willReturn(List.of());
+
+		// when & then
+		mockMvc.perform(delete("/internal/v1/inventories/products/{productId}", productId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.inventoryList").isEmpty());
+	}
 }
