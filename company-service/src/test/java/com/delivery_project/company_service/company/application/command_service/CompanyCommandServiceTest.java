@@ -337,7 +337,7 @@ class CompanyCommandServiceTest {
                     .willReturn(mock(HubInfo.class));
 
             given(companyPersistenceService.updateCompany(
-                    company,
+                    company.getId(),
                     updatedHubId,
                     CompanyType.RECEIVER,
                     "수정 업체",
@@ -371,7 +371,7 @@ class CompanyCommandServiceTest {
             then(companyPersistenceService)
                     .should()
                     .updateCompany(
-                            company,
+                            company.getId(),
                             updatedHubId,
                             CompanyType.RECEIVER,
                             "수정 업체",
@@ -425,7 +425,7 @@ class CompanyCommandServiceTest {
                     .willReturn(mock(HubInfo.class));
 
             given(companyPersistenceService.updateCompany(
-                    company,
+                    company.getId(),
                     hubId,
                     CompanyType.RECEIVER,
                     "수정 업체",
@@ -459,7 +459,7 @@ class CompanyCommandServiceTest {
             then(companyPersistenceService)
                     .should()
                     .updateCompany(
-                            company,
+                            company.getId(),
                             hubId,
                             CompanyType.RECEIVER,
                             "수정 업체",
@@ -513,7 +513,7 @@ class CompanyCommandServiceTest {
                     .willReturn(mock(HubInfo.class));
 
             given(companyPersistenceService.updateCompany(
-                    company,
+                    company.getId(),
                     hubId,
                     CompanyType.RECEIVER,
                     "수정 업체",
@@ -547,7 +547,7 @@ class CompanyCommandServiceTest {
             then(companyPersistenceService)
                     .should()
                     .updateCompany(
-                            company,
+                            company.getId(),
                             hubId,
                             CompanyType.RECEIVER,
                             "수정 업체",
@@ -950,7 +950,7 @@ class CompanyCommandServiceTest {
                     .thenReturn(mock(HubInfo.class));
 
             when(companyPersistenceService.deleteCompany(
-                    company,
+                    company.getId(),
                     callerId
             ))
                     .thenReturn(deleteResult);
@@ -977,7 +977,7 @@ class CompanyCommandServiceTest {
 
             verify(companyPersistenceService)
                     .deleteCompany(
-                            company,
+                            company.getId(),
                             callerId
                     );
         }
@@ -1033,7 +1033,7 @@ class CompanyCommandServiceTest {
                     .thenReturn(mock(HubInfo.class));
 
             when(companyPersistenceService.deleteCompany(
-                    company,
+                    company.getId(),
                     callerId
             ))
                     .thenReturn(deleteResult);
@@ -1060,7 +1060,7 @@ class CompanyCommandServiceTest {
 
             verify(companyPersistenceService)
                     .deleteCompany(
-                            company,
+                            company.getId(),
                             callerId
                     );
         }

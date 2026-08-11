@@ -559,7 +559,7 @@ class ProductCommandServiceTest {
                     .willReturn(Optional.of(product));
 
             given(productPersistenceService.updateProduct(
-                    product,
+                    product.getId(),
                     newCompanyId,
                     "수정된 상품",
                     20000
@@ -596,7 +596,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should()
                     .updateProduct(
-                            product,
+                            product.getId(),
                             newCompanyId,
                             "수정된 상품",
                             20000
@@ -665,7 +665,7 @@ class ProductCommandServiceTest {
                     .willReturn(Optional.of(product));
 
             given(productPersistenceService.updateProduct(
-                    product,
+                    product.getId(),
                     newCompanyId,
                     "수정된 상품",
                     20000
@@ -702,7 +702,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should()
                     .updateProduct(
-                            product,
+                            product.getId(),
                             newCompanyId,
                             "수정된 상품",
                             20000
@@ -770,7 +770,7 @@ class ProductCommandServiceTest {
                     .willReturn(Optional.of(product));
 
             given(productPersistenceService.updateProduct(
-                    product,
+                    product.getId(),
                     companyId,
                     "수정된 상품",
                     20000
@@ -807,7 +807,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should()
                     .updateProduct(
-                            product,
+                            product.getId(),
                             companyId,
                             "수정된 상품",
                             20000
@@ -1000,7 +1000,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should(never())
                     .updateProduct(
-                            any(Product.class),
+                            any(UUID.class),
                             any(UUID.class),
                             anyString(),
                             anyInt()
@@ -1081,7 +1081,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should(never())
                     .updateProduct(
-                            any(Product.class),
+                            any(UUID.class),
                             any(UUID.class),
                             anyString(),
                             anyInt()
@@ -1288,7 +1288,7 @@ class ProductCommandServiceTest {
                     .willReturn(hubInfo);
 
             given(productPersistenceService.deleteProduct(
-                    product,
+                    product.getId(),
                     callerId
             ))
                     .willReturn(deleteResult);
@@ -1326,7 +1326,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should()
                     .deleteProduct(
-                            product,
+                            product.getId(),
                             callerId
                     );
         }
@@ -1391,7 +1391,7 @@ class ProductCommandServiceTest {
                     .willReturn(hubInfo);
 
             given(productPersistenceService.deleteProduct(
-                    product,
+                    product.getId(),
                     callerId
             ))
                     .willReturn(deleteResult);
@@ -1429,7 +1429,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should()
                     .deleteProduct(
-                            product,
+                            product.getId(),
                             callerId
                     );
         }
@@ -1607,7 +1607,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should(never())
                     .deleteProduct(
-                            any(Product.class),
+                            any(UUID.class),
                             any(UUID.class)
                     );
         }
@@ -1689,7 +1689,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should(never())
                     .deleteProduct(
-                            any(Product.class),
+                            any(UUID.class),
                             any(UUID.class)
                     );
         }
@@ -1777,7 +1777,7 @@ class ProductCommandServiceTest {
             then(productPersistenceService)
                     .should(never())
                     .deleteProduct(
-                            any(Product.class),
+                            any(UUID.class),
                             any(UUID.class)
                     );
         }

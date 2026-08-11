@@ -8,6 +8,8 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.CompanyCommandRepository;
 import com.delivery_project.company_service.company.domain.repository.ProductQueryRepository;
+import com.delivery_project.company_service.global.exception.BusinessException;
+import com.delivery_project.company_service.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,13 +20,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class CompanyPersistenceServiceTest {
@@ -217,10 +222,16 @@ class CompanyPersistenceServiceTest {
                     companyId
             );
 
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(companyCommandRepository.save(company))
+                    .willReturn(company);
+
             // when
             CompanyUpdateResult result =
                     companyPersistenceService.updateCompany(
-                            company,
+                            companyId,
                             updatedHubId,
                             updatedType,
                             updatedName,
@@ -245,6 +256,14 @@ class CompanyPersistenceServiceTest {
 
             assertThat(company.getAddress())
                     .isEqualTo(updatedAddress);
+
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
+            then(companyCommandRepository)
+                    .should()
+                    .save(company);
         }
 
         @Test
@@ -271,10 +290,16 @@ class CompanyPersistenceServiceTest {
             String name = "새로운 업체";
             String address = "서울특별시 서초구";
 
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(companyCommandRepository.save(company))
+                    .willReturn(company);
+
             // when
             CompanyUpdateResult result =
                     companyPersistenceService.updateCompany(
-                            company,
+                            companyId,
                             hubId,
                             type,
                             name,
@@ -299,6 +324,53 @@ class CompanyPersistenceServiceTest {
 
             assertThat(company.getAddress())
                     .isEqualTo(address);
+
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
+            then(companyCommandRepository)
+                    .should()
+                    .save(company);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 수정하면 COMPANY_NOT_FOUND 예외가 발생한다.")
+        void updateCompany_fail_whenCompanyNotFound() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+
+            CompanyType type = CompanyType.RECEIVER;
+            String name = "수정 업체";
+            String address = "서울특별시 송파구";
+
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () ->
+                            companyPersistenceService.updateCompany(
+                                    companyId,
+                                    hubId,
+                                    type,
+                                    name,
+                                    address
+                            ),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
+            then(companyCommandRepository)
+                    .should(never())
+                    .save(any(Company.class));
         }
     }
 
@@ -343,13 +415,19 @@ class CompanyPersistenceServiceTest {
                     20000
             );
 
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
             given(productQueryRepository.findByCompanyId(companyId))
                     .willReturn(List.of(product1, product2));
+
+            given(companyCommandRepository.save(company))
+                    .willReturn(company);
 
             // when
             CompanyDeleteResult result =
                     companyPersistenceService.deleteCompany(
-                            company,
+                            companyId,
                             callerId
                     );
 
@@ -381,9 +459,17 @@ class CompanyPersistenceServiceTest {
             assertThat(product2.getDeletedBy())
                     .isEqualTo(callerId);
 
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
             then(productQueryRepository)
                     .should()
                     .findByCompanyId(companyId);
+
+            then(companyCommandRepository)
+                    .should()
+                    .save(company);
         }
 
         @Test
@@ -407,13 +493,19 @@ class CompanyPersistenceServiceTest {
                     companyId
             );
 
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
             given(productQueryRepository.findByCompanyId(companyId))
                     .willReturn(List.of());
+
+            given(companyCommandRepository.save(company))
+                    .willReturn(company);
 
             // when
             CompanyDeleteResult result =
                     companyPersistenceService.deleteCompany(
-                            company,
+                            companyId,
                             callerId
                     );
 
@@ -433,9 +525,17 @@ class CompanyPersistenceServiceTest {
             assertThat(company.getDeletedBy())
                     .isEqualTo(callerId);
 
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
             then(productQueryRepository)
                     .should()
                     .findByCompanyId(companyId);
+
+            then(companyCommandRepository)
+                    .should()
+                    .save(company);
         }
 
         @Test
@@ -480,13 +580,19 @@ class CompanyPersistenceServiceTest {
                     )
             );
 
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
             given(productQueryRepository.findByCompanyId(companyId))
                     .willReturn(products);
+
+            given(companyCommandRepository.save(company))
+                    .willReturn(company);
 
             // when
             CompanyDeleteResult result =
                     companyPersistenceService.deleteCompany(
-                            company,
+                            companyId,
                             callerId
                     );
 
@@ -515,9 +621,52 @@ class CompanyPersistenceServiceTest {
                                 .isEqualTo(callerId);
                     });
 
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
             then(productQueryRepository)
                     .should()
                     .findByCompanyId(companyId);
+
+            then(companyCommandRepository)
+                    .should()
+                    .save(company);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 업체를 삭제하면 COMPANY_NOT_FOUND 예외가 발생한다.")
+        void deleteCompany_fail_whenCompanyNotFound() {
+            // given
+            UUID callerId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () ->
+                            companyPersistenceService.deleteCompany(
+                                    companyId,
+                                    callerId
+                            ),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
+            then(productQueryRepository)
+                    .shouldHaveNoInteractions();
+
+            then(companyCommandRepository)
+                    .should(never())
+                    .save(any(Company.class));
         }
     }
 }

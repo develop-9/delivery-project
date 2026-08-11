@@ -3,6 +3,8 @@ package com.delivery_project.company_service.company.application.persistence_ser
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
+import com.delivery_project.company_service.global.exception.BusinessException;
+import com.delivery_project.company_service.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,13 +14,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ProductPersistenceServiceTest {
@@ -226,10 +229,16 @@ class ProductPersistenceServiceTest {
             String newName = "수정된 상품";
             Integer newPrice = 20000;
 
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.of(product));
+
+            given(productCommandRepository.save(product))
+                    .willReturn(product);
+
             // when
             ProductUpdateResult result =
                     productPersistenceService.updateProduct(
-                            product,
+                            productId,
                             newCompanyId,
                             newName,
                             newPrice
@@ -250,6 +259,108 @@ class ProductPersistenceServiceTest {
 
             assertThat(product.getPrice())
                     .isEqualTo(newPrice);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(productCommandRepository)
+                    .should()
+                    .save(product);
+        }
+
+        @Test
+        @DisplayName("상품 수정 시 전달된 모든 정보가 Product에 반영된다.")
+        void updateProduct_success_withUpdatedProductInformation() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID newCompanyId = UUID.randomUUID();
+
+            Product product = new Product(
+                    productId,
+                    companyId,
+                    "기존 상품",
+                    10000
+            );
+
+            String newName = "새로운 상품";
+            Integer newPrice = 30000;
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.of(product));
+
+            given(productCommandRepository.save(product))
+                    .willReturn(product);
+
+            // when
+            ProductUpdateResult result =
+                    productPersistenceService.updateProduct(
+                            productId,
+                            newCompanyId,
+                            newName,
+                            newPrice
+                    );
+
+            // then
+            assertThat(result)
+                    .isNotNull();
+
+            assertThat(result.productId())
+                    .isEqualTo(productId);
+
+            assertThat(product.getCompanyId())
+                    .isEqualTo(newCompanyId);
+
+            assertThat(product.getName())
+                    .isEqualTo(newName);
+
+            assertThat(product.getPrice())
+                    .isEqualTo(newPrice);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(productCommandRepository)
+                    .should()
+                    .save(product);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품을 수정하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
+        void updateProduct_fail_whenProductNotFound() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            String name = "수정 상품";
+            Integer price = 20000;
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () ->
+                            productPersistenceService.updateProduct(
+                                    productId,
+                                    companyId,
+                                    name,
+                                    price
+                            ),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(productCommandRepository)
+                    .should(never())
+                    .save(any(Product.class));
         }
     }
 
@@ -272,10 +383,16 @@ class ProductPersistenceServiceTest {
                     10000
             );
 
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.of(product));
+
+            given(productCommandRepository.save(product))
+                    .willReturn(product);
+
             // when
             ProductDeleteResult result =
                     productPersistenceService.deleteProduct(
-                            product,
+                            productId,
                             callerId
                     );
 
@@ -291,6 +408,46 @@ class ProductPersistenceServiceTest {
 
             assertThat(product.getDeletedBy())
                     .isEqualTo(callerId);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(productCommandRepository)
+                    .should()
+                    .save(product);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 상품을 삭제하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
+        void deleteProduct_fail_whenProductNotFound() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID callerId = UUID.randomUUID();
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            BusinessException exception = catchThrowableOfType(
+                    () ->
+                            productPersistenceService.deleteProduct(
+                                    productId,
+                                    callerId
+                            ),
+                    BusinessException.class
+            );
+
+            assertThat(exception.getErrorCode())
+                    .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(productCommandRepository)
+                    .should(never())
+                    .save(any(Product.class));
         }
     }
 }
