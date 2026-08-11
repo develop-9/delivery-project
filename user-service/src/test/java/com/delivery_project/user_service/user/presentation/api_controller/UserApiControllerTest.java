@@ -360,9 +360,31 @@ class UserApiControllerTest {
 		UUID userId = signupUser(username, slackId, role, hubId, companyId);
 		loggedInUserIds.add(userId);
 
-		entityManager.flush();
-		entityManager.clear();
+		// 같은 테스트 안에서 이 헬퍼를 두 번째로 부르는 경우(master, target 각각)엔 첫 호출이
+		// 이미 트랜잭션을 끝내둬서 flush()가 트랜잭션을 요구하는 예외를 던진다 — 활성 트랜잭션이
+		// 있을 때만 의미가 있으므로(signup()이 이미 별도 트랜잭션에서 실제로 커밋하기 때문에
+		// 원래도 필수는 아니었다) 있을 때만 실행한다.
+		if (TestTransaction.isActive()) {
+			entityManager.flush();
+			entityManager.clear();
+		}
 		jdbcTemplate.update("UPDATE p_users SET approval_status = 'APPROVED' WHERE username = ?", username);
+
+		// 이 UPDATE를 커밋해야 한다 — suspend()/reinstate()/delete()가 NOT_SUPPORTED라 같은
+		// 유저를 대상으로 나중에 호출되면 별도 트랜잭션에서 이 행을 다시 건드리는데, 이 UPDATE가
+		// 이 테스트의 트랜잭션 안에 미커밋 상태로 남아 있으면 그 행에 락이 걸린 채라 데드락에
+		// 빠진다(AuthApiControllerTest의 재가입 테스트에서 실제로 겪은 것과 같은 종류).
+		//
+		// 커밋 뒤 트랜잭션을 다시 시작하지 않는다 — 재시작하면 이 테스트 메서드가 그 뒤로도 계속
+		// 같은 영속성 컨텍스트를 쓰게 되는데, 이미 이 안에서 조회했던 엔티티(예: findByUsername으로
+		// targetId를 구할 때)가 1차 캐시에 남아있어서, suspend()/reinstate()가 별도 트랜잭션에서
+		// 실제로 커밋한 변경을 이후 조회(예: /users/me)가 못 보고 캐시된 옛 값을 반환하는 문제가
+		// 실제로 있었다. 트랜잭션 없이 두면 이후 호출들은 운영과 동일하게 각자 새 트랜잭션/영속성
+		// 컨텍스트로 커밋된 최신 값을 그대로 읽는다.
+		if (TestTransaction.isActive()) {
+			TestTransaction.flagForCommit();
+			TestTransaction.end();
+		}
 
 		String loginBody = """
 				{
