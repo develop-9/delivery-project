@@ -94,12 +94,25 @@ public class CompanyCommandService {
 
         /*
          * 업체 수정 검증
-         * 1. 권한 검증
+         * 1. 존재 여부 검증
+         *  - 실제 존재하는 Company인지 확인
+         *  - 이때, 존재 여부가 권한이 없는 사용자에게 리소스가 노출되지 않도록 권한 오류와 동일하게 처리
+         *
+         * 2. 권한 검증
          *  - Master, 담당 Hub Manager, 담당 Company Manager만 가능
          *
-         * 2. 존재 여부 검증
-         *  - 실제 존재하는 Company, Hub인지 확인
+         * 3. 존재 여부 검증
+         *  - 실제 존재하는 Hub인지 확인
          */
+
+        /*
+         * 업체 존재 여부를 확인
+         * 존재하지 않는 경우에도 Company의 존재 여부가
+         * 권한이 없는 사용자에게 노출되지 않도록 AUTH_FORBIDDEN으로 처리
+         */
+        Company company = companyPersistenceService
+                .getCompanyById(companyUpdateCommand.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
 
         // 요청자 정보 조회
         CallerInfo callerInfo =
@@ -112,14 +125,14 @@ public class CompanyCommandService {
                         callerInfo.role() == Role.HUB_MANAGER
                                 && Objects.equals(
                                 callerInfo.hubId(),
-                                companyUpdateCommand.hubId()
+                                company.getHubId()
                         )
                 )
                         || (
                         callerInfo.role() == Role.COMPANY_MANAGER
                                 && Objects.equals(
                                 callerInfo.companyId(),
-                                companyUpdateCommand.companyId()
+                                company.getId()
                         )
                 );
 
@@ -135,12 +148,6 @@ public class CompanyCommandService {
          * 반환된 HubInfo는 현재 업체 수정 로직에서는 사용하지 않음
          */
         HubInfo hubInfo = hubPort.getHub(companyUpdateCommand.hubId());
-
-        // 업체를 조회
-        Company company = companyPersistenceService
-                .getCompanyById(companyUpdateCommand.companyId())
-                // 조회된 업체가 없는 경우
-                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 실제 DB 수정 시점부터 트랜잭션 시작
         return companyPersistenceService.updateCompany(
@@ -170,7 +177,7 @@ public class CompanyCommandService {
          *  - Master, 담당 Hub Manager만 가능
          *
          * 3. 존재 여부 검증
-         *  - 실제 존재하는 Company, Hub인지 확인
+         *  - 실제 존재하는 Hub인지 확인
          */
 
         /*
