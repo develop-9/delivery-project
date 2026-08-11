@@ -36,4 +36,30 @@ public class DeliveryManagerFeignAdapter implements DeliveryManagerPort {
 			throw new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
 		}
 	}
+
+	@Override
+	public void deactivate(UUID userId) {
+		try {
+			deliveryManagerClient.deactivateByUserId(userId);
+		} catch (FeignException.NotFound e) {
+			// 배송담당자 레코드가 없음 — 정지를 막을 이유가 없어 멱등 성공으로 취급.
+			log.info("[User] 연동할 배송담당자 레코드 없음 userId={}", userId);
+		} catch (FeignException e) {
+			log.warn("[User] Delivery Service 연동 실패 userId={}", userId, e);
+			throw new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+		}
+	}
+
+	@Override
+	public void reactivate(UUID userId) {
+		try {
+			deliveryManagerClient.reactivateByUserId(userId);
+		} catch (FeignException.NotFound e) {
+			// 배송담당자 레코드가 없음 — 정지 해제를 막을 이유가 없어 멱등 성공으로 취급.
+			log.info("[User] 연동할 배송담당자 레코드 없음 userId={}", userId);
+		} catch (FeignException e) {
+			log.warn("[User] Delivery Service 연동 실패 userId={}", userId, e);
+			throw new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+		}
+	}
 }
