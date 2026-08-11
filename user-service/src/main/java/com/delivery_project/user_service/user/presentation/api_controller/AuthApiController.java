@@ -30,10 +30,11 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-public class AuthApiController {
+public class AuthApiController implements AuthApi {
 
 	private final AuthCommandService authCommandService;
 
+	@Override
 	@PostMapping("/signup")
 	public ResponseEntity<SuccessResponse<UserSignupResponse>> signup(@Valid @RequestBody UserSignupRequest request) {
 		UserSignupResult result = authCommandService.signup(request.toCommand());
@@ -41,6 +42,7 @@ public class AuthApiController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/login")
 	public ResponseEntity<SuccessResponse<UserLoginResponse>> login(@Valid @RequestBody UserLoginRequest request) {
 		UserLoginResult result = authCommandService.login(request.toCommand());
@@ -48,6 +50,7 @@ public class AuthApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/refresh")
 	public ResponseEntity<SuccessResponse<UserRefreshResponse>> refresh(@Valid @RequestBody UserRefreshRequest request) {
 		UserRefreshResult result = authCommandService.refresh(request.toCommand());
@@ -55,6 +58,7 @@ public class AuthApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/logout")
 	public ResponseEntity<Void> logout(
 			@AuthenticationPrincipal UUID callerId,
