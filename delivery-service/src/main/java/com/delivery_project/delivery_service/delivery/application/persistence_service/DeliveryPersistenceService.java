@@ -1,9 +1,11 @@
-package com.delivery_project.delivery_service.delivery.application.command_service;
+package com.delivery_project.delivery_service.delivery.application.persistence_service;
 
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryUpdateCommand;
 import com.delivery_project.delivery_service.delivery.application.port.DeliveryCreationLockPort;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryCreateResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryPath;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryUpdateResult;
 import com.delivery_project.delivery_service.delivery.application.result.ReceiverInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryRoute;
@@ -76,6 +78,34 @@ public class DeliveryPersistenceService {
                 savedDelivery.getOrderId(),
                 savedDelivery.getStatus(),
                 deliveryRoutes.size()
+        );
+    }
+
+    @Transactional
+    public DeliveryUpdateResult update(
+            DeliveryUpdateCommand command,
+            ReceiverInfo receiver
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+
+        delivery.update(
+                command.deliveryAddress(),
+                receiver != null ? receiver.name() : null,
+                receiver != null ? receiver.slackId() : null
+        );
+
+        Delivery savedDelivery =
+                deliveryCommandRepository.save(delivery);
+
+        return DeliveryUpdateResult.from(
+                savedDelivery
         );
     }
 }

@@ -1,8 +1,12 @@
 package com.delivery_project.delivery_service.delivery.presentation.api_controller;
 
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryRouteCommandService;
+import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
+import com.delivery_project.delivery_service.delivery.application.query_service.DeliveryRouteQueryService;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteStatusUpdateResult;
 import com.delivery_project.delivery_service.delivery.presentation.request.DeliveryRouteStatusUpdateRequest;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryRouteDetailResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryRouteStatusUpdateResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import com.delivery_project.delivery_service.global.security.JwtPrincipal;
@@ -20,6 +24,7 @@ import java.util.UUID;
 public class DeliveryRouteApiController {
 
     private final DeliveryRouteCommandService deliveryRouteCommandService;
+    private final DeliveryRouteQueryService deliveryRouteQueryService;
 
     @PatchMapping("/{routeId}/status")
     @ResponseStatus(HttpStatus.OK)
@@ -40,6 +45,28 @@ public class DeliveryRouteApiController {
 
         return SuccessResponse.success(
                 DeliveryRouteStatusUpdateResponse.from(result)
+        );
+    }
+
+    @GetMapping("/{routeId}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryRouteDetailResponse> getDeliveryRoute(
+            @PathVariable UUID routeId,
+            @AuthenticationPrincipal JwtPrincipal principal
+    ){
+        DeliveryRouteGetQuery query =
+                DeliveryRouteGetQuery.from(
+                        routeId,
+                        principal.userId(),
+                        principal.role()
+                );
+
+        DeliveryRouteDetailResult result =
+                deliveryRouteQueryService
+                        .getDeliveryRoute(query);
+
+        return SuccessResponse.success(
+                DeliveryRouteDetailResponse.from(result)
         );
     }
 

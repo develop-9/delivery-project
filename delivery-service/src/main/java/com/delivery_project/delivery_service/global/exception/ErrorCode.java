@@ -23,6 +23,11 @@ public enum ErrorCode {
     DELIVERY_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "배송 생성에 실패했습니다.", "DELIVERY_CREATE_FAILED"),
     DELIVERY_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 배송입니다.", "DELIVERY_ALREADY_CANCELED"),
     DELIVERY_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 취소할 수 없습니다.", "DELIVERY_CANCEL_NOT_ALLOWED"),
+    DELIVERY_ALREADY_STARTED(HttpStatus.CONFLICT, "이미 시작된 배송은 수정할 수 없습니다." ,"DELIVERY_ALREADY_STARTED"),
+    DELIVERY_DELETE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 상태에서는 배송을 삭제할 수 없습니다.", "DELIVERY_DELETE_NOT_ALLOWED"),
+    UPDATE_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 수정 권한이 없습니다.", "UPDATE_DELIVERY_FORBIDDEN"),
+    DELETE_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 삭제 권한이 없습니다.", "DELETE_DELIVERY_FORBIDDEN"),
+    READ_DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 조회 권한이 없습니다.", "READ_DELIVERY_FORBIDDEN"),
 
     // DeliveryRoute ErrorCode
     DELIVERY_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 경로를 찾을 수 없습니다.", "DELIVERY_ROUTE_NOT_FOUND"),
@@ -34,6 +39,7 @@ public enum ErrorCode {
     COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED(HttpStatus.CONFLICT, "업체 배송 담당자가 배정되지 않았습니다.", "COMPANY_DELIVERY_MANAGER_NOT_ASSIGNED"),
     DELIVERY_ROUTE_ALREADY_IN_TRANSIT(HttpStatus.CONFLICT, "이미 진행 중인 배송 경로가 존재합니다.", "DELIVERY_ROUTE_ALREADY_IN_TRANSIT"),
     DELIVERY_MANAGER_NOT_AVAILABLE(HttpStatus.CONFLICT, "배정 가능한 배송 담당자가 아닙니다.", "DELIVERY_MANAGER_NOT_AVAILABLE"),
+    READ_DELIVERY_ROUTE_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 경로 조회 권한이 없습니다.", "READ_DELIVERY_ROUTE_FORBIDDEN"),
 
     //Delivery Manager ErrorCode
     DELIVERY_MANAGER_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 담당자를 찾을 수 없습니다.", "DELIVERY_MANAGER_NOT_FOUND"),
@@ -51,15 +57,19 @@ public enum ErrorCode {
     ACTIVE_DELIVERY_EXISTS(HttpStatus.CONFLICT, "담당 중인 배송이 존재합니다.", "ACTIVE_DELIVERY_EXISTS"),
     DELIVERY_SEQUENCE_CONFLICT(HttpStatus.CONFLICT, "배송 담당자 배정 순번이 충돌했습니다.", "DELIVERY_SEQUENCE_CONFLICT"),
     DELIVERY_MANAGER_NOT_DELIVERING(HttpStatus.CONFLICT, "배송 중인 담당자가 아닙니다.", "DELIVERY_MANAGER_NOT_DELIVERING"),
+    READ_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 조회 권한이 없습니다.", "READ_DELIVERY_MANAGER_FORBIDDEN"),
+    MANAGE_DELIVERY_MANAGER_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 담당자 관리 권한이 없습니다.", "MANAGE_DELIVERY_MANAGER_FORBIDDEN"),
 
-    // User service Errorcode
+    // external service
     USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "User Service를 사용할 수 없습니다.", "USER_SERVICE_UNAVAILABLE"),
-
     HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Hub Service를 사용할 수 없습니다.", "HUB_SERVICE_UNAVAILABLE"),
 
-    // feign client
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
     HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
+    HUB_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "허브 간 배송 경로를 찾을 수 없습니다.", "HUB_ROUTE_NOT_FOUND"),
+
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.","ORDER_NOT_FOUND"),
+    ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Order Service를 사용할 수 없습니다.", "ORDER_SERVICE_UNAVAILABLE"),
     // 검증
     UPDATE_DELIVERY_ROUTE_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 경로 수정 권한이 없습니다.", "UPDATE_DELIVERY_ROUTE_FORBIDDEN"),
     UPDATE_DELIVERY_STATUS_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 상태 변경 권한이 없습니다.", "UPDATE_DELIVERY_STATUS_FORBIDDEN"),

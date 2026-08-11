@@ -12,4 +12,8 @@ public interface DeliveryCommandRepository {
     Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
 
     Optional<Delivery> findById(UUID deliveryId);
+
+    boolean existsActiveByCompanyDeliveryManagerId(
+            UUID managerId
+    );
 }

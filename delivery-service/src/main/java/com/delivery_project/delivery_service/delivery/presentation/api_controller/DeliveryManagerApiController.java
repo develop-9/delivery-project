@@ -12,10 +12,12 @@ import com.delivery_project.delivery_service.delivery.presentation.request.Deliv
 import com.delivery_project.delivery_service.delivery.presentation.response.*;
 import com.delivery_project.delivery_service.global.response.PageResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
+import com.delivery_project.delivery_service.global.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -30,10 +32,14 @@ public class DeliveryManagerApiController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse<DeliveryManagerCreateResponse> createDeliveryManager(
-            @Valid @RequestBody DeliveryManagerCreateRequest request
+            @Valid @RequestBody DeliveryManagerCreateRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerCreateResult result =
-                deliveryManagerCommandService.create(request.toCommand());
+                deliveryManagerCommandService.create(request.toCommand(
+                        principal.userId(),
+                        principal.role()
+                ));
 
         DeliveryManagerCreateResponse response =
                 DeliveryManagerCreateResponse.from(result);
@@ -44,10 +50,14 @@ public class DeliveryManagerApiController {
     @GetMapping("/{managerId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDetailResponse> getDeliveryManager(
-            @PathVariable UUID managerId
+            @PathVariable UUID managerId,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerGetQuery query =
-                DeliveryManagerGetQuery.from(managerId);
+                DeliveryManagerGetQuery.from(
+                        managerId,
+                        principal.userId(),
+                        principal.role());
 
         DeliveryManagerDetailResult result =
                 deliveryManagerQueryService.getDeliveryManager(query);
@@ -60,12 +70,15 @@ public class DeliveryManagerApiController {
     public SuccessResponse<PageResponse<DeliveryManagerListResponse>>
     getDeliveryManagers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerListQuery query =
-                DeliveryManagerListQuery.of(
+                DeliveryManagerListQuery.from(
                         page,
-                        size
+                        size,
+                        principal.userId(),
+                        principal.role()
                 );
 
         Page<DeliveryManagerListResult> result =
@@ -82,11 +95,13 @@ public class DeliveryManagerApiController {
     @GetMapping("/me")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDetailResponse> getMyDeliveryManager(
-            @RequestHeader("X-User-Id") UUID userId
-            // TODO: Spring Security 적용 후 @AuthenticationPrincipal 사용
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerGetMyQuery query =
-                DeliveryManagerGetMyQuery.from(userId);
+                DeliveryManagerGetMyQuery.from(
+                        principal.userId(),
+                        principal.role()
+                        );
 
         DeliveryManagerDetailResult result =
                 deliveryManagerQueryService.getMyDeliveryManager(query);
@@ -99,11 +114,15 @@ public class DeliveryManagerApiController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerUpdateResponse> updateDeliveryManager(
             @PathVariable UUID managerId,
-            @Valid @RequestBody DeliveryManagerUpdateRequest request
+            @Valid @RequestBody DeliveryManagerUpdateRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerUpdateResult result =
                 deliveryManagerCommandService.update(
-                        request.toCommand(managerId)
+                        request.toCommand(
+                                managerId,
+                                principal.userId(),
+                                principal.role())
                 );
         return SuccessResponse.success(DeliveryManagerUpdateResponse.from(result));
     }
@@ -112,13 +131,14 @@ public class DeliveryManagerApiController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDeleteResponse> deleteDeliveryManager(
             @PathVariable UUID managerId,
-            @RequestHeader("X-User-Id") UUID deletedBy
-            // TODO: Spring Security 적용 후 @AuthenticationPrincipal 사용
+            @AuthenticationPrincipal JwtPrincipal principal
     ){
         DeliveryManagerDeleteCommand command =
                 DeliveryManagerDeleteCommand.of(
                         managerId,
-                        deletedBy
+                        principal.userId(),
+                        principal.role()
+
                 );
 
         DeliveryManagerDeleteResult result =
