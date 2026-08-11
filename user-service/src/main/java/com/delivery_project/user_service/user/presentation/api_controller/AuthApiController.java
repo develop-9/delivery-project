@@ -2,11 +2,13 @@ package com.delivery_project.user_service.user.presentation.api_controller;
 
 import java.util.UUID;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -54,8 +56,11 @@ public class AuthApiController {
 	}
 
 	@PostMapping("/logout")
-	public ResponseEntity<Void> logout(@AuthenticationPrincipal UUID callerId) {
-		authCommandService.logout(callerId);
+	public ResponseEntity<Void> logout(
+			@AuthenticationPrincipal UUID callerId,
+			@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader
+	) {
+		authCommandService.logout(callerId, authorizationHeader);
 		return ResponseEntity.noContent().build();
 	}
 }

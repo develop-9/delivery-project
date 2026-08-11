@@ -107,7 +107,7 @@ public class UserPersistenceService {
 		}
 
 		target.delete(callerId);
-		refreshTokenRepository.deleteByUserId(target.getId());
+		refreshTokenRepository.deleteAllByUserId(target.getId());
 		// Refresh Token 삭제만으로는 이미 발급된 Access Token까지 막지 못하므로, 무효화 시각을
 		// 별도로 기록해서 Gateway가 만료 전 토큰도 차단할 수 있게 한다(Gateway JWT 인증 필터 참고).
 		// Redis에 직접 쓰지 않고 같은 트랜잭션 안에서 아웃박스에 기록되므로(UserInvalidationRepositoryImpl
@@ -133,7 +133,7 @@ public class UserPersistenceService {
 		}
 
 		target.suspend();
-		refreshTokenRepository.deleteByUserId(target.getId());
+		refreshTokenRepository.deleteAllByUserId(target.getId());
 		userInvalidationRepository.invalidate(target.getId(), Instant.now());
 
 		return UserSuspendResult.from(target);

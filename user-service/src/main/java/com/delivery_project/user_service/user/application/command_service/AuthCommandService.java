@@ -1,7 +1,6 @@
 package com.delivery_project.user_service.user.application.command_service;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +26,6 @@ import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
-import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +38,6 @@ public class AuthCommandService {
 
 	private final UserCommandRepository userCommandRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
-	private final UserInvalidationRepository userInvalidationRepository;
 	private final UserPersistenceService userPersistenceService;
 	private final PasswordEncoder passwordEncoder;
 	private final TokenProvider tokenProvider;
@@ -107,8 +104,9 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.USER_NOT_APPROVED);
 		}
 
-		TokenPair tokens = issueTokens(user);
-		log.info("[Auth] 로그인 성공 userId={}", user.getId());
+		UUID sessionId = UUID.randomUUID();
+		TokenPair tokens = issueTokens(user, sessionId);
+		log.info("[Auth] 로그인 성공 userId={} sessionId={}", user.getId(), sessionId);
 
 		return new UserLoginResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
 	}
@@ -125,12 +123,8 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
 		}
 		UUID userId = principal.userId();
-
-		String storedRefreshToken = refreshTokenRepository.findByUserId(userId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED));
-		if (!storedRefreshToken.equals(requestedRefreshToken)) {
-			throw new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED);
-		}
+		// 로테이션돼도 같은 기기의 같은 세션임을 유지하기 위해 sessionId는 새로 만들지 않고 그대로 재사용한다.
+		UUID sessionId = principal.sessionId();
 
 		User user = userCommandRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_TOKEN_INVALID));
@@ -138,36 +132,52 @@ public class AuthCommandService {
 			throw new BusinessException(ErrorCode.USER_NOT_APPROVED);
 		}
 
-		TokenPair tokens = issueTokens(user);
-		log.info("[Auth] 토큰 재발급 성공 userId={}", userId);
+		// 저장된 값과의 비교와 교체를 Redis 쪽에서 원자적으로 한 번에 처리한다(compareAndRotate).
+		// 조회 후 애플리케이션에서 비교하고 따로 저장하는 방식은 그 사이에 동시 재발급 요청이
+		// 끼어들 여지가 있어서, 같은 refresh token으로 동시에 두 번 요청이 와도 하나만 성공하게 한다.
+		String newRefreshToken = tokenProvider.generateRefreshToken(userId, sessionId);
+		boolean rotated = refreshTokenRepository.compareAndRotate(
+				userId, sessionId, requestedRefreshToken, newRefreshToken,
+				Duration.ofMillis(tokenProvider.getRefreshTokenExpirationMillis()));
+		if (!rotated) {
+			throw new BusinessException(ErrorCode.AUTH_TOKEN_EXPIRED);
+		}
+		String accessToken = tokenProvider.generateAccessToken(userId, user.getRole(), sessionId);
 
-		return new UserRefreshResult(tokens.accessToken(), tokens.refreshToken(), tokenProvider.getAccessTokenExpirationSeconds());
+		log.info("[Auth] 토큰 재발급 성공 userId={} sessionId={}", userId, sessionId);
+
+		return new UserRefreshResult(accessToken, newRefreshToken, tokenProvider.getAccessTokenExpirationSeconds());
 	}
 
 	/**
-	 * Access Token 무효화 기록을 Refresh Token 삭제보다 먼저 한다.
-	 * 아웃박스 DB insert라 Redis 상태와 무관하게 항상 성공하므로,
-	 * 뒤이은 Refresh Token 삭제가 실패해도 이 기록만은 반드시 남아야 한다.
-	 * noRollbackFor로 그 실패가 이 기록까지 롤백시키지 않게 막는다.
+	 * DB 쓰기가 없는 메서드라 signup()/delete()와 같은 이유로 클래스 레벨 @Transactional을
+	 * 비활성화한다 — Redis 호출만 하면서 굳이 DB 커넥션을 붙잡고 있을 이유가 없다.
+	 *
+	 * 로그아웃을 요청한 기기의 세션 하나만 끝낸다(다른 기기의 세션은 그대로 유지 — 다중 기기 지원).
+	 * 블랙리스트 등록을 세션 삭제보다 먼저 하는 이유: 블랙리스트는 sessionId 단위로 걸리므로,
+	 * 뒤이은 삭제가 실패해서 이 refresh token으로 재발급을 한 번 더 받아내더라도 같은 sessionId를
+	 * 물려받은 새 Access Token까지 Gateway에서 그대로 막힌다 — 삭제 실패의 피해 범위가 더 좁다.
+	 * 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태 재검증으로
+	 * 방어가 안 되므로, 두 호출 모두 Redis 실패를 성공으로 위장하지 않고 그대로 던진다.
 	 */
-	@Transactional(noRollbackFor = IllegalStateException.class)
-	public void logout(UUID callerId) {
-		// 로그아웃도 사용자가 명시적으로 세션을 끝내려는 의도이므로, 삭제 때와 같은 기준으로
-		// 이미 발급된 Access Token까지 막는다(Gateway JWT 인증 필터가 이 값과 iat를 비교).
-		userInvalidationRepository.invalidate(callerId, Instant.now());
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	public void logout(UUID callerId, String authorizationHeader) {
+		String accessToken = tokenProvider.resolveToken(authorizationHeader);
+		JwtPrincipal principal = tokenProvider.parseAccessToken(accessToken);
+		UUID sessionId = principal.sessionId();
 
-		// 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태
-		// 재검증으로 방어가 안 된다 — Redis 삭제가 실패해도 성공으로 위장하면 안 되므로
-		// fail-open인 deleteByUserId() 대신 실패를 그대로 던지는 쪽을 쓴다.
-		refreshTokenRepository.deleteByUserIdOrThrow(callerId);
+		refreshTokenRepository.blacklistSessionOrThrow(
+				callerId, sessionId, Duration.ofSeconds(tokenProvider.getAccessTokenExpirationSeconds()));
+		refreshTokenRepository.deleteByUserIdAndSessionIdOrThrow(callerId, sessionId);
 
-		log.info("[Auth] 로그아웃 완료 userId={}", callerId);
+		log.info("[Auth] 로그아웃 완료 userId={} sessionId={}", callerId, sessionId);
 	}
 
-	private TokenPair issueTokens(User user) {
-		String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
-		String refreshToken = tokenProvider.generateRefreshToken(user.getId());
-		refreshTokenRepository.save(user.getId(), refreshToken, Duration.ofMillis(tokenProvider.getRefreshTokenExpirationMillis()));
+	private TokenPair issueTokens(User user, UUID sessionId) {
+		String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole(), sessionId);
+		String refreshToken = tokenProvider.generateRefreshToken(user.getId(), sessionId);
+		refreshTokenRepository.save(user.getId(), sessionId, refreshToken,
+				Duration.ofMillis(tokenProvider.getRefreshTokenExpirationMillis()));
 		return new TokenPair(accessToken, refreshToken);
 	}
 
