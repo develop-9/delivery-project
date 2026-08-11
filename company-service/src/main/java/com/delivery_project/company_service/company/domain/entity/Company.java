@@ -70,6 +70,8 @@ public class Company extends BaseDeletableEntity {
         this.address = address;
     }
 
+    private static final int MAX_NAME_LENGTH = 100;
+
     // Validation Check - 올바른 HubId 기입 여부 판별
     private static void validateHubId(UUID hubId) {
         if (hubId == null) {
@@ -86,7 +88,10 @@ public class Company extends BaseDeletableEntity {
 
     // Validation Check - 올바른 name 기입 여부 판별
     private static void validateName(String name) {
-        if (name == null || name.isBlank()) {
+        if (name == null
+                || name.isBlank()
+                || name.codePointCount(0, name.length()) > MAX_NAME_LENGTH
+        ) {
             throw new BusinessException(ErrorCode.COMPANY_INVALID_NAME);
         }
     }
