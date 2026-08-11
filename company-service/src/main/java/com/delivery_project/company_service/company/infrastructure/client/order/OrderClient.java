@@ -20,8 +20,8 @@ public interface OrderClient {
             @RequestBody InventoryFeignRequest inventoryFeignRequest
     );
 
-    @DeleteMapping("/{inventoryId}")
+    @DeleteMapping("/{productId}")
     SuccessResponse<InventoryDeleteFeignResponse> deleteInventory(
-            @PathVariable UUID inventoryId
+            @PathVariable UUID productId
     );
 }
