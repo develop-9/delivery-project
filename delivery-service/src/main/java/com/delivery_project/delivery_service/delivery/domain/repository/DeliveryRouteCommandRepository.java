@@ -15,6 +15,11 @@ public interface DeliveryRouteCommandRepository {
 
     Optional<DeliveryRoute> findById(UUID routeId);
 
+    boolean existsByDeliveryIdAndHubId(
+            UUID deliveryId,
+            UUID hubId
+    );
+
     List<DeliveryRoute> findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
             UUID deliveryId,
             DeliveryRouteStatus status
@@ -26,4 +31,16 @@ public interface DeliveryRouteCommandRepository {
     );
 
     Optional<DeliveryRoute> findLastByDeliveryId(UUID deliveryId);
+
+    List<DeliveryRoute> findAllByDeliveryIdAndDeletedAtIsNull(
+            UUID deliveryId
+    );
+
+    Optional<DeliveryRoute> findByIdForUpdate(
+            UUID routeId
+    );
+
+    boolean existsInTransitByDeliveryManagerId(
+            UUID managerId
+    );
 }

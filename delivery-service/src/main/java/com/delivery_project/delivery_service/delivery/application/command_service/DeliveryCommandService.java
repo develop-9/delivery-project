@@ -1,9 +1,9 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCancelCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryStatusUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.*;
+import com.delivery_project.delivery_service.delivery.application.persistence_service.DeliveryPersistenceService;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
@@ -37,6 +37,7 @@ public class DeliveryCommandService {
     // Application 계층은 FeignClient를 직접 사용하지 않고 Port에만 의존한다.
     private final UserPort userPort;
     private final HubRoutePort hubRoutePort;
+    private final OrderPort orderPort;
 
     public DeliveryCreateResult create(
             DeliveryCreateCommand command
@@ -137,6 +138,80 @@ public class DeliveryCommandService {
                 savedDelivery.getCompanyDeliveryManagerId(),
                 savedDelivery.getUpdatedAt()
         );
+    }
+
+    public DeliveryUpdateResult update(
+            DeliveryUpdateCommand command
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+
+        validateUpdatePermission(
+                command,
+                delivery
+        );
+
+        ReceiverInfo receiver = null;
+
+        if(command.receiverUserId() != null){
+            receiver =
+                    userPort.getReceiver(
+                            command.receiverUserId()
+                    );
+        }
+
+        return deliveryPersistenceService.update(
+                command,
+                receiver
+        );
+    }
+
+    @Transactional
+    public DeliveryDeleteResult delete(
+            DeliveryDeleteCommand command
+    ){
+        Delivery delivery =
+                deliveryCommandRepository
+                        .findById(command.deliveryId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_NOT_FOUND
+                                )
+                        );
+
+        validateDeletePermission(command, delivery);
+
+        // PENDING / CANCELED 상태만 삭제 가능
+        delivery.validateDeletable();
+
+        List<DeliveryRoute> routes =
+                deliveryRouteCommandRepository
+                        .findAllByDeliveryIdAndDeletedAtIsNull(
+                                delivery.getId()
+                        );
+        // 혹시 남아있는 담당자가 있다면 AVAILABLE 복원
+        releaseAssignedManagersForDelete(delivery);
+
+        // Delivery 논리 삭제
+        delivery.delete(command.deletedBy());
+
+        // 연결된 Route 전체 논리 삭제
+        for(DeliveryRoute route : routes){
+            route.delete(command.deletedBy());
+        }
+
+        deliveryRouteCommandRepository.saveAll(routes);
+
+        Delivery savedDelivery =
+                deliveryCommandRepository.save(delivery);
+
+        return DeliveryDeleteResult.from(savedDelivery);
     }
 
     private void validateDuplicateOrder(
@@ -284,7 +359,11 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.HUB_MANAGER) {
-            // TODO: #53 완료 후 담당 Hub 기준 권한 검증 추가
+            validateHubManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery,
+                    ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
+            );
             return;
         }
 
@@ -312,5 +391,170 @@ public class DeliveryCommandService {
         throw new BusinessException(
                 ErrorCode.UPDATE_DELIVERY_STATUS_FORBIDDEN
         );
+    }
+
+    private void releaseAssignedManagersForDelete(
+            Delivery delivery
+    ) {
+        UUID managerId = delivery.getCompanyDeliveryManagerId();
+
+        if (managerId != null) {
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findById(managerId)
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                    )
+                            );
+
+            if (manager.getStatus()
+                    == DeliveryManagerStatus.DELIVERING) {
+                manager.releaseFromDelivery();
+            }
+        }
+
+        List<DeliveryRoute> inTransitRoutes =
+                deliveryRouteCommandRepository
+                        .findAllByDeliveryIdAndStatusAndDeletedAtIsNull(
+                                delivery.getId(),
+                                DeliveryRouteStatus.IN_TRANSIT
+                        );
+
+        for (DeliveryRoute route : inTransitRoutes) {
+            UUID hubManagerId = route.getDeliveryManagerId();
+
+            if (hubManagerId == null) {
+                continue;
+            }
+
+            DeliveryManager manager =
+                    deliveryManagerCommandRepository
+                            .findById(hubManagerId)
+                            .orElseThrow(() ->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                    )
+                            );
+
+            if (manager.getStatus()
+                    == DeliveryManagerStatus.DELIVERING) {
+                manager.releaseFromDelivery();
+            }
+        }
+    }
+
+    private void validateUpdatePermission(
+            DeliveryUpdateCommand command,
+            Delivery delivery
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            validateHubManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery,
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
+            return;
+        }
+
+        if (command.requesterRole() == Role.COMPANY_MANAGER) {
+            validateCompanyManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery
+            );
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+        );
+    }
+
+    private void validateDeletePermission(
+            DeliveryDeleteCommand command,
+            Delivery delivery
+    ) {
+        if (command.requesterRole() == Role.MASTER) {
+            return;
+        }
+
+        if (command.requesterRole() == Role.HUB_MANAGER) {
+            validateHubManagerDeliveryPermission(
+                    command.deletedBy(),
+                    delivery,
+                    ErrorCode.DELETE_DELIVERY_FORBIDDEN
+            );
+            return;
+        }
+
+        throw new BusinessException(
+                ErrorCode.DELETE_DELIVERY_FORBIDDEN
+        );
+    }
+
+    private void validateHubManagerDeliveryPermission(
+            UUID requesterId,
+            Delivery delivery,
+            ErrorCode errorCode
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterHubId = requester.hubId();
+
+        if (requesterHubId == null) {
+            throw new BusinessException(errorCode);
+        }
+
+        boolean relatedHubDelivery =
+                deliveryRouteCommandRepository
+                        .existsByDeliveryIdAndHubId(
+                                delivery.getId(),
+                                requesterHubId
+                        );
+
+        if (!relatedHubDelivery) {
+            throw new BusinessException(errorCode);
+        }
+    }
+
+    private void validateCompanyManagerDeliveryPermission(
+            UUID requesterId,
+            Delivery delivery
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterCompanyId = requester.companyId();
+
+        if (requesterCompanyId == null) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
+        }
+
+        OrderCompanyInfo order =
+                orderPort.getOrderCompanyInfo(
+                        delivery.getOrderId()
+                );
+
+        boolean relatedCompany =
+                requesterCompanyId.equals(order.supplierCompanyId())
+                        || requesterCompanyId.equals(order.receiverCompanyId()
+                );
+
+        if (!relatedCompany) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
+        }
     }
 }

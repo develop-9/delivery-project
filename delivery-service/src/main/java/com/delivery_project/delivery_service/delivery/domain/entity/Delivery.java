@@ -157,4 +157,34 @@ public class Delivery extends BaseDeletableEntity {
 
         this.status = DeliveryStatus.COMPLETED;
     }
+
+    public void update(
+            String deliveryAddress,
+            String receiverName,
+            String receiverSlackId
+    ){
+        if(this.status != DeliveryStatus.PENDING){
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_ALREADY_STARTED
+            );
+        }
+
+        if(deliveryAddress != null){
+            this.deliveryAddress = deliveryAddress;
+        }
+
+        if(receiverName != null && receiverSlackId != null){
+            this.receiverName = receiverName;
+            this.receiverSlackId = receiverSlackId;
+        }
+    }
+
+    public void validateDeletable(){
+        if (this.status != DeliveryStatus.PENDING
+                && this.status != DeliveryStatus.CANCELED) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_DELETE_NOT_ALLOWED
+            );
+        }
+    }
 }

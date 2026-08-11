@@ -13,5 +13,10 @@ public interface DeliveryManagerQueryRepository {
 
     Page<DeliveryManager> findAll(Pageable pageable);
 
+    Page<DeliveryManager> findAllByHubId(
+            UUID hubId,
+            Pageable pageable
+    );
+
     Optional<DeliveryManager> findByUserId(UUID userId);
 }
