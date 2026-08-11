@@ -1,4 +1,4 @@
-package com.delivery_project.company_service.company.infrastructure.adpater;
+package com.delivery_project.company_service.company.infrastructure.adapter;
 
 import com.delivery_project.company_service.company.application.port.HubPort;
 import com.delivery_project.company_service.company.application.port.dto.HubInfo;
