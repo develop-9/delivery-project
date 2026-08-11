@@ -68,6 +68,8 @@ public enum ErrorCode {
     HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
     HUB_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "허브 간 배송 경로를 찾을 수 없습니다.", "HUB_ROUTE_NOT_FOUND"),
 
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.","ORDER_NOT_FOUND"),
+    ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Order Service를 사용할 수 없습니다.", "ORDER_SERVICE_UNAVAILABLE"),
     // 검증
     UPDATE_DELIVERY_ROUTE_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 경로 수정 권한이 없습니다.", "UPDATE_DELIVERY_ROUTE_FORBIDDEN"),
     UPDATE_DELIVERY_STATUS_FORBIDDEN(HttpStatus.FORBIDDEN, "배송 상태 변경 권한이 없습니다.", "UPDATE_DELIVERY_STATUS_FORBIDDEN"),

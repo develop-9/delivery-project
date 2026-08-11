@@ -1,10 +1,12 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryListQuery;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryListResult;
+import com.delivery_project.delivery_service.delivery.application.result.OrderCompanyInfo;
 import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
@@ -32,6 +34,7 @@ public class DeliveryQueryService {
     private final DeliveryManagerQueryRepository deliveryManagerQueryRepository;
     private final DeliveryRouteQueryRepository deliveryRouteQueryRepository;
     private final UserPort userPort;
+    private final OrderPort orderPort;
 
     public DeliveryDetailResult getDelivery(
             DeliveryGetQuery query
@@ -142,7 +145,10 @@ public class DeliveryQueryService {
         }
 
         if (query.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 조회 방식 확정 후 범위 검증
+            validateCompanyManagerReadPermission(
+                    query.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -208,7 +214,7 @@ public class DeliveryQueryService {
         }
 
         if (query.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 기준 조회 범위 적용
+            // TODO: 담당 업체 기준 조회 범위 적용(List)
             return;
         }
 
@@ -246,6 +252,38 @@ public class DeliveryQueryService {
                         );
 
         if (!relatedHubDelivery) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_FORBIDDEN
+            );
+        }
+    }
+
+    private void validateCompanyManagerReadPermission(
+            UUID requesterId,
+            Delivery delivery
+    ){
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+        UUID requesterCompanyId = requester.companyId();
+
+        if(requesterCompanyId == null){
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_FORBIDDEN
+            );
+        }
+
+        OrderCompanyInfo order =
+                orderPort.getOrderCompanyInfo(
+                        delivery.getOrderId()
+                );
+
+        boolean relatedCompany =
+                requesterCompanyId.equals(order.supplierCompanyId())
+                    || requesterCompanyId.equals(order.receiverCompanyId());
+
+        if(!relatedCompany){
             throw new BusinessException(
                     ErrorCode.READ_DELIVERY_FORBIDDEN
             );
