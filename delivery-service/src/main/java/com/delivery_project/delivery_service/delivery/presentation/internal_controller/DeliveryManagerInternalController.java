@@ -23,7 +23,8 @@ public class DeliveryManagerInternalController {
     public SuccessResponse<DeliveryManagerInternalDeleteResponse>
     deleteDeliveryManagerByUserId(
             @PathVariable UUID userId
-            // TODO: User Service 내부 인증으로 변경
+            // 내부 API는 Gateway를 거치지 않고 Docker 내부망에서만 접근하며,
+            // 별도의 서비스 신원 검증 없이 네트워크 격리에 의존한다.
     ) {
         DeliveryManagerInternalDeleteCommand command =
                 DeliveryManagerInternalDeleteCommand.from(
