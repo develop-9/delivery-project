@@ -2,6 +2,7 @@ package com.delivery_project.slack_service.slack.infrastructure.messaging.rabbit
 
 import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageDuplicateGuard;
+import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
 import com.delivery_project.slack_service.slack.infrastructure.config.SlackRabbitMqConfig;
 import com.delivery_project.slack_service.slack.infrastructure.external.slack.SlackMessageSenderImpl;
 import org.junit.jupiter.api.Assumptions;
@@ -47,17 +48,23 @@ class SlackMessageQueueRealApiIntegrationTest {
                 System.getenv("SLACK_BASE_URL");
 
         Assumptions.assumeTrue(
-                botToken != null && !botToken.isBlank(),
+                botToken != null
+                        && !botToken.isBlank(),
                 "SLACK_BOT_TOKEN 환경변수가 없어 테스트를 건너뜁니다."
         );
 
         Assumptions.assumeTrue(
-                receiverSlackId != null && !receiverSlackId.isBlank(),
+                receiverSlackId != null
+                        && !receiverSlackId.isBlank(),
                 "SLACK_TEST_RECEIVER_ID 환경변수가 없어 테스트를 건너뜁니다."
         );
 
-        if (slackBaseUrl == null || slackBaseUrl.isBlank()) {
-            slackBaseUrl = "https://slack.com/api";
+        if (
+                slackBaseUrl == null
+                        || slackBaseUrl.isBlank()
+        ) {
+            slackBaseUrl =
+                    "https://slack.com/api";
         }
 
         CachingConnectionFactory connectionFactory =
@@ -69,11 +76,15 @@ class SlackMessageQueueRealApiIntegrationTest {
         connectionFactory.setUsername(USERNAME);
         connectionFactory.setPassword(PASSWORD);
 
-        assumeRabbitMqAvailable(connectionFactory);
+        assumeRabbitMqAvailable(
+                connectionFactory
+        );
 
         try {
             RabbitAdmin rabbitAdmin =
-                    new RabbitAdmin(connectionFactory);
+                    new RabbitAdmin(
+                            connectionFactory
+                    );
 
             SlackRabbitMqConfig config =
                     new SlackRabbitMqConfig();
@@ -145,6 +156,11 @@ class SlackMessageQueueRealApiIntegrationTest {
                             SlackMessageCommandService.class
                     );
 
+            SlackMessageQueryService queryService =
+                    mock(
+                            SlackMessageQueryService.class
+                    );
+
             SlackMessageDuplicateGuard duplicateGuard =
                     mock(
                             SlackMessageDuplicateGuard.class
@@ -177,6 +193,7 @@ class SlackMessageQueueRealApiIntegrationTest {
                     new SlackMessageQueueConsumer(
                             realSlackSender,
                             commandService,
+                            queryService,
                             publisher,
                             duplicateGuard
                     );
@@ -195,7 +212,9 @@ class SlackMessageQueueRealApiIntegrationTest {
                             );
 
             assertThat(payload)
-                    .as("RabbitMQ Main Queue에서 메시지를 수신해야 한다")
+                    .as(
+                            "RabbitMQ Main Queue에서 메시지를 수신해야 한다"
+                    )
                     .isNotNull();
 
             assertThat(
