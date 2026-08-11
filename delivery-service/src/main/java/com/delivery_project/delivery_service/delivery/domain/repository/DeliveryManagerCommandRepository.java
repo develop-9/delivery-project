@@ -15,6 +15,8 @@ public interface DeliveryManagerCommandRepository {
 
     Optional<DeliveryManager> findByUserId(UUID userId);
 
+    Optional<DeliveryManager> findByUserIdForUpdate(UUID userId);
+
     Optional<DeliveryManager> findNextAvailableHubManager(
             Integer lastAssignedSequence
     );
