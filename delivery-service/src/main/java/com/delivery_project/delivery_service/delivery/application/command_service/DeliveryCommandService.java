@@ -3,6 +3,7 @@ package com.delivery_project.delivery_service.delivery.application.command_servi
 import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.persistence_service.DeliveryPersistenceService;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
@@ -36,6 +37,7 @@ public class DeliveryCommandService {
     // Application 계층은 FeignClient를 직접 사용하지 않고 Port에만 의존한다.
     private final UserPort userPort;
     private final HubRoutePort hubRoutePort;
+    private final OrderPort orderPort;
 
     public DeliveryCreateResult create(
             DeliveryCreateCommand command
@@ -463,7 +465,10 @@ public class DeliveryCommandService {
         }
 
         if (command.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 기준 검증 추가
+            validateCompanyManagerDeliveryPermission(
+                    command.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -519,6 +524,40 @@ public class DeliveryCommandService {
 
         if (!relatedHubDelivery) {
             throw new BusinessException(errorCode);
+        }
+    }
+
+    private void validateCompanyManagerDeliveryPermission(
+            UUID requesterId,
+            Delivery delivery
+    ) {
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterCompanyId = requester.companyId();
+
+        if (requesterCompanyId == null) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
+        }
+
+        OrderCompanyInfo order =
+                orderPort.getOrderCompanyInfo(
+                        delivery.getOrderId()
+                );
+
+        boolean relatedCompany =
+                requesterCompanyId.equals(order.supplierCompanyId())
+                        || requesterCompanyId.equals(order.receiverCompanyId()
+                );
+
+        if (!relatedCompany) {
+            throw new BusinessException(
+                    ErrorCode.UPDATE_DELIVERY_FORBIDDEN
+            );
         }
     }
 }

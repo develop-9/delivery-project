@@ -3,6 +3,7 @@ package com.delivery_project.delivery_service.delivery.application.command_servi
 import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.persistence_service.DeliveryPersistenceService;
 import com.delivery_project.delivery_service.delivery.application.port.HubRoutePort;
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
@@ -49,6 +50,9 @@ class DeliveryCommandServiceTest {
 
     @Mock
     private HubRoutePort hubRoutePort;
+
+    @Mock
+    private OrderPort orderPort;
 
     @Mock
     private DeliveryPersistenceService deliveryPersistenceService;
@@ -1170,5 +1174,177 @@ class DeliveryCommandServiceTest {
                 .save(any());
     }
 
+    @Test
+    @DisplayName("COMPANY_MANAGER는 공급 업체와 관련된 배송 정보를 수정할 수 있다")
+    void updateDeliveryCompanyManagerSupplierSuccess() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
 
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 배송지",
+                        null,
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(delivery.getOrderId())
+                .thenReturn(orderId);
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                null,
+                                companyId
+                        )
+                );
+
+        when(orderPort.getOrderCompanyInfo(orderId))
+                .thenReturn(
+                        new OrderCompanyInfo(
+                                orderId,
+                                companyId,
+                                UUID.randomUUID()
+                        )
+                );
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        deliveryCommandService.update(command);
+
+        verify(userPort)
+                .getUserAuthorizationInfo(requesterId);
+
+        verify(orderPort)
+                .getOrderCompanyInfo(orderId);
+
+        verify(deliveryCommandRepository)
+                .save(delivery);
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 수령 업체와 관련된 배송 정보를 수정할 수 있다")
+    void updateDeliveryCompanyManagerReceiverSuccess() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 배송지",
+                        null,
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(delivery.getOrderId())
+                .thenReturn(orderId);
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                null,
+                                companyId
+                        )
+                );
+
+        when(orderPort.getOrderCompanyInfo(orderId))
+                .thenReturn(
+                        new OrderCompanyInfo(
+                                orderId,
+                                UUID.randomUUID(),
+                                companyId
+                        )
+                );
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        deliveryCommandService.update(command);
+
+        verify(orderPort)
+                .getOrderCompanyInfo(orderId);
+
+        verify(deliveryCommandRepository)
+                .save(delivery);
+    }
+
+    @Test
+    @DisplayName("COMPANY_MANAGER는 관련 없는 업체의 배송 정보를 수정할 수 없다")
+    void updateDeliveryCompanyManagerUnrelatedForbidden() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+
+        DeliveryUpdateCommand command =
+                new DeliveryUpdateCommand(
+                        deliveryId,
+                        "변경된 배송지",
+                        null,
+                        requesterId,
+                        Role.COMPANY_MANAGER
+                );
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(delivery.getOrderId())
+                .thenReturn(orderId);
+
+        when(userPort.getUserAuthorizationInfo(requesterId))
+                .thenReturn(
+                        new UserAuthorizationInfo(
+                                requesterId,
+                                null,
+                                companyId
+                        )
+                );
+
+        when(orderPort.getOrderCompanyInfo(orderId))
+                .thenReturn(
+                        new OrderCompanyInfo(
+                                orderId,
+                                UUID.randomUUID(),
+                                UUID.randomUUID()
+                        )
+                );
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryCommandService.update(command)
+                );
+
+        assertEquals(
+                ErrorCode.UPDATE_DELIVERY_FORBIDDEN,
+                exception.getErrorCode()
+        );
+
+        verify(delivery, never())
+                .update(any(), any(), any());
+
+        verify(deliveryCommandRepository, never())
+                .save(any());
+    }
 }
