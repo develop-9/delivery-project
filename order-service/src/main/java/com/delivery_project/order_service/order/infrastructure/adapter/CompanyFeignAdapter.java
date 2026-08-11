@@ -14,13 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/*
- * TODO: company-service 내부 응답에 hubId · address 추가된 뒤 통합 확인
- * - 대상 API: GET /internal/v1/companies/{companyId}
- * - 확인 항목:
- *   1. hubId 가 배송 도착 허브로 쓸 수 있는 값인지
- *   2. address 가 최종 배송지로 그대로 쓸 수 있는 형식인지
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor

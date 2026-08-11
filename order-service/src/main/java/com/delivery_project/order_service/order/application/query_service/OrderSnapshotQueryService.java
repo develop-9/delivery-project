@@ -82,10 +82,8 @@ public class OrderSnapshotQueryService {
 	 * <p>없는 이력과 권한 없는 이력을 <b>같은 404 로</b> 응답한다. 403 을 내면 호출자가
 	 * 상태코드 차이로 "그 ID 의 이력이 존재한다"는 사실을 알아낼 수 있다.
 	 *
-	 * <p>TODO JWT 파싱 필터가 붙기 전까지는 {@code callerId} 가 항상 null 이라 이 검증이 비어 있다.
-	 * 필터가 붙으면 아래 null 스킵 분기를 제거한다.
-	 * TODO MASTER·HUB_MANAGER 는 남의 주문 이력도 봐야 할 수 있다. role 이 principal 에
-	 * 실리면(JwtPrincipal) 역할 기반 예외를 여기에 추가한다.
+	 * <p>판단은 {@link OrderAccessPolicy} 에 맡긴다. 이력을 볼 수 있는 사람은 그 주문을 볼 수 있는
+	 * 사람과 같아야 하고, 규칙이 두 군데로 갈라지면 주문은 막혔는데 이력은 뚫리는 일이 생긴다.
 	 */
 	private void validateAccessible(OrderSnapshot snapshot, JwtPrincipal principal) {
 		Order order = orderQueryRepository.findDetailById(snapshot.getOrderId())
