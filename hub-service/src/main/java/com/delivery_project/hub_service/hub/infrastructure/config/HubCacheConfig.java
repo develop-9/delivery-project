@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.hub.infrastructure.cache;
+package com.delivery_project.hub_service.hub.infrastructure.config;
 
 import java.time.Duration;
 import java.util.Map;
@@ -26,7 +26,7 @@ import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
  * 전체 허브를 페이징 없이 돌려주는 API 가 없고, 구간 단건 조회는 경로 산출 안에서만 쓰여
  * 결과가 {@code hubPath} 캐시에 이미 담기기 때문이다. 소비자가 생기면 그때 추가한다.
  *
- * <p>무효화 시점은 {@link com.delivery_project.hub_service.hub.application.support.HubCacheEvictor}
+ * <p>무효화 시점은 {@link com.delivery_project.hub_service.hub.infrastructure.adapter.HubCacheAdapter}
  * 가 맞춘다.
  */
 @Configuration

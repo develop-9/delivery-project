@@ -24,7 +24,7 @@ import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command.HubDeleteCommand;
 import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand;
-import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
+import com.delivery_project.hub_service.hub.application.port.HubCachePort;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
 import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
 import com.delivery_project.hub_service.hub.domain.repository.HubRouteCommandRepository;
@@ -56,7 +56,7 @@ class HubCommandServiceAuthorizationTest {
 	private HubRouteCommandRepository hubRouteCommandRepository;
 
 	@MockitoBean
-	private HubCacheEvictor HubCacheEvictor;
+	private HubCachePort hubCachePort;
 
 	@AfterEach
 	void clearSecurityContext() {

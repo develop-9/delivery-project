@@ -1,4 +1,4 @@
-package com.delivery_project.hub_service.hub.application.support;
+package com.delivery_project.hub_service.hub.infrastructure.adapter;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.doThrow;
@@ -20,9 +20,11 @@ import org.springframework.dao.QueryTimeoutException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import com.delivery_project.hub_service.hub.application.support.HubCacheNames;
+
 /** 캐시 무효화 단위 테스트. 무효화가 <b>언제</b> 일어나고 <b>실패하면 어떻게 되는지</b>를 본다. */
 @ExtendWith(MockitoExtension.class)
-class HubCacheEvictorTest {
+class HubCacheAdapterTest {
 
 	@Mock
 	private CacheManager cacheManager;
@@ -31,7 +33,7 @@ class HubCacheEvictorTest {
 	private Cache cache;
 
 	@InjectMocks
-	private HubCacheEvictor hubCacheEvictor;
+	private HubCacheAdapter hubCacheAdapter;
 
 	@AfterEach
 	void clearSynchronization() {
@@ -52,7 +54,7 @@ class HubCacheEvictorTest {
 			doThrow(new QueryTimeoutException("Redis 응답 없음")).when(cache).clear();
 
 			// when & then
-			assertThatCode(() -> hubCacheEvictor.evictAllHubs()).doesNotThrowAnyException();
+			assertThatCode(() -> hubCacheAdapter.evictAllHubs()).doesNotThrowAnyException();
 		}
 
 		@Test
@@ -63,7 +65,7 @@ class HubCacheEvictorTest {
 			doThrow(new QueryTimeoutException("Redis 응답 없음")).when(cache).clear();
 
 			// when & then
-			assertThatCode(() -> hubCacheEvictor.evictAllHubPaths()).doesNotThrowAnyException();
+			assertThatCode(() -> hubCacheAdapter.evictAllHubPaths()).doesNotThrowAnyException();
 		}
 
 		@Test
@@ -73,7 +75,7 @@ class HubCacheEvictorTest {
 			when(cacheManager.getCache(HubCacheNames.HUB)).thenReturn(null);
 
 			// when & then
-			assertThatCode(() -> hubCacheEvictor.evictAllHubs()).doesNotThrowAnyException();
+			assertThatCode(() -> hubCacheAdapter.evictAllHubs()).doesNotThrowAnyException();
 		}
 	}
 
@@ -88,7 +90,7 @@ class HubCacheEvictorTest {
 			when(cacheManager.getCache(HubCacheNames.HUB)).thenReturn(cache);
 
 			// when
-			hubCacheEvictor.evictAllHubs();
+			hubCacheAdapter.evictAllHubs();
 
 			// then
 			verify(cache).clear();
@@ -102,7 +104,7 @@ class HubCacheEvictorTest {
 			TransactionSynchronizationManager.initSynchronization();
 
 			// when
-			hubCacheEvictor.evictAllHubs();
+			hubCacheAdapter.evictAllHubs();
 
 			// then: 아직 커밋 전이라 건드리지 않는다
 			verify(cache, never()).clear();
