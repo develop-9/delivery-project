@@ -4,8 +4,8 @@ import com.delivery_project.slack_service.ai_history.application.command.AiHisto
 import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
 import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
 import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
-import com.delivery_project.slack_service.ai_history.application.port.HubPort;
 import com.delivery_project.slack_service.ai_history.application.port.HubManagerPort;
+import com.delivery_project.slack_service.ai_history.application.port.HubPort;
 import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
@@ -19,6 +19,7 @@ import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.slack.application.command.SlackInternalMessageCreateCommand;
 import com.delivery_project.slack_service.slack.application.command_service.SlackInternalMessageCommandService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiHistoryCommandService {
@@ -128,13 +130,22 @@ public class AiHistoryCommandService {
                         )
                 );
 
-        slackInternalMessageCommandService.createAndPublish(
-                new SlackInternalMessageCreateCommand(
-                        hubManager.userId(),
-                        command.orderId(),
-                        generationResult.finalDispatchDeadline()
-                )
-        );
+        try {
+            slackInternalMessageCommandService.createAndPublish(
+                    new SlackInternalMessageCreateCommand(
+                            hubManager.userId(),
+                            command.orderId(),
+                            generationResult.finalDispatchDeadline()
+                    )
+            );
+        } catch (Exception exception) {
+            log.error(
+                    "AI History 생성은 성공했지만 Slack 메시지 생성/발행에 실패했습니다. aiHistoryId={}, orderId={}",
+                    aiHistoryId,
+                    command.orderId(),
+                    exception
+            );
+        }
 
         return result;
     }

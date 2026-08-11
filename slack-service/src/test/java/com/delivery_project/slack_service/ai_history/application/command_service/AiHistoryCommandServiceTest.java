@@ -257,6 +257,168 @@ class AiHistoryCommandServiceTest {
     }
 
     @Test
+    @DisplayName("AI 생성 성공 후 Slack 발행이 실패해도 AI History 결과는 정상 반환한다")
+    void create_slackPublishFailure() {
+        // given
+        UUID orderId = UUID.randomUUID();
+        UUID aiHistoryId = UUID.randomUUID();
+
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        UUID hubManagerUserId = UUID.randomUUID();
+
+        String prompt = "test prompt";
+
+        Instant deadline =
+                Instant.parse("2026-08-09T12:00:00Z");
+
+        AiHistoryCreateCommand command =
+                new AiHistoryCreateCommand(orderId);
+
+        OrderSummaryResult orderSummary =
+                org.mockito.Mockito.mock(
+                        OrderSummaryResult.class
+                );
+
+        DeliveryRouteResult deliveryRoute =
+                org.mockito.Mockito.mock(
+                        DeliveryRouteResult.class
+                );
+
+        DeliveryRouteResult.RouteResult route =
+                new DeliveryRouteResult.RouteResult(
+                        1,
+                        departureHubId,
+                        arrivalHubId,
+                        60
+                );
+
+        HubBatchResult hubBatch =
+                new HubBatchResult(
+                        List.of(
+                                new HubBatchResult.HubResult(
+                                        departureHubId,
+                                        "출발 허브",
+                                        "출발 허브 주소"
+                                ),
+                                new HubBatchResult.HubResult(
+                                        arrivalHubId,
+                                        "도착 허브",
+                                        "도착 허브 주소"
+                                )
+                        ),
+                        List.of()
+                );
+
+        HubManagerResult hubManager =
+                new HubManagerResult(
+                        hubManagerUserId,
+                        "허브 관리자",
+                        "HUB_MANAGER",
+                        departureHubId
+                );
+
+        when(deliveryRoute.routes())
+                .thenReturn(List.of(route));
+
+        when(orderSummaryPort.getOrderSummary(orderId))
+                .thenReturn(orderSummary);
+
+        when(deliveryRoutePort.getRoutesByOrderId(orderId))
+                .thenReturn(deliveryRoute);
+
+        when(hubPort.getHubs(anyList()))
+                .thenReturn(hubBatch);
+
+        when(hubManagerPort.getHubManager(departureHubId))
+                .thenReturn(hubManager);
+
+        when(
+                aiPromptGenerator.generate(
+                        orderSummary,
+                        deliveryRoute,
+                        hubBatch
+                )
+        ).thenReturn(prompt);
+
+        when(
+                aiHistoryPersistenceService.createPending(
+                        eq(orderId),
+                        eq(prompt),
+                        any(Instant.class)
+                )
+        ).thenReturn(aiHistoryId);
+
+        when(
+                aiGeneratePort.generateFinalDispatchDeadline(prompt)
+        ).thenReturn(
+                new AiGenerationResult(
+                        "gemini-3.6-flash",
+                        deadline
+                )
+        );
+
+        AiHistory completedHistory =
+                org.mockito.Mockito.mock(
+                        AiHistory.class
+                );
+
+        when(completedHistory.getStatus())
+                .thenReturn(AiHistoryStatus.SUCCESS);
+
+        when(
+                aiHistoryPersistenceService.complete(
+                        eq(aiHistoryId),
+                        eq("gemini-3.6-flash"),
+                        eq(deadline),
+                        any(Instant.class)
+                )
+        ).thenReturn(completedHistory);
+
+        org.mockito.Mockito.doThrow(
+                        new BusinessException(
+                                ErrorCode.USER_SLACK_ID_NOT_FOUND
+                        )
+                )
+                .when(slackInternalMessageCommandService)
+                .createAndPublish(
+                        any(
+                                SlackInternalMessageCreateCommand.class
+                        )
+                );
+
+        // when
+        AiHistoryCreateResult result =
+                aiHistoryCommandService.create(command);
+
+        // then
+        assertThat(result)
+                .isNotNull();
+
+        verify(aiHistoryPersistenceService)
+                .complete(
+                        eq(aiHistoryId),
+                        eq("gemini-3.6-flash"),
+                        eq(deadline),
+                        any(Instant.class)
+                );
+
+        verify(slackInternalMessageCommandService)
+                .createAndPublish(
+                        any(
+                                SlackInternalMessageCreateCommand.class
+                        )
+                );
+
+        verify(aiHistoryPersistenceService, never())
+                .fail(
+                        any(),
+                        any(),
+                        any()
+                );
+    }
+
+    @Test
     @DisplayName("Gemini 요청이 실패하면 AI 이력을 FAILED 상태로 저장하고 Slack 작업은 등록하지 않는다")
     void create_geminiFailure() {
         // given
