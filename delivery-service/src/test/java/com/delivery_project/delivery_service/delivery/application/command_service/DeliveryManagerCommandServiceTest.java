@@ -1,9 +1,6 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.port.HubPort;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
@@ -369,5 +366,103 @@ class DeliveryManagerCommandServiceTest {
                         updatedHubId,
                         DeliveryManagerType.COMPANY_DELIVERY
                 );
+    }
+
+    @Test
+    @DisplayName("배송 담당자를 비활성화할 수 있다")
+    void deactivateDeliveryManagerSucceeds() {
+        UUID userId = UUID.randomUUID();
+
+        DeliveryManager manager =
+                mock(DeliveryManager.class);
+
+        when(deliveryManagerCommandRepository
+                .findByUserIdForUpdate(userId))
+                .thenReturn(Optional.of(manager));
+
+        DeliveryManagerDeactivateCommand command =
+                new DeliveryManagerDeactivateCommand(userId);
+
+        deliveryManagerCommandService.deactivate(command);
+
+        verify(manager)
+                .deactivate();
+
+        verify(deliveryManagerCommandRepository)
+                .findByUserIdForUpdate(userId);
+    }
+
+    @Test
+    @DisplayName("배송 담당자를 다시 활성화할 수 있다")
+    void reactivateDeliveryManagerSucceeds() {
+        UUID userId = UUID.randomUUID();
+
+        DeliveryManager manager =
+                mock(DeliveryManager.class);
+
+        when(deliveryManagerCommandRepository
+                .findByUserIdForUpdate(userId))
+                .thenReturn(Optional.of(manager));
+
+        DeliveryManagerReactivateCommand command =
+                new DeliveryManagerReactivateCommand(userId);
+
+        deliveryManagerCommandService.reactivate(command);
+
+        verify(manager)
+                .reactivate();
+
+        verify(deliveryManagerCommandRepository)
+                .findByUserIdForUpdate(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 배송 담당자는 비활성화할 수 없다")
+    void deactivateDeliveryManagerNotFound() {
+        UUID userId = UUID.randomUUID();
+
+        when(deliveryManagerCommandRepository
+                .findByUserIdForUpdate(userId))
+                .thenReturn(Optional.empty());
+
+        DeliveryManagerDeactivateCommand command =
+                new DeliveryManagerDeactivateCommand(userId);
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryManagerCommandService
+                                .deactivate(command)
+                );
+
+        assertEquals(
+                ErrorCode.DELIVERY_MANAGER_NOT_FOUND,
+                exception.getErrorCode()
+        );
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 배송 담당자는 다시 활성화할 수 없다")
+    void reactivateDeliveryManagerNotFound() {
+        UUID userId = UUID.randomUUID();
+
+        when(deliveryManagerCommandRepository
+                .findByUserIdForUpdate(userId))
+                .thenReturn(Optional.empty());
+
+        DeliveryManagerReactivateCommand command =
+                new DeliveryManagerReactivateCommand(userId);
+
+        BusinessException exception =
+                assertThrows(
+                        BusinessException.class,
+                        () -> deliveryManagerCommandService
+                                .reactivate(command)
+                );
+
+        assertEquals(
+                ErrorCode.DELIVERY_MANAGER_NOT_FOUND,
+                exception.getErrorCode()
+        );
     }
 }

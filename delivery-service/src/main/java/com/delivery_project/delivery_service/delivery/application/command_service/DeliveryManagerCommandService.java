@@ -1,14 +1,8 @@
 package com.delivery_project.delivery_service.delivery.application.command_service;
 
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerCreateCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
-import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerUpdateCommand;
+import com.delivery_project.delivery_service.delivery.application.command.*;
 import com.delivery_project.delivery_service.delivery.application.port.HubPort;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerCreateResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerDeleteResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
-import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerUpdateResult;
+import com.delivery_project.delivery_service.delivery.application.result.*;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
@@ -165,6 +159,43 @@ public class DeliveryManagerCommandService {
         deliveryManager.deleteManager(systemId);
 
         return DeliveryManagerInternalDeleteResult.from(
+                deliveryManager
+        );
+    }
+
+    public DeliveryManagerActiveStatusResult deactivate(
+            DeliveryManagerDeactivateCommand command
+    ){
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findByUserIdForUpdate(command.userId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+
+        deliveryManager.deactivate();
+
+        return DeliveryManagerActiveStatusResult.from(
+                deliveryManager
+        );
+    }
+
+    public DeliveryManagerActiveStatusResult reactivate(
+            DeliveryManagerReactivateCommand command
+    ){
+        DeliveryManager deliveryManager =
+                deliveryManagerCommandRepository
+                        .findByUserIdForUpdate(command.userId())
+                        .orElseThrow(()->
+                                new BusinessException(
+                                        ErrorCode.DELIVERY_MANAGER_NOT_FOUND
+                                )
+                        );
+        deliveryManager.reactivate();
+
+        return DeliveryManagerActiveStatusResult.from(
                 deliveryManager
         );
     }

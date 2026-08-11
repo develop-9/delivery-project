@@ -1,8 +1,12 @@
 package com.delivery_project.delivery_service.delivery.presentation.internal_controller;
 
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerDeactivateCommand;
 import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerInternalDeleteCommand;
+import com.delivery_project.delivery_service.delivery.application.command.DeliveryManagerReactivateCommand;
 import com.delivery_project.delivery_service.delivery.application.command_service.DeliveryManagerCommandService;
+import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerActiveStatusResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryManagerInternalDeleteResult;
+import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerActiveStatusResponse;
 import com.delivery_project.delivery_service.delivery.presentation.response.DeliveryManagerInternalDeleteResponse;
 import com.delivery_project.delivery_service.global.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,40 @@ public class DeliveryManagerInternalController {
 
         return SuccessResponse.success(
                 DeliveryManagerInternalDeleteResponse.from(result)
+        );
+    }
+
+    @PatchMapping("/users/{userId}/deactivate")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerActiveStatusResponse>
+    deactivateDeliveryManager(
+            @PathVariable UUID userId
+    ){
+        DeliveryManagerDeactivateCommand command =
+                DeliveryManagerDeactivateCommand.from(userId);
+
+        DeliveryManagerActiveStatusResult result =
+                deliveryManagerCommandService.deactivate(command);
+
+        return SuccessResponse.success(
+                DeliveryManagerActiveStatusResponse.from(result)
+        );
+    }
+
+    @PatchMapping("/users/{userId}/reactivate")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse<DeliveryManagerActiveStatusResponse>
+    reactivateDeliveryManager(
+            @PathVariable UUID userId
+    ){
+        DeliveryManagerReactivateCommand command =
+                DeliveryManagerReactivateCommand.from(userId);
+
+        DeliveryManagerActiveStatusResult result =
+                deliveryManagerCommandService.reactivate(command);
+
+        return SuccessResponse.success(
+                DeliveryManagerActiveStatusResponse.from(result)
         );
     }
 }
