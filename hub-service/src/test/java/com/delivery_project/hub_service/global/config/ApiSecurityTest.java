@@ -31,7 +31,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.delivery_project.hub_service.global.security.JwtProvider;
+import com.delivery_project.hub_service.global.security.JwtAuthenticationFilter;
+import com.delivery_project.hub_service.global.security.JwtTokenParser;
 import com.delivery_project.hub_service.global.security.Role;
 import com.delivery_project.hub_service.hub.application.command.HubCreateCommand;
 import com.delivery_project.hub_service.hub.application.command_service.HubCommandService;
@@ -60,7 +61,7 @@ import org.mockito.ArgumentCaptor;
  * {@code HubCommandServiceAuthorizationTest} 가 맡는다.
  */
 @WebMvcTest(controllers = {HubApiController.class, HubInternalController.class})
-@Import({SecurityConfig.class, JwtProvider.class,
+@Import({SecurityConfig.class, JwtTokenParser.class,
 		JsonAuthenticationEntryPoint.class, JsonAccessDeniedHandler.class})
 class ApiSecurityTest {
 
