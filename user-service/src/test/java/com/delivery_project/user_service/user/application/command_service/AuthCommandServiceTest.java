@@ -24,9 +24,9 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.persistence_service.UserPersistenceService;
 import com.delivery_project.user_service.user.application.port.CompanyPort;
 import com.delivery_project.user_service.user.application.port.HubPort;
-import com.delivery_project.user_service.user.application.port.MasterBootstrapLockPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
 import com.delivery_project.user_service.user.application.result.UserLoginResult;
 import com.delivery_project.user_service.user.application.result.UserRefreshResult;
@@ -63,7 +63,7 @@ class AuthCommandServiceTest {
 	private CompanyPort companyPort;
 
 	@Mock
-	private MasterBootstrapLockPort masterBootstrapLockPort;
+	private UserPersistenceService userPersistenceService;
 
 	@InjectMocks
 	private AuthCommandService authCommandService;
@@ -79,7 +79,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -87,7 +87,6 @@ class AuthCommandServiceTest {
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
 		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
-		org.mockito.Mockito.verify(masterBootstrapLockPort, org.mockito.Mockito.never()).lock();
 	}
 
 	@Test
@@ -121,68 +120,6 @@ class AuthCommandServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
-	}
-
-	@Test
-	void 사전_중복체크는_통과했지만_저장시점에_username_제약을_위반하면_USER_DUPLICATE_USERNAME_예외가_발생한다() {
-		// given: existsByUsername 사전 체크와 저장 사이에 동시에 같은 username으로 가입
-		// 요청이 들어와, 사전 체크는 통과했지만 저장 시점에 부분 유니크 인덱스에 걸리는 상황을 재현
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException(
-						"could not execute statement; Detail: Key (username)=(kim123) already exists."));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.USER_DUPLICATE_USERNAME);
-	}
-
-	@Test
-	void 사전_중복체크는_통과했지만_저장시점에_slackId_제약을_위반하면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException(
-						"could not execute statement; Detail: Key (slack_id)=(U0123456789) already exists."));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
-	}
-
-	@Test
-	void 알_수_없는_제약_위반은_그대로_전파되어_GlobalExceptionHandler의_일반_처리로_넘어간다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException("unrelated constraint violation"));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
-				.isNotInstanceOf(BusinessException.class);
 	}
 
 	@Test
@@ -224,14 +161,13 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000000")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
 
 		// then
 		assertThat(result.userId()).isEqualTo(saved.getId());
-		org.mockito.Mockito.verify(masterBootstrapLockPort).lock();
 	}
 
 	@Test
@@ -253,7 +189,7 @@ class AuthCommandServiceTest {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_NOT_FOUND);
 
-		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
 	}
 
 	@Test
@@ -275,7 +211,7 @@ class AuthCommandServiceTest {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
 
-		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
 	}
 
 	@Test
@@ -290,7 +226,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("hub2")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000005")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -312,8 +248,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("master3")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000006")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		authCommandService.signup(command);
@@ -517,45 +452,8 @@ class AuthCommandServiceTest {
 				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
 	}
 
-	@Test
-	void 활성_MASTER가_없으면_MASTER_가입시_자동으로_승인된다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"master1", "Abcd1234!", "관리자", "U0000000001",
-				Role.MASTER, null, null);
-
-		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0000000001")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(0L);
-		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		UserSignupResult result = authCommandService.signup(command);
-
-		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
-	}
-
-	@Test
-	void 활성_MASTER가_이미_있으면_MASTER로_가입해도_PENDING으로_시작한다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"master2", "Abcd1234!", "관리자2", "U0000000002",
-				Role.MASTER, null, null);
-
-		when(userCommandRepository.existsByUsername("master2")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0000000002")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
-		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		UserSignupResult result = authCommandService.signup(command);
-
-		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
-	}
+	// MASTER 최초 부트스트랩 자동 승인 로직은 UserPersistenceService.commitSignup()으로 옮겨갔다 —
+	// 관련 테스트는 UserPersistenceServiceTest 참고.
 
 	@Test
 	void 정상_로그아웃시_RefreshToken을_삭제한다() {
