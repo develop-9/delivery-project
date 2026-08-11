@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,10 @@ import jakarta.persistence.PersistenceContext;
  * HubPort/CompanyPort는 실제 Hub/Company Service를 이 테스트 환경에서 띄우지 않으므로
  * @MockitoBean으로 대체한다 — 기본 동작(예외 없이 통과)이 "허브/업체가 존재한다"는 뜻이라,
  * hubId/companyId 검증 자체를 다루는 게 아닌 나머지 회원가입/로그인/로그아웃 테스트에 영향이 없다.
+ *
+ * signup()은 Hub/Company Feign 호출을 트랜잭션 밖에서 하도록 NOT_SUPPORTED로 되어 있어서,
+ * 실제 저장은 이 클래스의 @Transactional과 무관한 별도 트랜잭션에서 커밋된다 — 즉 테스트가
+ * 끝나도 롤백되지 않고 실제로 남는다. cleanUpUsers()가 매 테스트 뒤 p_users를 직접 비운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,6 +66,20 @@ class AuthApiControllerTest {
 	@MockitoBean
 	private CompanyPort companyPort;
 
+	/**
+	 * signup()이 커밋한 행은 이 클래스의 @Transactional 롤백 범위 밖이라 여기서 직접 지운다.
+	 * TestTransaction.end()로 이 테스트가 남긴 진행 중인 트랜잭션을 먼저 정리한 뒤(원래도
+	 * 롤백될 것들이라 먼저 끝내도 결과는 같다) DELETE를 새 커넥션에서 즉시 커밋되게 실행한다 —
+	 * 그래야 signup()이 이미 커밋해버린 행도 실제로 지워진다.
+	 */
+	@AfterEach
+	void cleanUpUsers() {
+		if (TestTransaction.isActive()) {
+			TestTransaction.end();
+		}
+		jdbcTemplate.update("DELETE FROM p_users");
+	}
+
 	@Test
 	void 회원가입_성공시_201과_PENDING_상태를_반환한다() {
 		// given
@@ -87,17 +107,21 @@ class AuthApiControllerTest {
 
 	@Test
 	void username이_중복이면_409를_반환한다() {
-		// given
-		userCommandRepository.save(
-				com.delivery_project.user_service.user.domain.entity.User.builder()
-						.username("dupuser")
-						.password("encoded")
-						.name("기존유저")
-						.slackId("U9999999999")
-						.role(Role.COMPANY_MANAGER)
-						.companyId(UUID.randomUUID())
-						.build()
-		);
+		// given: 실제 signup API로 만든다 — repository.save()로 이 테스트의 트랜잭션 안에서
+		// 직접 만들면, signup()이 NOT_SUPPORTED로 이 트랜잭션을 일시정지시키는 사이 그 미커밋
+		// 행이 안 보여서 중복 체크를 통과해버리고, 뒤이은 INSERT는 정지된 트랜잭션의 커밋
+		// 여부를 기다리다 데드락에 빠진다(그 트랜잭션은 이 INSERT가 끝나야 재개되므로).
+		String setupBody = """
+				{
+				  "username": "dupuser",
+				  "password": "Abcd1234!",
+				  "name": "기존유저",
+				  "slackId": "U9999999999",
+				  "role": "COMPANY_MANAGER",
+				  "companyId": "%s"
+				}
+				""".formatted(UUID.randomUUID());
+		mvc.post().uri("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(setupBody).exchange();
 
 		String body = """
 				{
@@ -338,6 +362,14 @@ class AuthApiControllerTest {
 		entityManager.flush();
 		entityManager.clear();
 		jdbcTemplate.update("UPDATE p_users SET deleted_at = now() WHERE username = ?", "softdel1");
+
+		// 이 UPDATE를 커밋해야 한다 — signup()이 NOT_SUPPORTED라 재가입 시도의 existsByUsername은
+		// 별도 트랜잭션에서 실행되는데, 이 테스트의 트랜잭션 안에 미커밋 상태로 남아 있으면 그
+		// 소프트 삭제가 안 보여서 여전히 username이 사용 중인 것으로 판단해버린다.
+		if (TestTransaction.isActive()) {
+			TestTransaction.flagForCommit();
+			TestTransaction.end();
+		}
 
 		assertThat(userCommandRepository.existsByUsername("softdel1")).isFalse();
 

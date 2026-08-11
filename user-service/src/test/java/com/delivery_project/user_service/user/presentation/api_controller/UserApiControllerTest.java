@@ -14,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,11 @@ import jakarta.persistence.PersistenceContext;
  * @MockitoBean으로 대체한다 — signupUser() 헬퍼가 내부적으로 실제 회원가입 API를 호출하는데,
  * 기본 동작(예외 없이 통과)이 "허브/업체가 존재한다"는 뜻이라 이 파일의 나머지 테스트(정지/승인/
  * 거절 등)에는 영향이 없다.
+ *
+ * signup()은 Hub/Company Feign 호출을 트랜잭션 밖에서 하도록 NOT_SUPPORTED로 되어 있어서,
+ * signupUser() 헬퍼가 만든 행은 이 클래스의 @Transactional과 무관한 별도 트랜잭션에서
+ * 커밋된다 — 즉 테스트가 끝나도 롤백되지 않고 실제로 남는다. cleanUpUsers()가 매 테스트 뒤
+ * p_users를 직접 비운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,6 +75,20 @@ class UserApiControllerTest {
 	@AfterEach
 	void cleanUpRefreshTokens() {
 		loggedInUserIds.forEach(refreshTokenRepository::deleteByUserId);
+	}
+
+	/**
+	 * signup()이 커밋한 행은 이 클래스의 @Transactional 롤백 범위 밖이라 여기서 직접 지운다.
+	 * TestTransaction.end()로 이 테스트가 남긴 진행 중인 트랜잭션을 먼저 정리한 뒤(원래도
+	 * 롤백될 것들이라 먼저 끝내도 결과는 같다) DELETE를 새 커넥션에서 즉시 커밋되게 실행한다 —
+	 * 그래야 signup()이 이미 커밋해버린 행도 실제로 지워진다.
+	 */
+	@AfterEach
+	void cleanUpUsers() {
+		if (TestTransaction.isActive()) {
+			TestTransaction.end();
+		}
+		jdbcTemplate.update("DELETE FROM p_users");
 	}
 
 	@Test
