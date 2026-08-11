@@ -1,11 +1,13 @@
 package com.delivery_project.delivery_service.delivery.application.query_service;
 
+import com.delivery_project.delivery_service.delivery.application.port.OrderPort;
 import com.delivery_project.delivery_service.delivery.application.port.UserPort;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRouteGetQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesByOrderQuery;
 import com.delivery_project.delivery_service.delivery.application.query.DeliveryRoutesGetQuery;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRouteDetailResult;
 import com.delivery_project.delivery_service.delivery.application.result.DeliveryRoutesByOrderResult;
+import com.delivery_project.delivery_service.delivery.application.result.OrderCompanyInfo;
 import com.delivery_project.delivery_service.delivery.application.result.UserAuthorizationInfo;
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManager;
@@ -32,6 +34,7 @@ public class DeliveryRouteQueryService {
     private final DeliveryManagerQueryRepository deliveryManagerQueryRepository;
     private final DeliveryRouteQueryRepository deliveryRouteQueryRepository;
     private final UserPort userPort;
+    private final OrderPort orderPort;
 
     public DeliveryRoutesByOrderResult getRoutesByOrder(
             DeliveryRoutesByOrderQuery query
@@ -132,7 +135,19 @@ public class DeliveryRouteQueryService {
         }
 
         if (query.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 기준 검증
+            Delivery delivery =
+                    deliveryQueryRepository
+                            .findById(route.getDeliveryId())
+                            .orElseThrow(()->
+                                    new BusinessException(
+                                            ErrorCode.DELIVERY_NOT_FOUND
+                                    )
+                            );
+
+            validateCompanyManagerRouteReadPermission(
+                    query.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -192,7 +207,10 @@ public class DeliveryRouteQueryService {
         }
 
         if (query.requesterRole() == Role.COMPANY_MANAGER) {
-            // TODO: 담당 업체 기준 검증
+            validateCompanyManagerRouteReadPermission(
+                    query.requesterId(),
+                    delivery
+            );
             return;
         }
 
@@ -284,6 +302,39 @@ public class DeliveryRouteQueryService {
                         );
 
         if (!relatedDelivery) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+    }
+
+    private void validateCompanyManagerRouteReadPermission(
+            UUID requesterId,
+            Delivery delivery
+    ){
+        UserAuthorizationInfo requester =
+                userPort.getUserAuthorizationInfo(
+                        requesterId
+                );
+
+        UUID requesterCompanyId = requester.companyId();
+
+        if(requesterCompanyId == null) {
+            throw new BusinessException(
+                    ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
+            );
+        }
+
+        OrderCompanyInfo order =
+                orderPort.getOrderCompanyInfo(
+                        delivery.getOrderId()
+                );
+
+        boolean relatedCompany =
+                requesterCompanyId.equals(order.supplierCompanyId())
+                    || requesterCompanyId.equals(order.receiverCompanyId());
+
+        if (!relatedCompany) {
             throw new BusinessException(
                     ErrorCode.READ_DELIVERY_ROUTE_FORBIDDEN
             );
