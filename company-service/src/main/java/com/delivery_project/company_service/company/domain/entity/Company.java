@@ -43,6 +43,12 @@ public class Company extends BaseDeletableEntity {
     }
 
     public static Company create(UUID hubId, CompanyType type, String name, String address) {
+
+        validateHubId(hubId);
+        validateType(type);
+        validateName(name);
+        validateAddress(address);
+
         return Company.builder()
                 .hubId(hubId)
                 .type(type)
@@ -52,25 +58,43 @@ public class Company extends BaseDeletableEntity {
     }
 
     public void update(UUID hubId, CompanyType type, String name, String address) {
-        /*
-        * Validation 작성
-        *  - hubId가 null인지 확인
-        *  - type이 null인지 확인
-        *  - name이 null이거나 빈 값인지 확인
-        *  - address가 null이거나 빈 값인지 확인
-        */
-        if (
-                hubId == null
-                || type == null
-                || name == null || name.isBlank()
-                || address == null || address.isBlank()
-        ) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
+
+        validateHubId(hubId);
+        validateType(type);
+        validateName(name);
+        validateAddress(address);
 
         this.hubId = hubId;
         this.type = type;
         this.name = name;
         this.address = address;
+    }
+
+    // Validation Check - 올바른 HubId 기입 여부 판별
+    private static void validateHubId(UUID hubId) {
+        if (hubId == null) {
+            throw new BusinessException(ErrorCode.COMPANY_INVALID_HUB_ID);
+        }
+    }
+
+    // Validation Check - 올바른 Type 기입 여부 판별
+    private static void validateType(CompanyType type) {
+        if (type == null) {
+            throw new BusinessException(ErrorCode.COMPANY_INVALID_TYPE);
+        }
+    }
+
+    // Validation Check - 올바른 name 기입 여부 판별
+    private static void validateName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new BusinessException(ErrorCode.COMPANY_INVALID_NAME);
+        }
+    }
+
+    // Validation Check - 올바른 address 기입 여부 판별
+    private static void validateAddress(String address) {
+        if (address == null || address.isBlank()) {
+            throw new BusinessException(ErrorCode.COMPANY_INVALID_ADDRESS);
+        }
     }
 }

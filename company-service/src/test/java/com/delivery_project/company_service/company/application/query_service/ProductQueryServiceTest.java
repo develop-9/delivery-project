@@ -11,7 +11,6 @@ import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.infrastructure.persistence.ProductQueryRepositoryImpl;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
-import com.delivery_project.company_service.global.security.Role;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -291,7 +290,7 @@ class ProductQueryServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue(
                             "errorCode",
-                            ErrorCode.PRODUCT_SEARCH_INVALID_PRICE
+                            ErrorCode.PRODUCT_INVALID_SEARCH_PRICE
                     );
 
             verify(pageValidator)
