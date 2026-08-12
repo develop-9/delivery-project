@@ -84,9 +84,93 @@ class DeliveryManagerFeignAdapterTest {
 				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
 	}
 
+	@Test
+	void 정상_비활성화되면_예외없이_반환한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when & then
+		assertThatCode(() -> deliveryManagerFeignAdapter.deactivate(userId))
+				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void 비활성화_대상_레코드가_없으면_멱등_성공으로_처리한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		Request request = fakePatchRequest(userId, "deactivate");
+		Mockito.doThrow(new FeignException.NotFound("Not Found", request, null, Collections.emptyMap()))
+				.when(deliveryManagerClient).deactivateByUserId(userId);
+
+		// when & then
+		assertThatCode(() -> deliveryManagerFeignAdapter.deactivate(userId))
+				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void 비활성화_그_외_실패는_DELIVERY_SERVICE_UNAVAILABLE로_변환한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		Request request = fakePatchRequest(userId, "deactivate");
+		Mockito.doThrow(new RetryableException(
+						503, "Read timed out", Request.HttpMethod.PATCH, (Long) null, request))
+				.when(deliveryManagerClient).deactivateByUserId(userId);
+
+		// when & then
+		assertThatThrownBy(() -> deliveryManagerFeignAdapter.deactivate(userId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+	}
+
+	@Test
+	void 정상_재활성화되면_예외없이_반환한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+
+		// when & then
+		assertThatCode(() -> deliveryManagerFeignAdapter.reactivate(userId))
+				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void 재활성화_대상_레코드가_없으면_멱등_성공으로_처리한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		Request request = fakePatchRequest(userId, "reactivate");
+		Mockito.doThrow(new FeignException.NotFound("Not Found", request, null, Collections.emptyMap()))
+				.when(deliveryManagerClient).reactivateByUserId(userId);
+
+		// when & then
+		assertThatCode(() -> deliveryManagerFeignAdapter.reactivate(userId))
+				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void 재활성화_그_외_실패는_DELIVERY_SERVICE_UNAVAILABLE로_변환한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		Request request = fakePatchRequest(userId, "reactivate");
+		Mockito.doThrow(new RetryableException(
+						503, "Read timed out", Request.HttpMethod.PATCH, (Long) null, request))
+				.when(deliveryManagerClient).reactivateByUserId(userId);
+
+		// when & then
+		assertThatThrownBy(() -> deliveryManagerFeignAdapter.reactivate(userId))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);
+	}
+
 	private Request fakeDeleteRequest(UUID userId) {
 		return Request.create(
 				"DELETE", "/internal/v1/delivery-managers/users/" + userId,
+				Collections.emptyMap(), null, (Charset) null);
+	}
+
+	private Request fakePatchRequest(UUID userId, String action) {
+		return Request.create(
+				"PATCH", "/internal/v1/delivery-managers/users/" + userId + "/" + action,
 				Collections.emptyMap(), null, (Charset) null);
 	}
 }

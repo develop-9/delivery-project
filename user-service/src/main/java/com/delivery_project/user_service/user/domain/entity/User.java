@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.delivery_project.user_service.global.common.BaseDeletableEntity;
+import com.delivery_project.user_service.global.exception.BusinessException;
+import com.delivery_project.user_service.global.exception.ErrorCode;
 import com.delivery_project.user_service.user.infrastructure.persistence.converter.NameConverter;
 import com.delivery_project.user_service.user.infrastructure.persistence.converter.SlackIdConverter;
 
@@ -18,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -75,9 +78,18 @@ public class User extends BaseDeletableEntity {
 	@Column(name = "company_id")
 	private UUID companyId;
 
+	// 승인/거절/정지/정지해제처럼 "현재 상태를 보고 판단해서 바꾸는" 갱신이 여러 관리자에게서
+	// 동시에 들어올 수 있다. approvalStatus를 미리 확인하는 것만으로는 두 요청이 거의 동시에
+	// 같은 값을 읽어버리는 경우(예: 둘 다 PENDING을 보고 통과)를 못 막아서, 커밋 시점에
+	// 값이 조회 당시와 같은지 한 번 더 강제로 확인하는 낙관적 락을 둔다.
+	@Version
+	private Long version;
+
 	@Builder
 	private User(String username, String password, String name, String slackId,
 			Role role, UUID hubId, UUID companyId) {
+		validateHubOrCompanyRequired(role, hubId, companyId);
+
 		this.username = username;
 		this.password = password;
 		this.name = name;
@@ -88,9 +100,24 @@ public class User extends BaseDeletableEntity {
 		this.companyId = companyId;
 	}
 
+	// 역할별 필수 소속 정보(hubId/companyId)는 도메인 불변식이라, 이 값이 빠진 User는
+	// 애초에 만들어질 수 없게 생성 시점에 강제한다.
+	// DELIVERY_MANAGER는 hubId를 여기서 강제하지 않는다 — Delivery Service가 배송 담당자를
+	// 특정 허브 소속(COMPANY_DELIVERY, hubId 필수)과 공용 허브 소속(HUB_DELIVERY, hubId 없음)
+	// 둘로 나눠 관리해서, User Service 단계에서는 hubId 유무 자체가 유효/무효를 가르지 않는다.
+	// 실제 소속 필요 여부 검증은 Delivery Service가 담당자 타입에 따라 수행한다.
+	private static void validateHubOrCompanyRequired(Role role, UUID hubId, UUID companyId) {
+		if (role == Role.HUB_MANAGER && hubId == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+		}
+		if (role == Role.COMPANY_MANAGER && companyId == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+		}
+	}
+
 	public void approve(UUID approvedBy) {
 		if (this.approvalStatus != ApprovalStatus.PENDING) {
-			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
 		}
 		this.approvalStatus = ApprovalStatus.APPROVED;
 		this.approvedAt = Instant.now();
@@ -113,7 +140,7 @@ public class User extends BaseDeletableEntity {
 
 	public void reject() {
 		if (this.approvalStatus != ApprovalStatus.PENDING) {
-			throw new IllegalStateException("이미 처리된 가입 신청입니다.");
+			throw new BusinessException(ErrorCode.USER_ALREADY_PROCESSED);
 		}
 		this.approvalStatus = ApprovalStatus.REJECTED;
 	}

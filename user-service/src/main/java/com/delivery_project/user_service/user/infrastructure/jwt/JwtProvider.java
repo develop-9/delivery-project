@@ -28,6 +28,7 @@ public class JwtProvider implements TokenProvider {
 
 	private static final String ROLE_CLAIM = "role";
 	private static final String TOKEN_TYPE_CLAIM = "tokenType";
+	private static final String SESSION_ID_CLAIM = "sessionId";
 	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final SecretKey accessSecretKey;
@@ -53,13 +54,17 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	@Override
-	public String generateAccessToken(UUID userId, Role role) {
+	public String generateAccessToken(UUID userId, Role role, UUID sessionId) {
 		Instant now = Instant.now();
 		return Jwts.builder()
+				// sessionId는 세션(기기) 전체에 걸쳐 고정되므로, refresh 로테이션이 같은 초 안에
+				// 일어나면 페이로드가 sessionId만으로는 구분이 안 될 수 있다 — jti로 토큰마다
+				// 유일성을 보장한다(재발급 전후 토큰이 항상 실제로 달라야 한다).
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.claim(ROLE_CLAIM, role.name())
 				.claim(TOKEN_TYPE_CLAIM, TokenType.ACCESS.name())
+				.claim(SESSION_ID_CLAIM, sessionId.toString())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(accessTokenExpirationMillis)))
 				.signWith(accessSecretKey)
@@ -67,18 +72,20 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	@Override
-	public String generateRefreshToken(UUID userId) {
+	public String generateRefreshToken(UUID userId, UUID sessionId) {
 		Instant now = Instant.now();
 		return Jwts.builder()
 				.id(UUID.randomUUID().toString())
 				.subject(userId.toString())
 				.claim(TOKEN_TYPE_CLAIM, TokenType.REFRESH.name())
+				.claim(SESSION_ID_CLAIM, sessionId.toString())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusMillis(refreshTokenExpirationMillis)))
 				.signWith(refreshSecretKey)
 				.compact();
 	}
 
+	@Override
 	public String resolveToken(String authorizationHeader) {
 		if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
 			throw new BusinessException(ErrorCode.AUTH_TOKEN_INVALID);
@@ -107,7 +114,7 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	/**
-	 * 토큰을 검증하고 클레임을 한 번만 파싱해서 userId/role/tokenType을 함께 반환한다.
+	 * 토큰을 검증하고 클레임을 한 번만 파싱해서 userId/role/tokenType/sessionId를 함께 반환한다.
 	 * 호출부가 기대하는 종류와 다른 토큰(Access인데 refreshSecretKey로 검증 시도 등)은
 	 * 시크릿이 달라 서명 검증 단계에서부터 실패한다.
 	 */
@@ -118,7 +125,9 @@ public class JwtProvider implements TokenProvider {
 		Role role = roleClaim != null ? Role.valueOf(roleClaim) : null;
 		String tokenTypeClaim = claims.get(TOKEN_TYPE_CLAIM, String.class);
 		TokenType tokenType = tokenTypeClaim != null ? TokenType.valueOf(tokenTypeClaim) : null;
-		return new JwtPrincipal(userId, role, tokenType);
+		String sessionIdClaim = claims.get(SESSION_ID_CLAIM, String.class);
+		UUID sessionId = sessionIdClaim != null ? UUID.fromString(sessionIdClaim) : null;
+		return new JwtPrincipal(userId, role, tokenType, sessionId);
 	}
 
 	private Claims parseClaims(String token, SecretKey key) {
