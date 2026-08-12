@@ -14,4 +14,8 @@ public interface OrderPort {
     List<UUID> getRelatedOrderIds(
             UUID companyId
     );
+
+    void completeOrder(
+            UUID orderId
+    );
 }

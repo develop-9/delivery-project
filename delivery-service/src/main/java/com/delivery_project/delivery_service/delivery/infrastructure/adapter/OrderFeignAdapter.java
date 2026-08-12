@@ -66,4 +66,23 @@ public class OrderFeignAdapter implements OrderPort {
         }
 
     }
+
+    @Override
+    public void completeOrder(
+            UUID orderId
+    ) {
+        try {
+            orderInternalClient.completeOrder(orderId);
+
+        } catch (FeignException.NotFound exception) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_NOT_FOUND
+            );
+
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_SERVICE_UNAVAILABLE
+            );
+        }
+    }
 }

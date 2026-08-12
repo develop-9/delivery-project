@@ -543,6 +543,67 @@ class DeliveryCommandServiceTest {
                 DeliveryStatus.COMPLETED,
                 result.status()
         );
+
+        verify(orderPort)
+                .completeOrder(delivery.getOrderId());
+    }
+
+    @Test
+    @DisplayName("업체 배송 완료 통보 중 Order Service 호출이 실패해도 배송 완료 처리는 그대로 유지된다")
+    void completeCompanyDeliverySuccessEvenWhenOrderNotified() {
+        // given
+        UUID deliveryId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+
+        Delivery delivery = mock(Delivery.class);
+        DeliveryManager manager = mock(DeliveryManager.class);
+
+        DeliveryStatusUpdateCommand command =
+                new DeliveryStatusUpdateCommand(
+                        deliveryId,
+                        DeliveryStatus.COMPLETED,
+                        UUID.randomUUID(),
+                        Role.MASTER
+                );
+
+        when(delivery.getStatus())
+                .thenReturn(
+                        DeliveryStatus.DELIVERING,
+                        DeliveryStatus.COMPLETED
+                );
+
+        when(delivery.getCompanyDeliveryManagerId())
+                .thenReturn(managerId);
+
+        when(delivery.getOrderId())
+                .thenReturn(orderId);
+
+        when(deliveryCommandRepository.findById(deliveryId))
+                .thenReturn(Optional.of(delivery));
+
+        when(deliveryManagerCommandRepository.findById(managerId))
+                .thenReturn(Optional.of(manager));
+
+        when(deliveryCommandRepository.save(delivery))
+                .thenReturn(delivery);
+
+        doThrow(new BusinessException(ErrorCode.ORDER_SERVICE_UNAVAILABLE))
+                .when(orderPort)
+                .completeOrder(orderId);
+
+        // when
+        DeliveryStatusUpdateResult result =
+                deliveryCommandService.updateStatus(command);
+
+        // then
+        assertEquals(
+                DeliveryStatus.COMPLETED,
+                result.status()
+        );
+
+        verify(deliveryCommandRepository)
+                .save(delivery);
     }
 
     @Test
