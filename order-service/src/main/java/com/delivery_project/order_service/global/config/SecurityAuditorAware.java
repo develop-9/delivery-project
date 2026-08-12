@@ -1,5 +1,6 @@
 package com.delivery_project.order_service.global.config;
 
+import com.delivery_project.order_service.global.security.JwtPrincipal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.AuditorAware;
@@ -32,6 +33,12 @@ public class SecurityAuditorAware implements AuditorAware<UUID> {
 		this.systemId = systemId;
 	}
 
+	/*
+	 * JwtAuthenticationFilter가 SecurityContext에 넣는 principal은 UUID 문자열이 아니라
+	 * JwtPrincipal 레코드 전체다(role 기반 인가를 위해 @AuthenticationPrincipal JwtPrincipal로
+	 * 컨트롤러에서 그대로 꺼내 쓰기 때문). authentication.getName()은 이 경우 principal의
+	 * toString()을 반환해서 UUID 파싱이 항상 실패하므로, getPrincipal()을 직접 타입 체크한다.
+	 */
 	@Override
 	public Optional<UUID> getCurrentAuditor() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -42,15 +49,11 @@ public class SecurityAuditorAware implements AuditorAware<UUID> {
 			return Optional.of(systemId);
 		}
 
-		return Optional.of(parseUserId(authentication.getName()));
-	}
-
-	private UUID parseUserId(String name) {
-		try {
-			return UUID.fromString(name);
-		} catch (IllegalArgumentException e) {
-			log.warn("[Audit] 사용자 ID 가 UUID 형식이 아니다 principal={}", name);
-			return systemId;
+		if (authentication.getPrincipal() instanceof JwtPrincipal jwtPrincipal) {
+			return Optional.of(jwtPrincipal.userId());
 		}
+
+		log.warn("[Audit] principal이 JwtPrincipal이 아니다 principal={}", authentication.getPrincipal());
+		return Optional.of(systemId);
 	}
 }
