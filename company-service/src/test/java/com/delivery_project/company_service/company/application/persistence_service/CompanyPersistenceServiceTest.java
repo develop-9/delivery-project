@@ -1,5 +1,6 @@
 package com.delivery_project.company_service.company.application.persistence_service;
 
+import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
@@ -27,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +39,9 @@ class CompanyPersistenceServiceTest {
 
     @Mock
     private ProductQueryRepository productQueryRepository;
+
+    @Mock
+    private OrderPort orderPort;
 
     @InjectMocks
     private CompanyPersistenceService companyPersistenceService;
@@ -467,6 +470,14 @@ class CompanyPersistenceServiceTest {
                     .should()
                     .findByCompanyId(companyId);
 
+            then(orderPort)
+                    .should()
+                    .deleteInventory(productId1);
+
+            then(orderPort)
+                    .should()
+                    .deleteInventory(productId2);
+
             then(companyCommandRepository)
                     .should()
                     .save(company);
@@ -533,18 +544,42 @@ class CompanyPersistenceServiceTest {
                     .should()
                     .findByCompanyId(companyId);
 
+            then(orderPort)
+                    .shouldHaveNoInteractions();
+
             then(companyCommandRepository)
                     .should()
                     .save(company);
         }
 
         @Test
-        @DisplayName("소속 상품이 여러 개 존재해도 모든 상품을 논리 삭제한다.")
+        @DisplayName("소속 상품이 여러 개 존재해도 모든 상품의 재고를 삭제하고 논리 삭제한다.")
         void deleteCompany_success_whenMultipleProducts() {
             // given
             UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
+
+            Product product1 = new Product(
+                    UUID.randomUUID(),
+                    companyId,
+                    "테스트 상품 1",
+                    10000
+            );
+
+            Product product2 = new Product(
+                    UUID.randomUUID(),
+                    companyId,
+                    "테스트 상품 2",
+                    20000
+            );
+
+            Product product3 = new Product(
+                    UUID.randomUUID(),
+                    companyId,
+                    "테스트 상품 3",
+                    30000
+            );
 
             Company company = Company.builder()
                     .hubId(hubId)
@@ -560,24 +595,9 @@ class CompanyPersistenceServiceTest {
             );
 
             List<Product> products = List.of(
-                    new Product(
-                            UUID.randomUUID(),
-                            companyId,
-                            "테스트 상품 1",
-                            10000
-                    ),
-                    new Product(
-                            UUID.randomUUID(),
-                            companyId,
-                            "테스트 상품 2",
-                            20000
-                    ),
-                    new Product(
-                            UUID.randomUUID(),
-                            companyId,
-                            "테스트 상품 3",
-                            30000
-                    )
+                    product1,
+                    product2,
+                    product3
             );
 
             given(companyCommandRepository.findById(companyId))
@@ -629,6 +649,18 @@ class CompanyPersistenceServiceTest {
                     .should()
                     .findByCompanyId(companyId);
 
+            then(orderPort)
+                    .should()
+                    .deleteInventory(product1.getId());
+
+            then(orderPort)
+                    .should()
+                    .deleteInventory(product2.getId());
+
+            then(orderPort)
+                    .should()
+                    .deleteInventory(product3.getId());
+
             then(companyCommandRepository)
                     .should()
                     .save(company);
@@ -663,6 +695,108 @@ class CompanyPersistenceServiceTest {
 
             then(productQueryRepository)
                     .shouldHaveNoInteractions();
+
+            then(orderPort)
+                    .shouldHaveNoInteractions();
+
+            then(companyCommandRepository)
+                    .should(never())
+                    .save(any(Company.class));
+        }
+
+        @Test
+        @DisplayName("상품 재고 삭제에 실패하면 이후 상품 및 업체 삭제가 수행되지 않는다.")
+        void deleteCompany_fail_whenInventoryDeleteFailed() {
+            // given
+            UUID callerId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+            UUID productId1 = UUID.randomUUID();
+            UUID productId2 = UUID.randomUUID();
+
+            Company company = Company.builder()
+                    .hubId(hubId)
+                    .type(CompanyType.PRODUCER)
+                    .name("테스트 업체")
+                    .address("서울특별시 강남구")
+                    .build();
+
+            ReflectionTestUtils.setField(
+                    company,
+                    "id",
+                    companyId
+            );
+
+            Product product1 = new Product(
+                    productId1,
+                    companyId,
+                    "테스트 상품 1",
+                    10000
+            );
+
+            Product product2 = new Product(
+                    productId2,
+                    companyId,
+                    "테스트 상품 2",
+                    20000
+            );
+
+            given(companyCommandRepository.findById(companyId))
+                    .willReturn(Optional.of(company));
+
+            given(productQueryRepository.findByCompanyId(companyId))
+                    .willReturn(List.of(product1, product2));
+
+            willThrow(new RuntimeException("재고 삭제 실패"))
+                    .given(orderPort)
+                    .deleteInventory(productId1);
+
+            // when & then
+            RuntimeException exception = catchThrowableOfType(
+                    () ->
+                            companyPersistenceService.deleteCompany(
+                                    companyId,
+                                    callerId
+                            ),
+                    RuntimeException.class
+            );
+
+            assertThat(exception.getMessage())
+                    .isEqualTo("재고 삭제 실패");
+
+            assertThat(product1.getDeletedAt())
+                    .isNull();
+
+            assertThat(product1.getDeletedBy())
+                    .isNull();
+
+            assertThat(product2.getDeletedAt())
+                    .isNull();
+
+            assertThat(product2.getDeletedBy())
+                    .isNull();
+
+            assertThat(company.getDeletedAt())
+                    .isNull();
+
+            assertThat(company.getDeletedBy())
+                    .isNull();
+
+            then(companyCommandRepository)
+                    .should()
+                    .findById(companyId);
+
+            then(productQueryRepository)
+                    .should()
+                    .findByCompanyId(companyId);
+
+            then(orderPort)
+                    .should()
+                    .deleteInventory(productId1);
+
+            then(orderPort)
+                    .should(never())
+                    .deleteInventory(productId2);
 
             then(companyCommandRepository)
                     .should(never())

@@ -1,5 +1,7 @@
 package com.delivery_project.company_service.company.application.persistence_service;
 
+import com.delivery_project.company_service.company.application.port.OrderPort;
+import com.delivery_project.company_service.company.application.port.dto.InventorySaveInfo;
 import com.delivery_project.company_service.company.application.result.*;
 import com.delivery_project.company_service.company.domain.entity.Product;
 import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
@@ -14,13 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +32,9 @@ class ProductPersistenceServiceTest {
 
     @Mock
     private ProductCommandRepository productCommandRepository;
+
+    @Mock
+    private OrderPort orderPort;
 
     @InjectMocks
     private ProductPersistenceService productPersistenceService;
@@ -37,7 +44,7 @@ class ProductPersistenceServiceTest {
     class SaveProductPersistence {
 
         @Test
-        @DisplayName("상품을 정상적으로 저장한다.")
+        @DisplayName("상품을 정상적으로 저장하고 재고 생성을 요청한다.")
         void saveProduct_success() {
             // given
             UUID companyId = UUID.randomUUID();
@@ -46,20 +53,24 @@ class ProductPersistenceServiceTest {
             String name = "테스트 상품";
             Integer price = 10000;
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    name,
-                    price
-            );
-
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
+            List<InventorySaveInfo> inventoryList =
+                    List.of(mock(InventorySaveInfo.class));
 
             given(productCommandRepository.save(any(Product.class)))
-                    .willReturn(savedProduct);
+                    .willAnswer(invocation -> {
+                        Product product = invocation.getArgument(0);
+
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
+                    });
+
+            given(orderPort.saveInventory(productId))
+                    .willReturn(inventoryList);
 
             // when
             ProductCreateResult result =
@@ -79,6 +90,10 @@ class ProductPersistenceServiceTest {
             then(productCommandRepository)
                     .should()
                     .save(any(Product.class));
+
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
         }
 
         @Test
@@ -91,17 +106,8 @@ class ProductPersistenceServiceTest {
             String name = "테스트 상품";
             Integer price = 10000;
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    name,
-                    price
-            );
-
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
+            List<InventorySaveInfo> inventoryList =
+                    List.of(mock(InventorySaveInfo.class));
 
             given(productCommandRepository.save(any(Product.class)))
                     .willAnswer(invocation -> {
@@ -116,8 +122,17 @@ class ProductPersistenceServiceTest {
                         assertThat(product.getPrice())
                                 .isEqualTo(price);
 
-                        return savedProduct;
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
                     });
+
+            given(orderPort.saveInventory(productId))
+                    .willReturn(inventoryList);
 
             // when
             ProductCreateResult result =
@@ -137,6 +152,10 @@ class ProductPersistenceServiceTest {
             then(productCommandRepository)
                     .should()
                     .save(any(Product.class));
+
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
         }
 
         @Test
@@ -146,20 +165,24 @@ class ProductPersistenceServiceTest {
             UUID companyId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
 
-            Product savedProduct = Product.create(
-                    companyId,
-                    "테스트 상품",
-                    10000
-            );
-
-            ReflectionTestUtils.setField(
-                    savedProduct,
-                    "id",
-                    productId
-            );
+            List<InventorySaveInfo> inventoryList =
+                    List.of(mock(InventorySaveInfo.class));
 
             given(productCommandRepository.save(any(Product.class)))
-                    .willReturn(savedProduct);
+                    .willAnswer(invocation -> {
+                        Product product = invocation.getArgument(0);
+
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
+                    });
+
+            given(orderPort.saveInventory(productId))
+                    .willReturn(inventoryList);
 
             // when
             ProductCreateResult result =
@@ -174,15 +197,66 @@ class ProductPersistenceServiceTest {
                     .isNotNull();
 
             assertThat(result.productId())
-                    .isEqualTo(savedProduct.getId());
+                    .isEqualTo(productId);
 
             then(productCommandRepository)
                     .should()
                     .save(any(Product.class));
+
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
         }
 
         @Test
-        @DisplayName("상품 저장에 실패하면 예외가 전파된다.")
+        @DisplayName("재고가 생성되지 않아도 상품 저장은 정상적으로 완료된다.")
+        void saveProduct_success_whenInventoryListEmpty() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+
+            given(productCommandRepository.save(any(Product.class)))
+                    .willAnswer(invocation -> {
+                        Product product = invocation.getArgument(0);
+
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
+                    });
+
+            given(orderPort.saveInventory(productId))
+                    .willReturn(List.of());
+
+            // when
+            ProductCreateResult result =
+                    productPersistenceService.saveProduct(
+                            companyId,
+                            "테스트 상품",
+                            10000
+                    );
+
+            // then
+            assertThat(result)
+                    .isNotNull();
+
+            assertThat(result.productId())
+                    .isEqualTo(productId);
+
+            then(productCommandRepository)
+                    .should()
+                    .save(any(Product.class));
+
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
+        }
+
+        @Test
+        @DisplayName("상품 저장에 실패하면 예외가 전파되고 재고 생성을 요청하지 않는다.")
         void saveProduct_fail_whenRepositoryThrowsException() {
             // given
             UUID companyId = UUID.randomUUID();
@@ -204,6 +278,95 @@ class ProductPersistenceServiceTest {
             then(productCommandRepository)
                     .should()
                     .save(any(Product.class));
+
+            then(orderPort)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("재고 생성에 실패하면 예외가 전파된다.")
+        void saveProduct_fail_whenSaveInventoryThrowsException() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+
+            given(productCommandRepository.save(any(Product.class)))
+                    .willAnswer(invocation -> {
+                        Product product = invocation.getArgument(0);
+
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
+                    });
+
+            given(orderPort.saveInventory(productId))
+                    .willThrow(new RuntimeException("재고 생성 실패"));
+
+            // when & then
+            assertThatThrownBy(() ->
+                    productPersistenceService.saveProduct(
+                            companyId,
+                            "테스트 상품",
+                            10000
+                    )
+            )
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("재고 생성 실패");
+
+            then(productCommandRepository)
+                    .should()
+                    .save(any(Product.class));
+
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
+        }
+
+        @Test
+        @DisplayName("재고 생성 요청에는 저장된 상품의 ID를 사용한다.")
+        void saveProduct_success_withSavedProductId() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+
+            List<InventorySaveInfo> inventoryList =
+                    List.of(mock(InventorySaveInfo.class));
+
+            given(productCommandRepository.save(any(Product.class)))
+                    .willAnswer(invocation -> {
+                        Product product = invocation.getArgument(0);
+
+                        ReflectionTestUtils.setField(
+                                product,
+                                "id",
+                                productId
+                        );
+
+                        return product;
+                    });
+
+            given(orderPort.saveInventory(productId))
+                    .willReturn(inventoryList);
+
+            // when
+            productPersistenceService.saveProduct(
+                    companyId,
+                    "테스트 상품",
+                    10000
+            );
+
+            // then
+            then(orderPort)
+                    .should()
+                    .saveInventory(productId);
+
+            then(orderPort)
+                    .should(never())
+                    .saveInventory(isNull(UUID.class));
         }
     }
 
@@ -369,7 +532,7 @@ class ProductPersistenceServiceTest {
     class DeleteProductPersistence {
 
         @Test
-        @DisplayName("상품을 정상적으로 논리 삭제한다.")
+        @DisplayName("상품을 정상적으로 논리 삭제하고 재고 삭제를 요청한다.")
         void deleteProduct_success() {
             // given
             UUID productId = UUID.randomUUID();
@@ -413,6 +576,10 @@ class ProductPersistenceServiceTest {
                     .should()
                     .findById(productId);
 
+            then(orderPort)
+                    .should()
+                    .deleteInventory(productId);
+
             then(productCommandRepository)
                     .should()
                     .save(product);
@@ -445,9 +612,63 @@ class ProductPersistenceServiceTest {
                     .should()
                     .findById(productId);
 
+            then(orderPort)
+                    .shouldHaveNoInteractions();
+
             then(productCommandRepository)
                     .should(never())
                     .save(any(Product.class));
+        }
+
+        @Test
+        @DisplayName("재고 삭제에 실패하면 상품을 논리 삭제하지 않고 예외가 전파된다.")
+        void deleteProduct_fail_whenDeleteInventoryThrowsException() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UUID callerId = UUID.randomUUID();
+
+            Product product = new Product(
+                    productId,
+                    companyId,
+                    "테스트 상품",
+                    10000
+            );
+
+            given(productCommandRepository.findById(productId))
+                    .willReturn(Optional.of(product));
+
+            willThrow(new RuntimeException("재고 삭제 실패"))
+                    .given(orderPort)
+                    .deleteInventory(productId);
+
+            // when & then
+            assertThatThrownBy(() ->
+                    productPersistenceService.deleteProduct(
+                            productId,
+                            callerId
+                    )
+            )
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("재고 삭제 실패");
+
+            then(productCommandRepository)
+                    .should()
+                    .findById(productId);
+
+            then(orderPort)
+                    .should()
+                    .deleteInventory(productId);
+
+            then(productCommandRepository)
+                    .should(never())
+                    .save(any(Product.class));
+
+            assertThat(product.getDeletedAt())
+                    .isNull();
+
+            assertThat(product.getDeletedBy())
+                    .isNull();
         }
     }
 }
