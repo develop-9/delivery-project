@@ -21,11 +21,12 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/delivery-routes")
-public class DeliveryRouteApiController {
+public class DeliveryRouteApiController implements DeliveryRouteApi {
 
     private final DeliveryRouteCommandService deliveryRouteCommandService;
     private final DeliveryRouteQueryService deliveryRouteQueryService;
 
+    @Override
     @PatchMapping("/{routeId}/status")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryRouteStatusUpdateResponse>
@@ -48,6 +49,7 @@ public class DeliveryRouteApiController {
         );
     }
 
+    @Override
     @GetMapping("/{routeId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryRouteDetailResponse> getDeliveryRoute(
