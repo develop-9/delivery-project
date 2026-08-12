@@ -1,5 +1,6 @@
 package com.delivery_project.company_service.global.config;
 
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +23,8 @@ public class JpaConfig {
                         .filter(Authentication::isAuthenticated)
                         .map(Authentication::getPrincipal)
                         .filter(UUID.class::isInstance)
-                        .map(UUID.class::cast)
+                        .map(JwtPrincipal.class::cast)
+                        .map(JwtPrincipal::userId)
                         .orElse(systemId)
         );
     }
