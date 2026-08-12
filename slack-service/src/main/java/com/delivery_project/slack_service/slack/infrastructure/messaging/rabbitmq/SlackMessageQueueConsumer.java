@@ -4,6 +4,7 @@ import com.delivery_project.slack_service.slack.application.command_service.Slac
 import com.delivery_project.slack_service.slack.application.port.SlackMessageDuplicateGuard;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageQueuePublisher;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageSender;
+import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageSendResult;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.infrastructure.config.SlackRabbitMqConfig;
@@ -19,6 +20,7 @@ public class SlackMessageQueueConsumer {
 
     private final SlackMessageSender slackMessageSender;
     private final SlackMessageCommandService slackMessageCommandService;
+    private final SlackMessageQueryService slackMessageQueryService;
     private final SlackMessageQueuePublisher slackMessageQueuePublisher;
     private final SlackMessageDuplicateGuard slackMessageDuplicateGuard;
 
@@ -26,6 +28,17 @@ public class SlackMessageQueueConsumer {
     public void consume(
             SlackMessageQueuePayload payload
     ) {
+        if (slackMessageQueryService.isSent(
+                payload.slackMessageId()
+        )) {
+            log.info(
+                    "이미 발송 완료된 Slack 메시지입니다. 중복 발송을 건너뜁니다. slackMessageId={}",
+                    payload.slackMessageId()
+            );
+
+            return;
+        }
+
         String lockToken =
                 slackMessageDuplicateGuard.tryAcquire(
                         payload.slackMessageId()
@@ -41,7 +54,20 @@ public class SlackMessageQueueConsumer {
         }
 
         try {
+            if (slackMessageQueryService.isSent(
+                    payload.slackMessageId()
+            )) {
+                log.info(
+                        "Redis Lock 획득 후 이미 SENT 상태임을 확인했습니다. "
+                                + "Slack API 호출을 건너뜁니다. slackMessageId={}",
+                        payload.slackMessageId()
+                );
+
+                return;
+            }
+
             processMessage(payload);
+
         } finally {
             slackMessageDuplicateGuard.release(
                     payload.slackMessageId(),
@@ -50,7 +76,9 @@ public class SlackMessageQueueConsumer {
         }
     }
 
-    private void processMessage(SlackMessageQueuePayload payload) {
+    private void processMessage(
+            SlackMessageQueuePayload payload
+    ) {
         SlackMessageSendResult sendResult =
                 slackMessageSender.send(
                         payload.receiverSlackId(),
@@ -112,10 +140,10 @@ public class SlackMessageQueueConsumer {
             );
 
         } catch (Exception exception) {
-
             slackMessageCommandService.markFailed(
                     payload.slackMessageId(),
-                    "Retry Queue 발행 실패: " + exception.getMessage()
+                    "Retry Queue 발행 실패: "
+                            + exception.getMessage()
             );
 
             log.error(

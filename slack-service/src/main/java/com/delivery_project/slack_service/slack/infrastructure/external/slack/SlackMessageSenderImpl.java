@@ -19,20 +19,21 @@ public class SlackMessageSenderImpl implements SlackMessageSender {
     private final RestClient restClient;
 
     public SlackMessageSenderImpl(
-            @Value("${slack.api-url}") String apiUrl,
+            @Value("${slack.base-url}") String baseUrl,
             @Value("${slack.bot-token}") String botToken
     ) {
-        this.restClient = RestClient.builder()
-                .baseUrl(apiUrl)
-                .defaultHeader(
-                        HttpHeaders.AUTHORIZATION,
-                        "Bearer " + botToken
-                )
-                .defaultHeader(
-                        HttpHeaders.CONTENT_TYPE,
-                        MediaType.APPLICATION_JSON_VALUE
-                )
-                .build();
+        this.restClient =
+                RestClient.builder()
+                        .baseUrl(baseUrl)
+                        .defaultHeader(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer " + botToken
+                        )
+                        .defaultHeader(
+                                HttpHeaders.CONTENT_TYPE,
+                                MediaType.APPLICATION_JSON_VALUE
+                        )
+                        .build();
     }
 
     @Override
@@ -41,30 +42,77 @@ public class SlackMessageSenderImpl implements SlackMessageSender {
             String message
     ) {
         try {
-            SlackPostMessageResponse response =
+            SlackConversationOpenResponse conversationResponse =
                     restClient.post()
+                            .uri("/conversations.open")
                             .body(
-                                    new SlackPostMessageRequest(
-                                            receiverSlackId,
-                                            message
+                                    new SlackConversationOpenRequest(
+                                            receiverSlackId
                                     )
                             )
                             .retrieve()
-                            .body(SlackPostMessageResponse.class);
+                            .body(
+                                    SlackConversationOpenResponse.class
+                            );
 
-            if (response == null || !response.ok()) {
+            if (
+                    conversationResponse == null
+                            || !conversationResponse.ok()
+                            || conversationResponse.channel() == null
+                            || conversationResponse.channel().id() == null
+            ) {
                 String errorMessage =
-                        response == null
-                                ? "Slack API 응답이 없습니다."
-                                : response.error();
+                        conversationResponse == null
+                                ? "Slack conversations.open 응답이 없습니다."
+                                : conversationResponse.error();
 
                 log.error(
-                        "Slack 메시지 발송 실패. receiverSlackId={}, error={}",
+                        "Slack DM 채널 생성 실패. receiverSlackId={}, error={}",
                         receiverSlackId,
                         errorMessage
                 );
 
-                return SlackMessageSendResult.failed(errorMessage);
+                return SlackMessageSendResult.failed(
+                        errorMessage
+                );
+            }
+
+            String dmChannelId =
+                    conversationResponse.channel().id();
+
+            SlackPostMessageResponse messageResponse =
+                    restClient.post()
+                            .uri("/chat.postMessage")
+                            .body(
+                                    new SlackPostMessageRequest(
+                                            dmChannelId,
+                                            message
+                                    )
+                            )
+                            .retrieve()
+                            .body(
+                                    SlackPostMessageResponse.class
+                            );
+
+            if (
+                    messageResponse == null
+                            || !messageResponse.ok()
+            ) {
+                String errorMessage =
+                        messageResponse == null
+                                ? "Slack chat.postMessage 응답이 없습니다."
+                                : messageResponse.error();
+
+                log.error(
+                        "Slack 메시지 발송 실패. receiverSlackId={}, dmChannelId={}, error={}",
+                        receiverSlackId,
+                        dmChannelId,
+                        errorMessage
+                );
+
+                return SlackMessageSendResult.failed(
+                        errorMessage
+                );
             }
 
             return SlackMessageSendResult.succeeded();
@@ -80,5 +128,22 @@ public class SlackMessageSenderImpl implements SlackMessageSender {
                     exception.getMessage()
             );
         }
+    }
+
+    private record SlackConversationOpenRequest(
+            String users
+    ) {
+    }
+
+    private record SlackConversationOpenResponse(
+            boolean ok,
+            SlackConversationChannel channel,
+            String error
+    ) {
+    }
+
+    private record SlackConversationChannel(
+            String id
+    ) {
     }
 }

@@ -4,29 +4,43 @@ import com.delivery_project.slack_service.ai_history.application.command.AiHisto
 import com.delivery_project.slack_service.ai_history.application.persistence_service.AiHistoryPersistenceService;
 import com.delivery_project.slack_service.ai_history.application.port.AiGeneratePort;
 import com.delivery_project.slack_service.ai_history.application.port.DeliveryRoutePort;
+import com.delivery_project.slack_service.ai_history.application.port.HubManagerPort;
+import com.delivery_project.slack_service.ai_history.application.port.HubPort;
 import com.delivery_project.slack_service.ai_history.application.port.OrderSummaryPort;
 import com.delivery_project.slack_service.ai_history.application.result.AiGenerationResult;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryCreateResult;
 import com.delivery_project.slack_service.ai_history.application.result.DeliveryRouteResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubBatchResult;
+import com.delivery_project.slack_service.ai_history.application.result.HubManagerResult;
 import com.delivery_project.slack_service.ai_history.application.result.OrderSummaryResult;
 import com.delivery_project.slack_service.ai_history.support.ai.AiPromptGenerator;
 import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
+import com.delivery_project.slack_service.slack.application.command.SlackInternalMessageCreateCommand;
+import com.delivery_project.slack_service.slack.application.command_service.SlackInternalMessageCommandService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiHistoryCommandService {
 
     private final OrderSummaryPort orderSummaryPort;
     private final DeliveryRoutePort deliveryRoutePort;
+    private final HubPort hubPort;
+    private final HubManagerPort hubManagerPort;
     private final AiGeneratePort aiGeneratePort;
     private final AiPromptGenerator aiPromptGenerator;
     private final AiHistoryPersistenceService aiHistoryPersistenceService;
+    private final SlackInternalMessageCommandService slackInternalMessageCommandService;
 
     public AiHistoryCreateResult create(
             AiHistoryCreateCommand command
@@ -43,13 +57,33 @@ public class AiHistoryCommandService {
 
         validateDeliveryRoute(deliveryRoute);
 
-        String prompt =
-                aiPromptGenerator.generate(
-                        orderSummary,
+        List<UUID> hubIds =
+                extractHubIds(deliveryRoute);
+
+        HubBatchResult hubBatch =
+                hubPort.getHubs(hubIds);
+
+        validateHubBatch(hubBatch);
+
+        UUID firstDepartureHubId =
+                getFirstDepartureHubId(
                         deliveryRoute
                 );
 
-        Instant requestedAt = Instant.now();
+        HubManagerResult hubManager =
+                hubManagerPort.getHubManager(
+                        firstDepartureHubId
+                );
+
+        String prompt =
+                aiPromptGenerator.generate(
+                        orderSummary,
+                        deliveryRoute,
+                        hubBatch
+                );
+
+        Instant requestedAt =
+                Instant.now();
 
         UUID aiHistoryId =
                 aiHistoryPersistenceService.createPending(
@@ -66,6 +100,7 @@ public class AiHistoryCommandService {
                             .generateFinalDispatchDeadline(
                                     prompt
                             );
+
         } catch (BusinessException exception) {
             saveFailedHistory(
                     aiHistoryId,
@@ -73,6 +108,7 @@ public class AiHistoryCommandService {
             );
 
             throw exception;
+
         } catch (Exception exception) {
             saveFailedHistory(
                     aiHistoryId,
@@ -84,14 +120,34 @@ public class AiHistoryCommandService {
             );
         }
 
-        return AiHistoryCreateResult.from(
-                aiHistoryPersistenceService.complete(
-                        aiHistoryId,
-                        generationResult.modelName(),
-                        generationResult.finalDispatchDeadline(),
-                        Instant.now()
-                )
-        );
+        AiHistoryCreateResult result =
+                AiHistoryCreateResult.from(
+                        aiHistoryPersistenceService.complete(
+                                aiHistoryId,
+                                generationResult.modelName(),
+                                generationResult.finalDispatchDeadline(),
+                                Instant.now()
+                        )
+                );
+
+        try {
+            slackInternalMessageCommandService.createAndPublish(
+                    new SlackInternalMessageCreateCommand(
+                            hubManager.userId(),
+                            command.orderId(),
+                            generationResult.finalDispatchDeadline()
+                    )
+            );
+        } catch (Exception exception) {
+            log.error(
+                    "AI History 생성은 성공했지만 Slack 메시지 생성/발행에 실패했습니다. aiHistoryId={}, orderId={}",
+                    aiHistoryId,
+                    command.orderId(),
+                    exception
+            );
+        }
+
+        return result;
     }
 
     private void validateDeliveryRoute(
@@ -103,6 +159,63 @@ public class AiHistoryCommandService {
         ) {
             throw new BusinessException(
                     ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+            );
+        }
+    }
+
+    private List<UUID> extractHubIds(
+            DeliveryRouteResult deliveryRoute
+    ) {
+        return deliveryRoute.routes()
+                .stream()
+                .flatMap(route ->
+                        Stream.of(
+                                route.departureHubId(),
+                                route.arrivalHubId()
+                        )
+                )
+                .distinct()
+                .toList();
+    }
+
+    private UUID getFirstDepartureHubId(
+            DeliveryRouteResult deliveryRoute
+    ) {
+        return deliveryRoute.routes()
+                .stream()
+                .min(
+                        Comparator.comparing(
+                                DeliveryRouteResult.RouteResult::sequence
+                        )
+                )
+                .map(
+                        DeliveryRouteResult.RouteResult::departureHubId
+                )
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.DELIVERY_ROUTE_NOT_FOUND
+                        )
+                );
+    }
+
+    private void validateHubBatch(
+            HubBatchResult hubBatch
+    ) {
+        if (
+                hubBatch == null
+                        || hubBatch.hubs() == null
+        ) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
+            );
+        }
+
+        if (
+                hubBatch.notFoundHubIds() != null
+                        && !hubBatch.notFoundHubIds().isEmpty()
+        ) {
+            throw new BusinessException(
+                    ErrorCode.DEPENDENCY_SERVICE_UNAVAILABLE
             );
         }
     }

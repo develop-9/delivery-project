@@ -2,13 +2,11 @@ package com.delivery_project.slack_service.slack.infrastructure.messaging.rabbit
 
 import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageDuplicateGuard;
-import com.delivery_project.slack_service.slack.application.port.SlackMessageSender;
 import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
-import com.delivery_project.slack_service.slack.application.result.SlackMessageSendResult;
-import com.delivery_project.slack_service.slack.domain.entity.SenderType;
-import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
 import com.delivery_project.slack_service.slack.infrastructure.config.SlackRabbitMqConfig;
+import com.delivery_project.slack_service.slack.infrastructure.external.slack.SlackMessageSenderImpl;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
@@ -19,16 +17,17 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class SlackMessageQueueIntegrationTest {
+@DisplayName("RabbitMQ → Slack 실제 API E2E 테스트")
+class SlackMessageQueueRealApiIntegrationTest {
 
     private static final String HOST = "localhost";
     private static final int PORT = 5672;
@@ -36,19 +35,56 @@ class SlackMessageQueueIntegrationTest {
     private static final String PASSWORD = "guest";
 
     @Test
-    void 발송_실패_후_TTL_경과하면_Retry_Queue에서_Main_Queue로_복귀해_재시도된다() {
+    @DisplayName("RabbitMQ 메시지가 Consumer를 거쳐 실제 Slack DM으로 발송된다")
+    void rabbitMq_to_realSlackDm() {
+
+        String botToken =
+                System.getenv("SLACK_BOT_TOKEN");
+
+        String receiverSlackId =
+                System.getenv("SLACK_TEST_RECEIVER_ID");
+
+        String slackBaseUrl =
+                System.getenv("SLACK_BASE_URL");
+
+        Assumptions.assumeTrue(
+                botToken != null
+                        && !botToken.isBlank(),
+                "SLACK_BOT_TOKEN 환경변수가 없어 테스트를 건너뜁니다."
+        );
+
+        Assumptions.assumeTrue(
+                receiverSlackId != null
+                        && !receiverSlackId.isBlank(),
+                "SLACK_TEST_RECEIVER_ID 환경변수가 없어 테스트를 건너뜁니다."
+        );
+
+        if (
+                slackBaseUrl == null
+                        || slackBaseUrl.isBlank()
+        ) {
+            slackBaseUrl =
+                    "https://slack.com/api";
+        }
 
         CachingConnectionFactory connectionFactory =
-                new CachingConnectionFactory(HOST, PORT);
+                new CachingConnectionFactory(
+                        HOST,
+                        PORT
+                );
 
         connectionFactory.setUsername(USERNAME);
         connectionFactory.setPassword(PASSWORD);
 
-        assumeRabbitMqAvailable(connectionFactory);
+        assumeRabbitMqAvailable(
+                connectionFactory
+        );
 
         try {
             RabbitAdmin rabbitAdmin =
-                    new RabbitAdmin(connectionFactory);
+                    new RabbitAdmin(
+                            connectionFactory
+                    );
 
             SlackRabbitMqConfig config =
                     new SlackRabbitMqConfig();
@@ -91,7 +127,9 @@ class SlackMessageQueueIntegrationTest {
             );
 
             RabbitTemplate rabbitTemplate =
-                    new RabbitTemplate(connectionFactory);
+                    new RabbitTemplate(
+                            connectionFactory
+                    );
 
             JacksonJsonMessageConverter messageConverter =
                     new JacksonJsonMessageConverter(
@@ -107,145 +145,98 @@ class SlackMessageQueueIntegrationTest {
                             rabbitTemplate
                     );
 
-            SlackMessageSender sender =
-                    mock(SlackMessageSender.class);
+            SlackMessageSenderImpl realSlackSender =
+                    new SlackMessageSenderImpl(
+                            slackBaseUrl,
+                            botToken
+                    );
 
             SlackMessageCommandService commandService =
-                    mock(SlackMessageCommandService.class);
+                    mock(
+                            SlackMessageCommandService.class
+                    );
 
             SlackMessageQueryService queryService =
-                    mock(SlackMessageQueryService.class);
+                    mock(
+                            SlackMessageQueryService.class
+                    );
 
             SlackMessageDuplicateGuard duplicateGuard =
-                    mock(SlackMessageDuplicateGuard.class);
-
-            String receiverSlackId =
-                    "U1234567890";
-
-            String message =
-                    "통합 테스트 메시지";
-
-            SlackMessage failedMessage =
-                    SlackMessage.create(
-                            UUID.randomUUID(),
-                            SenderType.SYSTEM,
-                            UUID.randomUUID(),
-                            receiverSlackId,
-                            message
+                    mock(
+                            SlackMessageDuplicateGuard.class
                     );
-
-            failedMessage.markAsFailed(
-                    "일부러 실패시킴"
-            );
-
-            SlackMessage retryMessage =
-                    SlackMessage.create(
-                            UUID.randomUUID(),
-                            SenderType.SYSTEM,
-                            UUID.randomUUID(),
-                            receiverSlackId,
-                            message
-                    );
-
-            retryMessage.prepareRetry();
 
             when(
                     duplicateGuard.tryAcquire(any())
             ).thenReturn(
-                    "test-lock-token"
+                    "real-api-test-lock-token"
             );
 
-            when(
-                    sender.send(
-                            receiverSlackId,
-                            message
-                    )
-            )
-                    .thenReturn(
-                            SlackMessageSendResult.failed(
-                                    "일부러 실패시킴"
-                            )
-                    )
-                    .thenReturn(
-                            SlackMessageSendResult.succeeded()
+            UUID slackMessageId =
+                    UUID.randomUUID();
+
+            String message =
+                    """
+                    [배송 프로젝트 최종 E2E 테스트]
+
+                    RabbitMQ
+                    → Consumer
+                    → Slack API
+                    → 실제 DM
+
+                    테스트 시각: %s
+                    """.formatted(
+                            Instant.now()
                     );
-
-            when(
-                    commandService.markFailed(
-                            any(),
-                            any()
-                    )
-            ).thenReturn(
-                    failedMessage
-            );
-
-            when(
-                    commandService.prepareRetry(any())
-            ).thenReturn(
-                    retryMessage
-            );
 
             SlackMessageQueueConsumer consumer =
                     new SlackMessageQueueConsumer(
-                            sender,
+                            realSlackSender,
                             commandService,
                             queryService,
                             publisher,
                             duplicateGuard
                     );
 
-            // when: Main Queue에 최초 발행 후 수신 - 발송 실패 처리
             publisher.publish(
-                    UUID.randomUUID(),
+                    slackMessageId,
                     receiverSlackId,
                     message
             );
 
-            SlackMessageQueuePayload firstPayload =
+            SlackMessageQueuePayload payload =
                     (SlackMessageQueuePayload)
                             rabbitTemplate.receiveAndConvert(
                                     SlackRabbitMqConfig.MAIN_QUEUE,
                                     5000
                             );
 
-            assertThat(firstPayload)
+            assertThat(payload)
                     .as(
-                            "최초 발행한 메시지를 Main Queue에서 수신해야 한다"
+                            "RabbitMQ Main Queue에서 메시지를 수신해야 한다"
                     )
                     .isNotNull();
 
-            consumer.consume(
-                    firstPayload
+            assertThat(
+                    payload.slackMessageId()
+            ).isEqualTo(
+                    slackMessageId
             );
 
-            // then: Retry Queue TTL 경과 후 Main Queue 복귀
-            SlackMessageQueuePayload redeliveredPayload =
-                    (SlackMessageQueuePayload)
-                            rabbitTemplate.receiveAndConvert(
-                                    SlackRabbitMqConfig.MAIN_QUEUE,
-                                    8000
-                            );
-
-            assertThat(redeliveredPayload)
-                    .as(
-                            "Retry Queue의 TTL이 지나면 DLX를 통해 Main Queue로 복귀해야 한다"
-                    )
-                    .isNotNull();
-
             consumer.consume(
-                    redeliveredPayload
-            );
-
-            verify(
-                    sender,
-                    times(2)
-            ).send(
-                    receiverSlackId,
-                    message
+                    payload
             );
 
             verify(commandService)
-                    .markSent(any());
+                    .markSent(
+                            slackMessageId
+                    );
+
+            verify(duplicateGuard)
+                    .release(
+                            slackMessageId,
+                            "real-api-test-lock-token"
+                    );
 
         } finally {
             connectionFactory.destroy();
