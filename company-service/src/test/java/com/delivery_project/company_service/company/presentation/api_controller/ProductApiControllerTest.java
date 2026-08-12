@@ -14,6 +14,9 @@ import com.delivery_project.company_service.company.presentation.request.Product
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
+import com.delivery_project.company_service.global.security.JwtTokenParser;
+import com.delivery_project.company_service.global.security.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +64,9 @@ class ProductApiControllerTest {
     @MockitoBean
     private ProductQueryService productQueryService;
 
+    @MockitoBean
+    private JwtTokenParser jwtTokenParser;
+
     @Nested
     @DisplayName("상품 생성 API 테스트")
     class CreateProduct {
@@ -65,6 +75,23 @@ class ProductApiControllerTest {
         @DisplayName("상품을 정상적으로 생성한다")
         void createProduct_success() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
 
@@ -84,6 +111,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     post("/api/v1/products")
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -103,6 +131,23 @@ class ProductApiControllerTest {
         @DisplayName("필수 요청 값이 누락되면 400 Bad Request를 반환한다")
         void createProduct_invalidRequest() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             ProductCreateRequest request = new ProductCreateRequest(
                     null,
                     null,
@@ -112,6 +157,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     post("/api/v1/products")
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -128,6 +174,23 @@ class ProductApiControllerTest {
         @DisplayName("존재하지 않는 업체의 상품을 생성하면 404 Not Found를 반환한다")
         void createProduct_companyNotFound() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
 
             ProductCreateRequest request = new ProductCreateRequest(
@@ -144,6 +207,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     post("/api/v1/products")
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -166,6 +230,23 @@ class ProductApiControllerTest {
         @DisplayName("상품 정보를 정상적으로 수정한다")
         void updateProduct_success() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
@@ -186,6 +267,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     put("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -206,6 +288,23 @@ class ProductApiControllerTest {
         @DisplayName("상품 수정 요청의 필수 값이 올바르지 않으면 400 Bad Request를 반환한다")
         void updateProduct_invalidRequest() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
 
             ProductUpdateRequest request = new ProductUpdateRequest(
@@ -217,6 +316,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     put("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -233,6 +333,23 @@ class ProductApiControllerTest {
         @DisplayName("존재하지 않는 상품을 수정하면 404 Not Found를 반환한다")
         void updateProduct_productNotFound() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
@@ -251,6 +368,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     put("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -268,6 +386,23 @@ class ProductApiControllerTest {
         @DisplayName("존재하지 않는 업체로 상품을 수정하면 404 Not Found를 반환한다")
         void updateProduct_companyNotFound() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
@@ -286,6 +421,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     put("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request))
             );
@@ -308,6 +444,23 @@ class ProductApiControllerTest {
         @DisplayName("상품을 정상적으로 삭제한다")
         void deleteProduct_success() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
             Instant deletedAt = Instant.now();
 
@@ -323,6 +476,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     delete("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
             );
 
             // then
@@ -343,11 +497,29 @@ class ProductApiControllerTest {
         @DisplayName("상품 ID가 UUID 형식이 아니면 400 Bad Request를 반환한다")
         void deleteProduct_invalidProductId() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             String invalidProductId = "invalid-uuid";
 
             // when
             ResultActions resultActions = mockMvc.perform(
                     delete("/api/v1/products/{productId}", invalidProductId)
+                            .with(authentication(authentication))
             );
 
             // then
@@ -362,6 +534,23 @@ class ProductApiControllerTest {
         @DisplayName("존재하지 않는 상품을 삭제하면 404 Not Found를 반환한다")
         void deleteProduct_productNotFound() throws Exception {
             // given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
 
             given(productCommandService.deleteProduct(
@@ -373,6 +562,7 @@ class ProductApiControllerTest {
             // when
             ResultActions resultActions = mockMvc.perform(
                     delete("/api/v1/products/{productId}", productId)
+                            .with(authentication(authentication))
             );
 
             // then
@@ -393,6 +583,23 @@ class ProductApiControllerTest {
         @WithMockUser
         void getProduct_success() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
 
             ProductGetResult productGetResult = mock(ProductGetResult.class);
@@ -403,6 +610,7 @@ class ProductApiControllerTest {
             // When & Then
             mockMvc.perform(
                             get("/api/v1/products/{productId}", productId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                     )
                     .andExpect(status().isOk())
@@ -418,6 +626,23 @@ class ProductApiControllerTest {
         @WithMockUser
         void getProduct_fail_productNotFound() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID productId = UUID.randomUUID();
 
             given(productQueryService.getProduct(any(ProductGetQuery.class)))
@@ -428,6 +653,7 @@ class ProductApiControllerTest {
             // When & Then
             mockMvc.perform(
                             get("/api/v1/products/{productId}", productId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                     )
                     .andExpect(status().isNotFound());
@@ -442,11 +668,29 @@ class ProductApiControllerTest {
         @WithMockUser
         void getProduct_fail_invalidProductId() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             String invalidProductId = "invalid-uuid";
 
             // When & Then
             mockMvc.perform(
                             get("/api/v1/products/{productId}", invalidProductId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                     )
                     .andExpect(status().isBadRequest());
@@ -463,6 +707,23 @@ class ProductApiControllerTest {
         @DisplayName("상품 검색에 성공한다.")
         void searchProduct_success() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             int page = 0;
             int size = 10;
 
@@ -489,6 +750,7 @@ class ProductApiControllerTest {
             // When
             ResultActions resultActions = mockMvc.perform(
                     get("/api/v1/products")
+                            .with(authentication(authentication))
                             .param("page", String.valueOf(page))
                             .param("size", String.valueOf(size))
                             .param("sort", "createdAt,desc")
@@ -511,6 +773,23 @@ class ProductApiControllerTest {
         @DisplayName("검색 조건 없이 상품 목록을 조회한다.")
         void searchProduct_success_withoutCondition() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             Product product = Product.builder()
                     .companyId(UUID.randomUUID())
                     .name("테스트 상품")
@@ -532,6 +811,7 @@ class ProductApiControllerTest {
             // When
             ResultActions resultActions = mockMvc.perform(
                     get("/api/v1/products")
+                            .with(authentication(authentication))
             );
 
             // Then
@@ -547,6 +827,23 @@ class ProductApiControllerTest {
         @DisplayName("요청한 검색 조건이 Service에 올바르게 전달된다.")
         void searchProduct_requestMapping() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             int page = 1;
             int size = 30;
 
@@ -567,6 +864,7 @@ class ProductApiControllerTest {
             // When
             mockMvc.perform(
                     get("/api/v1/products")
+                            .with(authentication(authentication))
                             .param("page", String.valueOf(page))
                             .param("size", String.valueOf(size))
                             .param("sort", "createdAt,asc")
@@ -611,11 +909,29 @@ class ProductApiControllerTest {
         @DisplayName("companyId가 UUID 형식이 아니면 상품 검색에 실패한다.")
         void searchProduct_fail_whenInvalidCompanyId() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             String invalidCompanyId = "invalid-uuid";
 
             // When & Then
             mockMvc.perform(
                             get("/api/v1/products")
+                                    .with(authentication(authentication))
                                     .param("companyId", invalidCompanyId)
                     )
                     .andExpect(status().isBadRequest());
@@ -627,6 +943,23 @@ class ProductApiControllerTest {
         @DisplayName("Service에서 페이지 번호가 유효하지 않으면 상품 검색에 실패한다.")
         void searchProduct_fail_whenInvalidPage() throws Exception {
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             when(productQueryService.searchProduct(
                     any(ProductSearchQuery.class)
             )).thenThrow(
@@ -636,6 +969,7 @@ class ProductApiControllerTest {
             // When & Then
             mockMvc.perform(
                             get("/api/v1/products")
+                                    .with(authentication(authentication))
                                     .param("page", "-1")
                     )
                     .andExpect(status().isBadRequest());

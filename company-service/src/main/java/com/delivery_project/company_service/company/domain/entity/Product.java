@@ -66,7 +66,7 @@ public class Product extends BaseDeletableEntity {
     // Validation Check - 올바른 업체 ID 기입 여부 판별
     private static void validateCompanyId(UUID companyId) {
         if (companyId == null) {
-            throw new BusinessException(ErrorCode.PRODUCT_COMPANY_ID_INVALID);
+            throw new BusinessException(ErrorCode.PRODUCT_INVALID_COMPANY_ID);
         }
     }
 
@@ -75,14 +75,14 @@ public class Product extends BaseDeletableEntity {
         if (name == null
                 || name.isBlank()
                 || name.codePointCount(0, name.length()) > MAX_NAME_LENGTH) {
-            throw new BusinessException(ErrorCode.PRODUCT_NAME_INVALID);
+            throw new BusinessException(ErrorCode.PRODUCT_INVALID_NAME);
         }
     }
 
     // Validation Check - 올바른 금액 기입 여부 판별
     private static void validatePrice(Integer price) {
         if (price == null || price <= 0) {
-            throw new BusinessException(ErrorCode.PRODUCT_PRICE_INVALID);
+            throw new BusinessException(ErrorCode.PRODUCT_INVALID_PRICE);
         }
     }
 }

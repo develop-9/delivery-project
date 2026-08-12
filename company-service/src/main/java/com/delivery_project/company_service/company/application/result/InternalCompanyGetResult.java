@@ -9,13 +9,17 @@ public record InternalCompanyGetResult(
 
         UUID companyId,
         String name,
-        CompanyType type
+        CompanyType type,
+        UUID hubId,
+        String address
 ) {
     public static InternalCompanyGetResult from(Company company) {
         return new InternalCompanyGetResult(
                 company.getId(),
                 company.getName(),
-                company.getType()
+                company.getType(),
+                company.getHubId(),
+                company.getAddress()
         );
     }
 }

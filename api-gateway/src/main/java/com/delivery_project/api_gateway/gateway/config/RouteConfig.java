@@ -27,6 +27,15 @@ public class RouteConfig {
 	}
 
 	@Bean
+	public RouteLocator companyServiceRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("company-service", r -> r
+						.path("/api/v1/companies/**", "/api/v1/products/**")
+						.uri("lb://COMPANY-SERVICE"))
+				.build();
+	}
+
+	@Bean
 	public RouteLocator deliveryServiceRoutes(
 			RouteLocatorBuilder builder
 	) {

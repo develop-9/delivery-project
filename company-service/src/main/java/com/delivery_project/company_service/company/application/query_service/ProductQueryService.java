@@ -36,12 +36,13 @@ public class ProductQueryService {
 
         // 조회는 모든 사용자가 가능하므로 인증만 통과되면 조회 가능
 
+        log.info("상품 단건 조회 요청. callerId={}, productId={}",
+                productGetQuery.callerId(),
+                productGetQuery.productId()
+        );
+
         // 상품이 존재하는지 확인
         Product product = validateProduct(productGetQuery.productId());
-
-        log.info("상품 단건 조회 성공. productId={}",
-                product.getId()
-        );
 
         // 결과 반환
         return ProductGetResult.from(product);
@@ -62,7 +63,7 @@ public class ProductQueryService {
 
         // 가격 요청값이 올바른지 확인
         if (!validatePrice(productSearchQuery.minPrice(),  productSearchQuery.maxPrice())) {
-            throw new BusinessException(ErrorCode.PRODUCT_SEARCH_INVALID_PRICE);
+            throw new BusinessException(ErrorCode.PRODUCT_INVALID_SEARCH_PRICE);
         }
 
         // 검색 및 Paging 진행
@@ -76,11 +77,8 @@ public class ProductQueryService {
                 );
 
         log.info(
-                "상품 검색 성공. companyId={}, name={}, minPrice={}, maxPrice={}, page={}, size={}, totalElements={}, totalPages={}",
-                productSearchQuery.companyId(),
-                productSearchQuery.name(),
-                productSearchQuery.minPrice(),
-                productSearchQuery.maxPrice(),
+                "상품 검색 성공. callerId={}, page={}, size={}, totalElements={}, totalPages={}",
+                productSearchQuery.callerId(),
                 productPage.getNumber(),
                 productPage.getSize(),
                 productPage.getTotalElements(),
@@ -107,6 +105,7 @@ public class ProductQueryService {
         // 결과 반환
         return InternalProductGetResult.from(product);
     }
+
 
     // Validation Check - 상품 조회
     private Product validateProduct(UUID productId) {

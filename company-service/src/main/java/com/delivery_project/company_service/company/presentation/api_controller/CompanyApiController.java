@@ -11,10 +11,12 @@ import com.delivery_project.company_service.company.presentation.request.*;
 import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -30,9 +32,10 @@ public class CompanyApiController implements CompanyApi {
     @PostMapping
     @Override
     public ResponseEntity<SuccessResponse<CompanyCreateResponse>> createCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @RequestBody @Valid CompanyCreateRequest companyCreateRequest
     ) {
-        CompanyCreateCommand companyCreateCommand = companyCreateRequest.toCommand();
+        CompanyCreateCommand companyCreateCommand = companyCreateRequest.toCommand(jwtPrincipal);
         CompanyCreateResult companyCreateResult = companyCommandService.createCompany(companyCreateCommand);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -47,10 +50,11 @@ public class CompanyApiController implements CompanyApi {
     @PutMapping("/{companyId}")
     @Override
     public ResponseEntity<SuccessResponse<CompanyUpdateResponse>> updateCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID companyId,
             @RequestBody @Valid CompanyUpdateRequest companyUpdateRequest
     ) {
-        CompanyUpdateCommand companyUpdateCommand = companyUpdateRequest.toCommand(companyId);
+        CompanyUpdateCommand companyUpdateCommand = companyUpdateRequest.toCommand(jwtPrincipal, companyId);
         CompanyUpdateResult companyUpdateResult = companyCommandService.updateCompany(companyUpdateCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -65,9 +69,10 @@ public class CompanyApiController implements CompanyApi {
     @DeleteMapping("/{companyId}")
     @Override
     public ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID companyId
     ) {
-        CompanyDeleteCommand companyDeleteCommand = new CompanyDeleteRequest().toCommand(companyId);
+        CompanyDeleteCommand companyDeleteCommand = new CompanyDeleteRequest().toCommand(jwtPrincipal, companyId);
         CompanyDeleteResult companyDeleteResult = companyCommandService.deleteCompany(companyDeleteCommand);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -82,9 +87,10 @@ public class CompanyApiController implements CompanyApi {
     @GetMapping("/{companyId}")
     @Override
     public ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @PathVariable UUID companyId
     ) {
-        CompanyGetQuery companyGetQuery = new CompanyGetRequest().toCommand(companyId);
+        CompanyGetQuery companyGetQuery = new CompanyGetRequest().toQuery(jwtPrincipal, companyId);
         CompanyGetResult companyGetResult = companyQueryService.getCompany(companyGetQuery);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -99,6 +105,7 @@ public class CompanyApiController implements CompanyApi {
     @GetMapping
     @Override
     public ResponseEntity<SuccessResponse<PageResponse<CompanySearchDataResponse>>> getAllCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
@@ -107,7 +114,8 @@ public class CompanyApiController implements CompanyApi {
             @RequestParam(required = false) UUID hubId
     ) {
         CompanySearchQuery companySearchQuery =
-                new CompanySearchRequest().toCommand(
+                new CompanySearchRequest().toQuery(
+                        jwtPrincipal,
                         page,
                         size,
                         sort,

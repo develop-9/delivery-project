@@ -3,152 +3,274 @@ package com.delivery_project.company_service.company.application.command_service
 import com.delivery_project.company_service.company.application.command.ProductCreateCommand;
 import com.delivery_project.company_service.company.application.command.ProductDeleteCommand;
 import com.delivery_project.company_service.company.application.command.ProductUpdateCommand;
+import com.delivery_project.company_service.company.application.persistence_service.CompanyPersistenceService;
+import com.delivery_project.company_service.company.application.persistence_service.ProductPersistenceService;
+import com.delivery_project.company_service.company.application.port.HubPort;
+import com.delivery_project.company_service.company.application.port.UserPort;
+import com.delivery_project.company_service.company.application.port.dto.CallerInfo;
+import com.delivery_project.company_service.company.application.port.dto.HubInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
+import com.delivery_project.company_service.company.domain.entity.Company;
 import com.delivery_project.company_service.company.domain.entity.Product;
-import com.delivery_project.company_service.company.domain.repository.CompanyQueryRepository;
-import com.delivery_project.company_service.company.domain.repository.ProductCommandRepository;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.util.Objects;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductCommandService {
 
-    private final CompanyQueryRepository companyQueryRepository;
-    private final ProductCommandRepository productCommandRepository;
+    private final CompanyPersistenceService companyPersistenceService;
+    private final ProductPersistenceService productPersistenceService;
+    private final UserPort userPort;
+    private final HubPort hubPort;
 
     // [외부] 상품 생성 비즈니스 로직
-    @Transactional
     public ProductCreateResult createProduct(ProductCreateCommand productCreateCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
-        /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
-         */
-
-        // companyId가 올바른지 확인
-        validateCompany(productCreateCommand.companyId());
-
-        // Product 생성
-        Product product = Product.create(
-                productCreateCommand.companyId(),
-                productCreateCommand.name(),
-                productCreateCommand.price()
-        );
-
-        // 상품 저장
-        Product savedProduct = productCommandRepository.save(product);
-
-        // Inventory에 Hub별로 Product와 수량(0) 저장
-        /*
-         * TODO:
-         *  Inventory 호출하여 각 Hub별로 Product 생성
-         *  이때, 수량은 0으로 설정
-         */
-
         log.info(
-                "상품 생성 완료. productId={}, createdBy={}",
-                savedProduct.getId(),
-                savedProduct.getCreatedBy()
+                "상품 생성 요청. callerId={}",
+                productCreateCommand.callerId()
         );
 
-        // 결과 반환
-        return ProductCreateResult.from(savedProduct);
+        /*
+         * 상품 생성 검증 순서
+         *
+         * 1. 요청자 정보 조회
+         *
+         * 2. 생성 대상 Product의 소속 Company 존재 여부 확인
+         *  - Product는 실제 존재하는 Company에 소속되어 있어야 함
+         *  - Company가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Company 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 3. 기존 Company의 소속 Hub 존재 여부 확인
+         *  - Product를 생성하려면 Company가 현재 접근 가능한 Hub에
+         *    소속되어 있어야 함
+         *  - Hub가 삭제된 경우 해당 Company에 대한 Product 생성 불가
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 4. Product 생성 권한 검증
+         *  - Master: 모든 Product 생성 가능
+         *  - Hub Manager: 담당 Hub의 Company에 소속된 Product만 생성 가능
+         *  - Company Manager: 담당 Company에 소속된 Product만 생성 가능
+         */
+
+        // 1. 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productCreateCommand.callerId());
+
+        // 2. 생성 대상 Product의 소속 Company 존재 여부 확인
+        Company company = companyPersistenceService
+                .getCompanyById(productCreateCommand.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
+
+        // 3. 기존 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(company.getHubId());
+
+        // 4. Product 생성 권한 검증
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                hubInfo.hubId()
+                        )
+                )
+                        || (
+                        callerInfo.role() == Role.COMPANY_MANAGER
+                                && Objects.equals(
+                                callerInfo.companyId(),
+                                company.getId()
+                        )
+                );
+
+        // 생성 권한이 없는 경우
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
+
+        // 실제 DB 저장 시점부터 트랜잭션 시작
+        return productPersistenceService.saveProduct(
+                        productCreateCommand.companyId(),
+                        productCreateCommand.name(),
+                        productCreateCommand.price()
+        );
     }
 
     // [외부] 상품 수정 비즈니스 로직
-    @Transactional
     public ProductUpdateResult updateProduct(ProductUpdateCommand productUpdateCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
+        log.info(
+                "상품 수정 요청. callerId={}",
+                productUpdateCommand.callerId()
+        );
+
         /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager, 담당 Company Manager만 가능
+         * 상품 수정 검증 순서
+         *
+         * 1. 요청자 정보 조회
+         *
+         * 2. 수정 대상 Product 존재 여부 확인
+         *  - 실제 존재하는 Product인지 확인
+         *  - Product가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Product 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 3. Product가 소속된 Company 존재 여부 확인
+         *  - Product는 실제 존재하는 Company에 소속되어 있어야 함
+         *  - Company가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Company 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 4. 기존 Company의 소속 Hub 존재 여부 확인
+         *  - Product를 수정하려면 Company가 현재 접근 가능한 Hub에
+         *    소속되어 있어야 함
+         *  - Hub가 삭제된 경우 해당 Company의 Product 수정 불가
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 5. Product 수정 권한 검증
+         *  - Master: 모든 Product 수정 가능
+         *  - Hub Manager: 담당 Hub의 Company에 소속된 Product만 수정 가능
+         *  - Company Manager: 담당 Company에 소속된 Product만 수정 가능
          */
 
-        // 상품이 존재하는지 확인
-        Product product = validateProduct(productUpdateCommand.productId());
+        // 1. 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productUpdateCommand.callerId());
 
-        // 변경할 companyId가 올바른지 확인
-        validateCompany(productUpdateCommand.companyId());
+        // 2. 수정 대상 Product 존재 여부 확인
+        Product product = productPersistenceService
+                .getProductById(productUpdateCommand.productId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
 
-        // 상품 정보 변경
-        product.update(
+        // 3. Product가 소속된 Company 존재 여부 확인
+        Company company = companyPersistenceService
+                .getCompanyById(product.getCompanyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
+
+        // 4. 기존 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(company.getHubId());
+
+        // 5. Product 수정 권한 검증
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                hubInfo.hubId()
+                        )
+                )
+                        || (
+                        callerInfo.role() == Role.COMPANY_MANAGER
+                                && Objects.equals(
+                                callerInfo.companyId(),
+                                company.getId()
+                        )
+                );
+
+        // 수정 권한이 없는 경우
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
+        }
+
+        // 실제 DB 수정 시점부터 트랜잭션 시작
+        return productPersistenceService.updateProduct(
+                product.getId(),
                 productUpdateCommand.companyId(),
                 productUpdateCommand.name(),
                 productUpdateCommand.price()
         );
-
-        log.info(
-                "상품 수정 완료. productId={}, updatedBy={}",
-                product.getId(),
-                product.getUpdatedBy()
-        );
-
-        // 결과 반환
-        return ProductUpdateResult.from(product);
     }
 
     // [외부] 상품 삭제 비즈니스 로직
-    @Transactional
     public ProductDeleteResult deleteProduct(ProductDeleteCommand productDeleteCommand) {
 
-        // 요청 유저가 권한이 있는지 확인
-        /*
-         * TODO:
-         *  권한 검증
-         *  Master, 담당 Hub Manager만 가능
-         */
-
-        // 상품이 존재하는지 확인
-        Product product = validateProduct(productDeleteCommand.productId());
-
-        // Inventory에 Hub별로 저장된 Product 제거
-        /*
-         * TODO:
-         *  Inventory 호출하여 각 Hub별로 저장된 Product 제거
-         *  Hub에 재고가 남아있을 경우 Product 삭제 불가능
-         */
-
-        // 상품 제거
-        /*
-         * TODO:
-         *  Auth 적용 후 호출한 사용자 or 시스템 ID 넘겨주는 것으로 변경
-         */
-        product.delete(UUID.fromString("12345678-1234-5678-1234-123456789123"));
-
         log.info(
-                "상품 논리 삭제 완료. productId={}, deletedBy={}",
-                product.getId(),
-                product.getDeletedBy()
+                "상품 삭제 요청. callerId={}",
+                productDeleteCommand.callerId()
         );
 
-        // 결과 반환
-        return ProductDeleteResult.from(product);
-    }
+        /*
+         * 상품 삭제 검증 순서
+         *
+         * 1. 요청자 정보 조회
+         *
+         * 2. 삭제 대상 Product 존재 여부 확인
+         *  - 실제 존재하는 Product인지 확인
+         *  - Product가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Product 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 3. Product가 소속된 Company 존재 여부 확인
+         *  - Product는 실제 존재하는 Company에 소속되어 있어야 함
+         *  - Company가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Company 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 4. 기존 Company의 소속 Hub 존재 여부 확인
+         *  - Product를 삭제하려면 Company가 현재 접근 가능한 Hub에
+         *    소속되어 있어야 함
+         *  - Hub가 삭제된 경우 해당 Company의 Product 삭제 불가
+         *  - Hub가 존재하지 않는 경우 AUTH_FORBIDDEN으로 처리하여
+         *    Hub 존재 여부가 외부에 노출되지 않도록 함
+         *
+         * 5. Product 삭제 권한 검증
+         *  - Master: 모든 Product 삭제 가능
+         *  - Hub Manager: 담당 Hub의 Company에 소속된 Product만 삭제 가능
+         *  - Company Manager: 담당 Company에 소속된 Product만 삭제 가능
+         */
 
-    // Validation Check - 업체 존재 여부 판단
-    private void validateCompany(UUID companyId) {
-        if (!companyQueryRepository.existsById(companyId)) {
-            throw new BusinessException(ErrorCode.COMPANY_NOT_FOUND);
+        // 1. 요청자 정보 조회
+        CallerInfo callerInfo =
+                userPort.getCaller(productDeleteCommand.callerId());
+
+        // 2. 삭제 대상 Product 존재 여부 확인
+        Product product = productPersistenceService
+                .getProductById(productDeleteCommand.productId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
+
+        // 3. Product가 소속된 Company 존재 여부 확인
+        Company company = companyPersistenceService
+                .getCompanyById(product.getCompanyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_FORBIDDEN));
+
+        // 4. 기존 Company의 소속 Hub 존재 여부 확인
+        HubInfo hubInfo = hubPort.validateHub(company.getHubId());
+
+        // 5. Product 삭제 권한 검증
+        boolean hasPermission =
+                callerInfo.role() == Role.MASTER
+                        || (
+                        callerInfo.role() == Role.HUB_MANAGER
+                                && Objects.equals(
+                                callerInfo.hubId(),
+                                hubInfo.hubId()
+                        )
+                );
+
+        // 삭제 권한이 없는 경우
+        if (!hasPermission) {
+            throw new BusinessException(
+                    ErrorCode.AUTH_FORBIDDEN
+            );
         }
-    }
 
-    // Validation Check - 상품 조회
-    private Product validateProduct(UUID productId) {
-        return productCommandRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        // 실제 DB 삭제 시점부터 트랜잭션 시작
+        return productPersistenceService.deleteProduct(
+                product.getId(),
+                productDeleteCommand.callerId()
+        );
     }
 }
