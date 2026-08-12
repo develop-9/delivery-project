@@ -9,5 +9,5 @@ CREATE UNIQUE INDEX uq_company_delivery_sequence
       AND deleted_at IS NULL;
 
 ALTER TABLE delivery_schema.p_delivery_routes
-    ADD CONSTRAINT chk_delivery_route_sequence_positive
+    ADD CONSTRAINT ck_delivery_route_sequence_positive
         CHECK (sequence > 0);
