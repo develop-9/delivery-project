@@ -17,7 +17,7 @@ import com.delivery_project.hub_service.hub.application.command.HubUpdateCommand
 import com.delivery_project.hub_service.hub.application.result.HubCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubUpdateResult;
-import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
+import com.delivery_project.hub_service.hub.application.port.HubCachePort;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.entity.HubType;
@@ -44,7 +44,7 @@ public class HubCommandService {
 
 	private final HubCommandRepository hubCommandRepository;
 	private final HubRouteCommandRepository hubRouteCommandRepository;
-	private final HubCacheEvictor cacheEvictor;
+	private final HubCachePort hubCachePort;
 
 	@PreAuthorize("hasRole('MASTER')")
 	public HubCreateResult create(UUID callerId, HubCreateCommand command) {
@@ -86,8 +86,8 @@ public class HubCommandService {
 
 		// 허브명은 하위 허브의 parentHubName 으로도, 경로 응답의 구간·경유지 이름으로도 나간다.
 		// 어느 키가 그 이름을 품고 있는지 알 수 없어 양쪽 캐시를 통째로 비운다.
-		cacheEvictor.evictAllHubs();
-		cacheEvictor.evictAllHubPaths();
+		hubCachePort.evictAllHubs();
+		hubCachePort.evictAllHubPaths();
 
 		log.info("[Hub] 허브 수정 완료 hubId={}", hubId);
 
@@ -112,8 +112,8 @@ public class HubCommandService {
 		List<HubRoute> relatedRoutes = hubRouteCommandRepository.findAllByHubId(hubId);
 		relatedRoutes.forEach(route -> route.delete(callerId));
 
-		cacheEvictor.evictAllHubs();
-		cacheEvictor.evictAllHubPaths();
+		hubCachePort.evictAllHubs();
+		hubCachePort.evictAllHubPaths();
 
 		log.info("[Hub] 허브 삭제 완료 hubId={} deletedHubRouteCount={}", hubId, relatedRoutes.size());
 

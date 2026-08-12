@@ -15,8 +15,10 @@ import com.delivery_project.hub_service.hub.application.query.HubBatchQuery;
 import com.delivery_project.hub_service.hub.application.query.HubSummaryQuery;
 import com.delivery_project.hub_service.hub.application.query_service.HubQueryService;
 import com.delivery_project.hub_service.hub.application.result.HubBatchResult;
+import com.delivery_project.hub_service.hub.application.result.HubIdsResult;
 import com.delivery_project.hub_service.hub.application.result.HubSummaryResult;
 import com.delivery_project.hub_service.hub.presentation.response.internal.HubBatchResponse;
+import com.delivery_project.hub_service.hub.presentation.response.internal.HubIdsResponse;
 import com.delivery_project.hub_service.hub.presentation.response.internal.HubSummaryResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,20 @@ public class HubInternalController implements HubInternalSpec {
 		HubSummaryResult result = hubQueryService.getHubSummary(new HubSummaryQuery(hubId));
 
 		return ResponseEntity.ok(SuccessResponse.success(HubSummaryResponse.from(result)));
+	}
+
+	/**
+	 * 전체 허브 ID 조회 (15번). Order 가 재고 등록 시 모든 허브에 행을 만들려고 부른다.
+	 *
+	 * <p>{@code /{hubId}} 와 같은 자리를 다투지만 리터럴 세그먼트가 경로 변수보다 우선하므로
+	 * {@code /ids} 가 먼저 잡힌다. 선언 순서와는 무관하다.
+	 */
+	@Override
+	@GetMapping("/ids")
+	public ResponseEntity<SuccessResponse<HubIdsResponse>> getHubIds() {
+		HubIdsResult result = hubQueryService.getHubIds();
+
+		return ResponseEntity.ok(SuccessResponse.success(HubIdsResponse.from(result)));
 	}
 
 	/**

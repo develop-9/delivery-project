@@ -21,7 +21,9 @@ import com.delivery_project.user_service.global.response.PageResponse;
 import com.delivery_project.user_service.global.response.SuccessResponse;
 import com.delivery_project.user_service.user.application.command.UserApproveCommand;
 import com.delivery_project.user_service.user.application.command.UserDeleteCommand;
+import com.delivery_project.user_service.user.application.command.UserReinstateCommand;
 import com.delivery_project.user_service.user.application.command.UserRejectCommand;
+import com.delivery_project.user_service.user.application.command.UserSuspendCommand;
 import com.delivery_project.user_service.user.application.command_service.UserCommandService;
 import com.delivery_project.user_service.user.application.query.UserGetByIdQuery;
 import com.delivery_project.user_service.user.application.query.UserListQuery;
@@ -32,7 +34,9 @@ import com.delivery_project.user_service.user.application.result.UserDeleteResul
 import com.delivery_project.user_service.user.application.result.UserDetailResult;
 import com.delivery_project.user_service.user.application.result.UserListResult;
 import com.delivery_project.user_service.user.application.result.UserPendingResult;
+import com.delivery_project.user_service.user.application.result.UserReinstateResult;
 import com.delivery_project.user_service.user.application.result.UserRejectResult;
+import com.delivery_project.user_service.user.application.result.UserSuspendResult;
 import com.delivery_project.user_service.user.application.result.UserUpdateMeResult;
 import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
 import com.delivery_project.user_service.user.domain.entity.Role;
@@ -42,7 +46,9 @@ import com.delivery_project.user_service.user.presentation.response.UserDeleteRe
 import com.delivery_project.user_service.user.presentation.response.UserDetailResponse;
 import com.delivery_project.user_service.user.presentation.response.UserListResponse;
 import com.delivery_project.user_service.user.presentation.response.UserPendingResponse;
+import com.delivery_project.user_service.user.presentation.response.UserReinstateResponse;
 import com.delivery_project.user_service.user.presentation.response.UserRejectResponse;
+import com.delivery_project.user_service.user.presentation.response.UserSuspendResponse;
 import com.delivery_project.user_service.user.presentation.response.UserUpdateMeResponse;
 
 import jakarta.validation.Valid;
@@ -132,5 +138,23 @@ public class UserApiController {
 	) {
 		UserRejectResult result = userCommandService.reject(callerId, new UserRejectCommand(userId));
 		return ResponseEntity.ok(SuccessResponse.success(UserRejectResponse.from(result)));
+	}
+
+	@PatchMapping("/{userId}/suspend")
+	public ResponseEntity<SuccessResponse<UserSuspendResponse>> suspend(
+			@AuthenticationPrincipal UUID callerId,
+			@PathVariable UUID userId
+	) {
+		UserSuspendResult result = userCommandService.suspend(callerId, new UserSuspendCommand(userId));
+		return ResponseEntity.ok(SuccessResponse.success(UserSuspendResponse.from(result)));
+	}
+
+	@PatchMapping("/{userId}/reinstate")
+	public ResponseEntity<SuccessResponse<UserReinstateResponse>> reinstate(
+			@AuthenticationPrincipal UUID callerId,
+			@PathVariable UUID userId
+	) {
+		UserReinstateResult result = userCommandService.reinstate(callerId, new UserReinstateCommand(userId));
+		return ResponseEntity.ok(SuccessResponse.success(UserReinstateResponse.from(result)));
 	}
 }
