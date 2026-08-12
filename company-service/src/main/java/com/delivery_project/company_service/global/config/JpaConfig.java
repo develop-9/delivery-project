@@ -22,7 +22,7 @@ public class JpaConfig {
                 Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                         .filter(Authentication::isAuthenticated)
                         .map(Authentication::getPrincipal)
-                        .filter(UUID.class::isInstance)
+                        .filter(JwtPrincipal.class::isInstance)
                         .map(JwtPrincipal.class::cast)
                         .map(JwtPrincipal::userId)
                         .orElse(systemId)
