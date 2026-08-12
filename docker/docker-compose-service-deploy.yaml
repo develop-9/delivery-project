@@ -18,6 +18,13 @@ services:
     container_name: user-service
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
     networks:
       - delivery-network
 
@@ -36,6 +43,13 @@ services:
     container_name: delivery-service
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
     networks:
       - delivery-network
 
@@ -53,6 +67,13 @@ services:
 
     container_name: company-service
     restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
     networks:
       - delivery-network
@@ -80,6 +101,13 @@ services:
 
     container_name: slack-service
     restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
     networks:
       - delivery-network
