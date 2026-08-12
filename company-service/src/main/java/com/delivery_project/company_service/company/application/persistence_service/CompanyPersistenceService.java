@@ -1,5 +1,6 @@
 package com.delivery_project.company_service.company.application.persistence_service;
 
+import com.delivery_project.company_service.company.application.port.OrderPort;
 import com.delivery_project.company_service.company.application.result.CompanyCreateResult;
 import com.delivery_project.company_service.company.application.result.CompanyDeleteResult;
 import com.delivery_project.company_service.company.application.result.CompanyUpdateResult;
@@ -24,6 +25,7 @@ public class CompanyPersistenceService {
 
     private final CompanyCommandRepository companyCommandRepository;
     private final ProductQueryRepository productQueryRepository;
+    private final OrderPort orderPort;
 
     /*
      * TODO: 업체 식별자 추가 후 Unique 제약 적용
@@ -92,8 +94,7 @@ public class CompanyPersistenceService {
                 .findByCompanyId(company.getId())
                 .forEach(product -> {
                     // 업체에 소속된 상품의 재고 삭제 요청
-                    // TODO: Order Service 연동 후 주석 제거
-                    // orderPort.deleteInventory(product.getId());
+                    orderPort.deleteInventory(product.getId());
 
                     // 업체에 소속된 상품 논리 삭제
                     product.delete(callerId);

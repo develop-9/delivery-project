@@ -1,5 +1,7 @@
 package com.delivery_project.company_service.company.application.persistence_service;
 
+import com.delivery_project.company_service.company.application.port.OrderPort;
+import com.delivery_project.company_service.company.application.port.dto.InventorySaveInfo;
 import com.delivery_project.company_service.company.application.result.ProductCreateResult;
 import com.delivery_project.company_service.company.application.result.ProductDeleteResult;
 import com.delivery_project.company_service.company.application.result.ProductUpdateResult;
@@ -12,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +24,7 @@ import java.util.UUID;
 public class ProductPersistenceService {
 
     private final ProductCommandRepository productCommandRepository;
+    private final OrderPort orderPort;
 
     /*
      * TODO: 상품 식별자 추가 후 Unique 제약 적용
@@ -43,13 +47,13 @@ public class ProductPersistenceService {
         Product savedProduct = productCommandRepository.save(product);
 
         // 허브별 상품의 재고 생성 요청
-        // TODO: Order Service 연동 후 주석 제거
-        // List<InventorySaveInfo> inventoryList = orderPort.saveInventory(productCreateResult.productId());
+        List<InventorySaveInfo> inventoryList = orderPort.saveInventory(product.getId());
 
         log.info(
-                "상품 생성 완료. productId={}, createdBy={}",
+                "상품 생성 완료. productId={}, createdBy={}, inventoryNums={}",
                 savedProduct.getId(),
-                savedProduct.getCreatedBy()
+                savedProduct.getCreatedBy(),
+                inventoryList.size()
         );
 
         // 결과 반환
@@ -87,8 +91,7 @@ public class ProductPersistenceService {
         Product product = validateProduct(productId);
 
         // 상품의 재고 삭제 요청
-        // TODO: Order Service 연동 후 주석 제거
-        // orderPort.deleteInventory(product.getId());
+        orderPort.deleteInventory(product.getId());
 
         // 상품 제거
         product.delete(callerId);
