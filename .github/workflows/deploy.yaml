@@ -15,11 +15,16 @@ name: Deploy Services
 #   feat: 사용자 API 추가      -> 실행되지 않음
 #   fix: 로그인 오류 수정       -> 실행되지 않음
 #
+# 배포 재시도, hotfix 등 절차를 생략한 배포가 필요한 상황에는
+# 수동 배포를 실행한다.
+#
 
 on:
   push:
     branches:
       - main
+
+  workflow_dispatch:
 
 
 # ============================================================
@@ -64,10 +69,10 @@ env:
 
   # 최종 Image:
   #
-  # ghcr.io/develop-9/delivery/user-service:latest
-  # ghcr.io/develop-9/delivery/company-service:latest
+  # ghcr.io/develop-9/delivery-project/user-service:latest
+  # ghcr.io/develop-9/delivery-project/company-service:latest
   #
-  IMAGE_PREFIX: ${{ github.repository_owner }}/delivery
+  IMAGE_PREFIX: ${{ github.repository_owner }}/delivery-project
 
 
 # ============================================================
@@ -83,7 +88,9 @@ jobs:
   build:
     name: Build & Push Docker Images
 
-    if: startsWith(github.event.head_commit.message, 'deploy')
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'deploy')
 
     runs-on: ubuntu-latest
 
@@ -205,7 +212,9 @@ jobs:
   deploy:
     name: Deploy to EC2
 
-    if: startsWith(github.event.head_commit.message, 'deploy')
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'deploy')
 
     needs:
       - build
@@ -243,7 +252,7 @@ jobs:
 
           source: |
             docker-compose-infra-deploy.yaml
-            docker-compose-services-deploy.yaml
+            docker-compose-service-deploy.yaml
 
           target: ${{ secrets.EC2_DEPLOY_PATH }}
 
@@ -288,7 +297,7 @@ jobs:
             echo "========================================"
 
             test -f docker-compose-infra-deploy.yaml
-            test -f docker-compose-services-deploy.yaml
+            test -f docker-compose-service-deploy.yaml
             test -f .env
 
 
@@ -301,6 +310,7 @@ jobs:
             echo "========================================"
 
             docker compose \
+              -p delivery-infra
               -f docker-compose-infra-deploy.yaml \
               pull
 
@@ -314,6 +324,7 @@ jobs:
             echo "========================================"
 
             docker compose \
+              -p delivery-infra \
               -f docker-compose-infra-deploy.yaml \
               up -d \
               --remove-orphans
@@ -368,6 +379,7 @@ jobs:
                 echo "Infra health check timed out."
 
                 docker compose \
+                  -p delivery-infra
                   -f docker-compose-infra-deploy.yaml \
                   ps
 
@@ -393,7 +405,8 @@ jobs:
             echo "========================================"
 
             docker compose \
-              -f docker-compose-services-deploy.yaml \
+              -p delivery-service
+              -f docker-compose-service-deploy.yaml \
               pull
 
 
@@ -406,7 +419,8 @@ jobs:
             echo "========================================"
 
             docker compose \
-              -f docker-compose-services-deploy.yaml \
+              -p delivery-service \
+              -f docker-compose-service-deploy.yaml \
               up -d \
               --remove-orphans
 
@@ -420,7 +434,8 @@ jobs:
             echo "========================================"
 
             docker compose \
-              -f docker-compose-services-deploy.yaml \
+              -p delivery-service
+              -f docker-compose-service-deploy.yaml \
               ps
 
 
@@ -451,8 +466,13 @@ jobs:
                 echo "Gateway health check timed out."
 
                 docker compose \
+                  -p delivery-infra
                   -f docker-compose-infra-deploy.yaml \
-                  -f docker-compose-services-deploy.yaml \
+                  ps
+                
+                docker compose \
+                  -p delivery-service
+                  -f docker-compose-service-deploy.yaml \
                   ps
 
                 exit 1
@@ -477,6 +497,11 @@ jobs:
             echo "========================================"
 
             docker compose \
+              -p delivery-infra
               -f docker-compose-infra-deploy.yaml \
-              -f docker-compose-services-deploy.yaml \
+              ps
+            
+            docker compose \
+              -p delivery-service
+              -f docker-compose-service-deploy.yaml \
               ps
