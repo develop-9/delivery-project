@@ -36,6 +36,12 @@ public class CompanyFeignAdapter implements CompanyPort {
 		return new ReceiverCompany(companyId, company.hubId(), company.address());
 	}
 
+	@Override
+	public CompanyInfo getCompanyInfo(UUID companyId) {
+		CompanyInfoResponse company = call(companyId);
+		return new CompanyInfo(companyId, company.name(), company.hubId());
+	}
+
 	private CompanyInfoResponse call(UUID companyId) {
 		try {
 			InternalApiResponse<CompanyInfoResponse> response =
