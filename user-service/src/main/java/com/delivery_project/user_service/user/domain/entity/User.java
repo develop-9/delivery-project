@@ -102,8 +102,12 @@ public class User extends BaseDeletableEntity {
 
 	// 역할별 필수 소속 정보(hubId/companyId)는 도메인 불변식이라, 이 값이 빠진 User는
 	// 애초에 만들어질 수 없게 생성 시점에 강제한다.
+	// DELIVERY_MANAGER는 hubId를 여기서 강제하지 않는다 — Delivery Service가 배송 담당자를
+	// 특정 허브 소속(COMPANY_DELIVERY, hubId 필수)과 공용 허브 소속(HUB_DELIVERY, hubId 없음)
+	// 둘로 나눠 관리해서, User Service 단계에서는 hubId 유무 자체가 유효/무효를 가르지 않는다.
+	// 실제 소속 필요 여부 검증은 Delivery Service가 담당자 타입에 따라 수행한다.
 	private static void validateHubOrCompanyRequired(Role role, UUID hubId, UUID companyId) {
-		if ((role == Role.HUB_MANAGER || role == Role.DELIVERY_MANAGER) && hubId == null) {
+		if (role == Role.HUB_MANAGER && hubId == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
 		}
 		if (role == Role.COMPANY_MANAGER && companyId == null) {

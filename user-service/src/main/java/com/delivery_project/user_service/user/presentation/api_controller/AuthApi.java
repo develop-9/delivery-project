@@ -33,8 +33,10 @@ public interface AuthApi {
 					신규 계정을 PENDING 상태로 생성한다. MASTER 역할이면서 활성 MASTER가 한 명도
 					없는 최초 가입인 경우에 한해 자동으로 APPROVED된다.
 
-					역할별로 필수 소속이 다르다 — HUB_MANAGER/DELIVERY_MANAGER는 hubId 필수,
-					COMPANY_MANAGER는 companyId 필수, MASTER는 둘 다 필요 없다."""
+					역할별로 필수 소속이 다르다 — HUB_MANAGER는 hubId 필수, COMPANY_MANAGER는 companyId
+					필수, MASTER는 둘 다 필요 없다. DELIVERY_MANAGER는 hubId를 여기서 강제하지 않는다 —
+					배송 담당자가 특정 허브 소속인지(hubId 필요) 공용 허브 소속인지(hubId 없음)는
+					Delivery Service가 담당자 타입에 따라 별도로 검증한다."""
 	)
 	@ApiResponses({
 			@ApiResponse(responseCode = "201", description = "가입 성공(PENDING, 또는 최초 MASTER면 APPROVED)"),

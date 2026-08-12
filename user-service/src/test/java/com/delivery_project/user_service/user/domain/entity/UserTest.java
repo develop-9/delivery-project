@@ -154,18 +154,34 @@ class UserTest {
 	}
 
 	@Test
-	void DELIVERY_MANAGER인데_hubId가_없으면_생성_시점에_BusinessException이_발생한다() {
-		// when & then
-		assertThatThrownBy(() -> User.builder()
+	void DELIVERY_MANAGER는_hubId_없이도_생성된다() {
+		// when
+		User user = User.builder()
 				.username("delivery1")
 				.password("encoded-password")
 				.name("배송담당자")
 				.slackId("U0000000002")
 				.role(Role.DELIVERY_MANAGER)
-				.build())
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+				.build();
+
+		// then
+		assertThat(user.getHubId()).isNull();
+	}
+
+	@Test
+	void DELIVERY_MANAGER는_hubId와_함께도_생성된다() {
+		// when
+		User user = User.builder()
+				.username("delivery2")
+				.password("encoded-password")
+				.name("배송담당자")
+				.slackId("U0000000005")
+				.role(Role.DELIVERY_MANAGER)
+				.hubId(UUID.randomUUID())
+				.build();
+
+		// then
+		assertThat(user.getHubId()).isNotNull();
 	}
 
 	@Test
