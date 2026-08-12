@@ -5,10 +5,10 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SlackRabbitMqConfig {
@@ -22,6 +22,9 @@ public class SlackRabbitMqConfig {
     public static final String RETRY_ROUTING_KEY = "slack.message.retry";
 
     private static final int RETRY_TTL_MS = 5_000;
+
+    private static final String TRUSTED_PACKAGE =
+            "com.delivery_project.slack_service.slack.infrastructure.messaging.rabbitmq";
 
     @Bean
     public DirectExchange slackMessageExchange() {
@@ -67,6 +70,8 @@ public class SlackRabbitMqConfig {
 
     @Bean
     public MessageConverter rabbitMessageConverter() {
-        return new JacksonJsonMessageConverter();
+        return new JacksonJsonMessageConverter(
+                TRUSTED_PACKAGE
+        );
     }
 }

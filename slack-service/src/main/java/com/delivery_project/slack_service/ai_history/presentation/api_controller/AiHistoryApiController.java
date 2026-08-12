@@ -1,8 +1,5 @@
 package com.delivery_project.slack_service.ai_history.presentation.api_controller;
 
-import com.delivery_project.slack_service.global.response.ErrorResponse;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import com.delivery_project.slack_service.ai_history.application.query.AiHistorySearchQuery;
 import com.delivery_project.slack_service.ai_history.application.query_service.AiHistoryQueryService;
 import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
@@ -15,10 +12,6 @@ import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.global.response.PageResponse;
 import com.delivery_project.slack_service.global.response.SuccessResponse;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -32,57 +25,14 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
-@Tag(
-        name = "AI History",
-        description = "AI 요청 이력 단건 및 목록 조회 API"
-)
 @RestController
 @RequestMapping("/api/v1/ai-histories")
 @RequiredArgsConstructor
-public class AiHistoryApiController {
+public class AiHistoryApiController implements AiHistoryApi {
 
     private final AiHistoryQueryService aiHistoryQueryService;
 
-    @Operation(
-            summary = "AI 요청 이력 단건 조회",
-            description = "AI 요청 이력 ID로 상세 정보를 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "AI 요청 이력 단건 조회 성공"
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "조회 권한 없음",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "AI 요청 이력을 찾을 수 없음",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            )
-    })
+    @Override
     @GetMapping("/{aiHistoryId}")
     public ResponseEntity<SuccessResponse<AiHistoryDetailResponse>> findById(
             @PathVariable UUID aiHistoryId
@@ -98,47 +48,7 @@ public class AiHistoryApiController {
         );
     }
 
-    @Operation(
-            summary = "AI 요청 이력 목록 조회",
-            description = "검색 조건을 이용해 AI 요청 이력을 페이지 형태로 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "AI 요청 이력 목록 조회 성공"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "유효하지 않은 검색 조건",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "조회 권한 없음",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            )
-    })
-
+    @Override
     @GetMapping
     public ResponseEntity<SuccessResponse<PageResponse<AiHistoryListResponse>>> findAll(
             @RequestParam(required = false)
@@ -224,7 +134,8 @@ public class AiHistoryApiController {
             };
         }
 
-        String[] sortValues = sort.split(",", -1);
+        String[] sortValues =
+                sort.split(",", -1);
 
         if (sortValues.length != 2) {
             throw new BusinessException(

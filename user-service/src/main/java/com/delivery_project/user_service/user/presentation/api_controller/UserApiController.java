@@ -57,17 +57,19 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserApiController {
+public class UserApiController implements UserApi {
 
 	private final UserCommandService userCommandService;
 	private final UserQueryService userQueryService;
 
+	@Override
 	@GetMapping("/me")
 	public ResponseEntity<SuccessResponse<UserDetailResponse>> getMe(@AuthenticationPrincipal UUID callerId) {
 		UserDetailResult result = userQueryService.getMe(callerId);
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
 	}
 
+	@Override
 	@PatchMapping("/me")
 	public ResponseEntity<SuccessResponse<UserUpdateMeResponse>> updateMe(
 			@AuthenticationPrincipal UUID callerId,
@@ -77,6 +79,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserUpdateMeResponse.from(result)));
 	}
 
+	@Override
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PageResponse<UserListResponse>>> getUsers(
 			@AuthenticationPrincipal UUID callerId,
@@ -92,6 +95,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@GetMapping("/pending")
 	public ResponseEntity<SuccessResponse<PageResponse<UserPendingResponse>>> getPendingUsers(
 			@AuthenticationPrincipal UUID callerId,
@@ -104,6 +108,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@GetMapping("/{userId}")
 	public ResponseEntity<SuccessResponse<UserDetailResponse>> getById(
 			@AuthenticationPrincipal UUID callerId,
@@ -113,6 +118,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserDetailResponse.from(result)));
 	}
 
+	@Override
 	@DeleteMapping("/{userId}")
 	public ResponseEntity<SuccessResponse<UserDeleteResponse>> delete(
 			@AuthenticationPrincipal UUID callerId,
@@ -122,6 +128,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserDeleteResponse.from(result)));
 	}
 
+	@Override
 	@PatchMapping("/{userId}/approve")
 	public ResponseEntity<SuccessResponse<UserApproveResponse>> approve(
 			@AuthenticationPrincipal UUID callerId,
@@ -131,6 +138,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserApproveResponse.from(result)));
 	}
 
+	@Override
 	@PatchMapping("/{userId}/reject")
 	public ResponseEntity<SuccessResponse<UserRejectResponse>> reject(
 			@AuthenticationPrincipal UUID callerId,
@@ -140,6 +148,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserRejectResponse.from(result)));
 	}
 
+	@Override
 	@PatchMapping("/{userId}/suspend")
 	public ResponseEntity<SuccessResponse<UserSuspendResponse>> suspend(
 			@AuthenticationPrincipal UUID callerId,
@@ -149,6 +158,7 @@ public class UserApiController {
 		return ResponseEntity.ok(SuccessResponse.success(UserSuspendResponse.from(result)));
 	}
 
+	@Override
 	@PatchMapping("/{userId}/reinstate")
 	public ResponseEntity<SuccessResponse<UserReinstateResponse>> reinstate(
 			@AuthenticationPrincipal UUID callerId,

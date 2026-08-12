@@ -3,6 +3,7 @@ package com.delivery_project.slack_service.slack.infrastructure.messaging.rabbit
 import com.delivery_project.slack_service.slack.application.command_service.SlackMessageCommandService;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageDuplicateGuard;
 import com.delivery_project.slack_service.slack.application.port.SlackMessageSender;
+import com.delivery_project.slack_service.slack.application.query_service.SlackMessageQueryService;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageSendResult;
 import com.delivery_project.slack_service.slack.domain.entity.SenderType;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
@@ -46,18 +47,32 @@ class SlackMessageQueueIntegrationTest {
         assumeRabbitMqAvailable(connectionFactory);
 
         try {
-            RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
-            SlackRabbitMqConfig config = new SlackRabbitMqConfig();
+            RabbitAdmin rabbitAdmin =
+                    new RabbitAdmin(connectionFactory);
 
-            DirectExchange exchange = config.slackMessageExchange();
-            Queue mainQueue = config.slackMessageMainQueue();
-            Queue retryQueue = config.slackMessageRetryQueue();
+            SlackRabbitMqConfig config =
+                    new SlackRabbitMqConfig();
+
+            DirectExchange exchange =
+                    config.slackMessageExchange();
+
+            Queue mainQueue =
+                    config.slackMessageMainQueue();
+
+            Queue retryQueue =
+                    config.slackMessageRetryQueue();
 
             Binding mainBinding =
-                    config.slackMessageMainBinding(mainQueue, exchange);
+                    config.slackMessageMainBinding(
+                            mainQueue,
+                            exchange
+                    );
 
             Binding retryBinding =
-                    config.slackMessageRetryBinding(retryQueue, exchange);
+                    config.slackMessageRetryBinding(
+                            retryQueue,
+                            exchange
+                    );
 
             rabbitAdmin.declareExchange(exchange);
             rabbitAdmin.declareQueue(mainQueue);
@@ -78,12 +93,19 @@ class SlackMessageQueueIntegrationTest {
             RabbitTemplate rabbitTemplate =
                     new RabbitTemplate(connectionFactory);
 
+            JacksonJsonMessageConverter messageConverter =
+                    new JacksonJsonMessageConverter(
+                            "com.delivery_project.slack_service.slack.infrastructure.messaging.rabbitmq"
+                    );
+
             rabbitTemplate.setMessageConverter(
-                    new JacksonJsonMessageConverter()
+                    messageConverter
             );
 
             SlackMessageQueuePublisherImpl publisher =
-                    new SlackMessageQueuePublisherImpl(rabbitTemplate);
+                    new SlackMessageQueuePublisherImpl(
+                            rabbitTemplate
+                    );
 
             SlackMessageSender sender =
                     mock(SlackMessageSender.class);
@@ -91,36 +113,54 @@ class SlackMessageQueueIntegrationTest {
             SlackMessageCommandService commandService =
                     mock(SlackMessageCommandService.class);
 
+            SlackMessageQueryService queryService =
+                    mock(SlackMessageQueryService.class);
+
             SlackMessageDuplicateGuard duplicateGuard =
                     mock(SlackMessageDuplicateGuard.class);
 
-            String receiverSlackId = "U1234567890";
-            String message = "통합 테스트 메시지";
+            String receiverSlackId =
+                    "U1234567890";
 
-            SlackMessage failedMessage = SlackMessage.create(
-                    UUID.randomUUID(),
-                    SenderType.SYSTEM,
-                    UUID.randomUUID(),
-                    receiverSlackId,
-                    message
+            String message =
+                    "통합 테스트 메시지";
+
+            SlackMessage failedMessage =
+                    SlackMessage.create(
+                            UUID.randomUUID(),
+                            SenderType.SYSTEM,
+                            UUID.randomUUID(),
+                            receiverSlackId,
+                            message
+                    );
+
+            failedMessage.markAsFailed(
+                    "일부러 실패시킴"
             );
 
-            failedMessage.markAsFailed("일부러 실패시킴");
-
-            SlackMessage retryMessage = SlackMessage.create(
-                    UUID.randomUUID(),
-                    SenderType.SYSTEM,
-                    UUID.randomUUID(),
-                    receiverSlackId,
-                    message
-            );
+            SlackMessage retryMessage =
+                    SlackMessage.create(
+                            UUID.randomUUID(),
+                            SenderType.SYSTEM,
+                            UUID.randomUUID(),
+                            receiverSlackId,
+                            message
+                    );
 
             retryMessage.prepareRetry();
 
-            when(duplicateGuard.tryAcquire(any()))
-                    .thenReturn("test-lock-token");
+            when(
+                    duplicateGuard.tryAcquire(any())
+            ).thenReturn(
+                    "test-lock-token"
+            );
 
-            when(sender.send(receiverSlackId, message))
+            when(
+                    sender.send(
+                            receiverSlackId,
+                            message
+                    )
+            )
                     .thenReturn(
                             SlackMessageSendResult.failed(
                                     "일부러 실패시킴"
@@ -130,16 +170,26 @@ class SlackMessageQueueIntegrationTest {
                             SlackMessageSendResult.succeeded()
                     );
 
-            when(commandService.markFailed(any(), any()))
-                    .thenReturn(failedMessage);
+            when(
+                    commandService.markFailed(
+                            any(),
+                            any()
+                    )
+            ).thenReturn(
+                    failedMessage
+            );
 
-            when(commandService.prepareRetry(any()))
-                    .thenReturn(retryMessage);
+            when(
+                    commandService.prepareRetry(any())
+            ).thenReturn(
+                    retryMessage
+            );
 
             SlackMessageQueueConsumer consumer =
                     new SlackMessageQueueConsumer(
                             sender,
                             commandService,
+                            queryService,
                             publisher,
                             duplicateGuard
                     );
@@ -159,10 +209,14 @@ class SlackMessageQueueIntegrationTest {
                             );
 
             assertThat(firstPayload)
-                    .as("최초 발행한 메시지를 Main Queue에서 수신해야 한다")
+                    .as(
+                            "최초 발행한 메시지를 Main Queue에서 수신해야 한다"
+                    )
                     .isNotNull();
 
-            consumer.consume(firstPayload);
+            consumer.consume(
+                    firstPayload
+            );
 
             // then: Retry Queue TTL 경과 후 Main Queue 복귀
             SlackMessageQueuePayload redeliveredPayload =
@@ -178,10 +232,17 @@ class SlackMessageQueueIntegrationTest {
                     )
                     .isNotNull();
 
-            consumer.consume(redeliveredPayload);
+            consumer.consume(
+                    redeliveredPayload
+            );
 
-            verify(sender, times(2))
-                    .send(receiverSlackId, message);
+            verify(
+                    sender,
+                    times(2)
+            ).send(
+                    receiverSlackId,
+                    message
+            );
 
             verify(commandService)
                     .markSent(any());

@@ -2,11 +2,13 @@ package com.delivery_project.user_service.user.presentation.api_controller;
 
 import java.util.UUID;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,10 +30,11 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-public class AuthApiController {
+public class AuthApiController implements AuthApi {
 
 	private final AuthCommandService authCommandService;
 
+	@Override
 	@PostMapping("/signup")
 	public ResponseEntity<SuccessResponse<UserSignupResponse>> signup(@Valid @RequestBody UserSignupRequest request) {
 		UserSignupResult result = authCommandService.signup(request.toCommand());
@@ -39,6 +42,7 @@ public class AuthApiController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/login")
 	public ResponseEntity<SuccessResponse<UserLoginResponse>> login(@Valid @RequestBody UserLoginRequest request) {
 		UserLoginResult result = authCommandService.login(request.toCommand());
@@ -46,6 +50,7 @@ public class AuthApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/refresh")
 	public ResponseEntity<SuccessResponse<UserRefreshResponse>> refresh(@Valid @RequestBody UserRefreshRequest request) {
 		UserRefreshResult result = authCommandService.refresh(request.toCommand());
@@ -53,9 +58,13 @@ public class AuthApiController {
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
+	@Override
 	@PostMapping("/logout")
-	public ResponseEntity<Void> logout(@AuthenticationPrincipal UUID callerId) {
-		authCommandService.logout(callerId);
+	public ResponseEntity<Void> logout(
+			@AuthenticationPrincipal UUID callerId,
+			@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader
+	) {
+		authCommandService.logout(callerId, authorizationHeader);
 		return ResponseEntity.noContent().build();
 	}
 }

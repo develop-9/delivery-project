@@ -36,7 +36,7 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
 
 		// when & then
-		StepVerifier.create(checker.isRevoked("user1", 1000L))
+		StepVerifier.create(checker.isRevoked("user1", 1000L, null))
 				.expectNext(false)
 				.verifyComplete();
 	}
@@ -49,7 +49,7 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get(anyString())).thenReturn(Mono.just("2000"));
 
 		// when & then
-		StepVerifier.create(checker.isRevoked("user1", 1000L))
+		StepVerifier.create(checker.isRevoked("user1", 1000L, null))
 				.expectNext(true)
 				.verifyComplete();
 	}
@@ -62,7 +62,7 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get(anyString())).thenReturn(Mono.just("1000"));
 
 		// when & then
-		StepVerifier.create(checker.isRevoked("user1", 2000L))
+		StepVerifier.create(checker.isRevoked("user1", 2000L, null))
 				.expectNext(false)
 				.verifyComplete();
 	}
@@ -80,7 +80,7 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get("user:user1:invalidatedAt")).thenReturn(Mono.empty());
 
 		// when
-		StepVerifier.create(checker.isRevoked("user1", 1000L))
+		StepVerifier.create(checker.isRevoked("user1", 1000L, null))
 				.expectNext(false)
 				.verifyComplete();
 
@@ -96,7 +96,7 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get(anyString())).thenReturn(Mono.error(new RuntimeException("connection refused")));
 
 		// when & then
-		StepVerifier.create(checker.isRevoked("user1", 1000L))
+		StepVerifier.create(checker.isRevoked("user1", 1000L, null))
 				.expectNext(false)
 				.verifyComplete();
 	}
@@ -115,7 +115,72 @@ class RedisTokenBlacklistCheckerTest {
 		when(valueOperations.get(anyString())).thenReturn(Mono.just("999999999999"));
 
 		// when & then
-		StepVerifier.create(checker.isRevoked("user1", 1000L))
+		StepVerifier.create(checker.isRevoked("user1", 1000L, null))
+				.expectNext(false)
+				.verifyComplete();
+	}
+
+	@Test
+	void sessionId가_있으면_세션_블랙리스트도_같이_확인해서_둘_중_하나라도_true면_true를_반환한다() {
+		// given: 사용자 단위는 무효화 안 됐지만, 이 세션만 로그아웃으로 블랙리스트에 등록된 상황
+		checker = new RedisTokenBlacklistChecker(reactiveStringRedisTemplate, CircuitBreakerRegistry.ofDefaults());
+		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+		when(reactiveStringRedisTemplate.hasKey(anyString())).thenReturn(Mono.just(true));
+
+		// when & then
+		StepVerifier.create(checker.isRevoked("user1", 1000L, "session1"))
+				.expectNext(true)
+				.verifyComplete();
+	}
+
+	@Test
+	void sessionId가_있어도_둘_다_무효화_기록이_없으면_false를_반환한다() {
+		// given
+		checker = new RedisTokenBlacklistChecker(reactiveStringRedisTemplate, CircuitBreakerRegistry.ofDefaults());
+		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+		when(reactiveStringRedisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+
+		// when & then
+		StepVerifier.create(checker.isRevoked("user1", 1000L, "session1"))
+				.expectNext(false)
+				.verifyComplete();
+	}
+
+	/**
+	 * User Service의 RefreshTokenRepositoryImpl.blacklistSessionOrThrow()가 쓰는 키와 같은
+	 * 포맷("session:{userId}:{sessionId}:blacklisted")이어야 두 서비스가 실제로 같은 값을
+	 * 주고받는다 — 별도 Gradle 모듈이라 상수 공유가 안 되므로 포맷을 테스트로 못박아둔다.
+	 */
+	@Test
+	void 세션_블랙리스트_조회_키는_session_userId_sessionId_blacklisted_형식이다() {
+		// given
+		checker = new RedisTokenBlacklistChecker(reactiveStringRedisTemplate, CircuitBreakerRegistry.ofDefaults());
+		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+		when(reactiveStringRedisTemplate.hasKey("session:user1:session1:blacklisted")).thenReturn(Mono.just(false));
+
+		// when
+		StepVerifier.create(checker.isRevoked("user1", 1000L, "session1"))
+				.expectNext(false)
+				.verifyComplete();
+
+		// then
+		verify(reactiveStringRedisTemplate).hasKey("session:user1:session1:blacklisted");
+	}
+
+	@Test
+	void sessionId가_있어도_세션_블랙리스트_조회가_실패하면_fail_open으로_false를_반환한다() {
+		// given
+		checker = new RedisTokenBlacklistChecker(reactiveStringRedisTemplate, CircuitBreakerRegistry.ofDefaults());
+		when(reactiveStringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+		when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+		when(reactiveStringRedisTemplate.hasKey(anyString()))
+				.thenReturn(Mono.error(new RuntimeException("connection refused")));
+
+		// when & then
+		StepVerifier.create(checker.isRevoked("user1", 1000L, "session1"))
 				.expectNext(false)
 				.verifyComplete();
 	}

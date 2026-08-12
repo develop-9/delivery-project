@@ -13,6 +13,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
+
     hibernate:
       ddl-auto: update
 
@@ -62,5 +64,3 @@ system:
 # JWT Value
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
-  access-token-expiration: 3600000
-  refresh-token-expiration: 1209600000

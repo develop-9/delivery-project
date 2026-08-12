@@ -9,13 +9,17 @@ public record InternalCompanyGetResponse(
 
         UUID companyId,
         String name,
-        CompanyType type
+        CompanyType type,
+        UUID hubId,
+        String address
 ) {
     public static InternalCompanyGetResponse from(InternalCompanyGetResult internalCompanyGetResult) {
         return new InternalCompanyGetResponse(
                 internalCompanyGetResult.companyId(),
                 internalCompanyGetResult.name(),
-                internalCompanyGetResult.type()
+                internalCompanyGetResult.type(),
+                internalCompanyGetResult.hubId(),
+                internalCompanyGetResult.address()
         );
     }
 }

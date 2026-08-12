@@ -37,6 +37,43 @@ class JjwtTokenValidatorTest {
 	}
 
 	@Test
+	void sessionId_클레임이_있으면_함께_반환한다() {
+		// given
+		Instant now = Instant.now();
+		String token = Jwts.builder()
+				.subject("11111111-1111-1111-1111-111111111111")
+				.claim("tokenType", "ACCESS")
+				.claim("sessionId", "22222222-2222-2222-2222-222222222222")
+				.issuedAt(Date.from(now))
+				.expiration(Date.from(now.plusSeconds(3600)))
+				.signWith(SECRET_KEY)
+				.compact();
+
+		// when
+		ValidatedToken result = validator.validate(token);
+
+		// then
+		assertThat(result.sessionId()).isEqualTo("22222222-2222-2222-2222-222222222222");
+	}
+
+	/**
+	 * sessionId 클레임이 이 기능 도입 전에 발급된 토큰처럼 아예 없는 경우, 예외 대신 null을
+	 * 돌려줘야 한다 — TokenBlacklistChecker가 그 경우 세션 단위 체크를 건너뛰도록 하기 위함이다.
+	 */
+	@Test
+	void sessionId_클레임이_없으면_null을_반환한다() {
+		// given
+		Instant now = Instant.now();
+		String token = tokenWith(SECRET_KEY, "11111111-1111-1111-1111-111111111111", now, now.plusSeconds(3600));
+
+		// when
+		ValidatedToken result = validator.validate(token);
+
+		// then
+		assertThat(result.sessionId()).isNull();
+	}
+
+	@Test
 	void 서명이_다르면_InvalidTokenException을_던진다() {
 		// given
 		SecretKey otherKey =

@@ -33,19 +33,48 @@ public enum ErrorCode {
 
 
     // === company ===
+    // 400
+    COMPANY_INVALID_HUB_ID(HttpStatus.BAD_REQUEST, "허브 ID는 필수 필드입니다.", "COMPANY_INVALID_HUB_ID"),
+    COMPANY_INVALID_TYPE(HttpStatus.BAD_REQUEST, "타입은 필수 필드입니다.", "COMPANY_INVALID_TYPE"),
+    COMPANY_INVALID_NAME(HttpStatus.BAD_REQUEST, "업체의 이름은 필수 필드입니다.", "COMPANY_INVALID_NAME"),
+    COMPANY_INVALID_ADDRESS(HttpStatus.BAD_REQUEST, "업체의 주소는 필수 필드입니다.", "COMPANY_INVALID_ADDRESS"),
+
     // 404
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "업체가 존재하지 않습니다.", "COMPANY_NOT_FOUND"),
 
 
     // === product ===
     // 400
-    PRODUCT_COMPANY_ID_INVALID(HttpStatus.BAD_REQUEST, "업체 ID는 필수 필드입니다.", "PRODUCT_COMPANY_ID_INVALID"),
-    PRODUCT_PRICE_INVALID(HttpStatus.BAD_REQUEST, "금액은 1원 이상이어야합니다.", "PRODUCT_PRICE_INVALID"),
-    PRODUCT_NAME_INVALID(HttpStatus.BAD_REQUEST, "상품의 이름이 존재하지 않습니다.", "PRODUCT_NAME_INVALID"),
-    PRODUCT_SEARCH_INVALID_PRICE(HttpStatus.BAD_REQUEST, "잘못된 검색 금액 조건입니다.", "PRODUCT_SEARCH_INVALID_PRICE"),
+    PRODUCT_INVALID_COMPANY_ID(HttpStatus.BAD_REQUEST, "업체 ID는 필수 필드입니다.", "PRODUCT_INVALID_COMPANY_ID"),
+    PRODUCT_INVALID_PRICE(HttpStatus.BAD_REQUEST, "금액은 1원 이상이어야합니다.", "PRODUCT_INVALID_PRICE"),
+    PRODUCT_INVALID_NAME(HttpStatus.BAD_REQUEST, "상품의 이름이 존재하지 않습니다.", "PRODUCT_INVALID_NAME"),
+    PRODUCT_INVALID_SEARCH_PRICE(HttpStatus.BAD_REQUEST, "잘못된 검색 금액 조건입니다.", "PRODUCT_INVALID_SEARCH_PRICE"),
 
     // 404
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품이 존재하지 않습니다.", "PRODUCT_NOT_FOUND"),
+
+
+    // === internal ===
+    // user
+    // 404
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
+
+    // 503
+    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "USER-SERVICE 호출에 실패했습니다.", "USER_SERVICE_UNAVAILABLE"),
+
+    // hub
+    // 404
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
+
+    // 503
+    HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "HUB-SERVICE 호출에 실패했습니다.", "HUB_SERVICE_UNAVAILABLE"),
+
+    // order
+    // 500
+    INVENTORY_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "재고 저장에 실패했습니다.", "INVENTORY_SAVE_FAILED"),
+
+    // 503
+    ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "ORDER-SERVICE 호출에 실패했습니다.", "ORDER_SERVICE_UNAVAILABLE")
     ;
 
     private final HttpStatus status;

@@ -436,13 +436,23 @@ class UserQueryServiceTest {
 	}
 
 	private User createUser(Role role, UUID companyId) {
+		// hubId/companyId는 도메인 불변식(User 생성자)이라, 역할 검증 자체가 관심사가 아닌
+		// 호출부가 null을 넘겨도 깨지지 않도록 역할에 맞는 값을 여기서 채워준다.
+		UUID resolvedCompanyId = (role == Role.COMPANY_MANAGER && companyId == null)
+				? UUID.randomUUID()
+				: companyId;
+		UUID resolvedHubId = (role == Role.HUB_MANAGER || role == Role.DELIVERY_MANAGER)
+				? UUID.randomUUID()
+				: null;
+
 		User user = User.builder()
 				.username("user1")
 				.password("encoded-password")
 				.name("테스트유저")
 				.slackId("U" + UUID.randomUUID().toString().substring(0, 10))
 				.role(role)
-				.companyId(companyId)
+				.companyId(resolvedCompanyId)
+				.hubId(resolvedHubId)
 				.build();
 		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
 		return user;

@@ -14,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,11 @@ import jakarta.persistence.PersistenceContext;
  * @MockitoBean으로 대체한다 — signupUser() 헬퍼가 내부적으로 실제 회원가입 API를 호출하는데,
  * 기본 동작(예외 없이 통과)이 "허브/업체가 존재한다"는 뜻이라 이 파일의 나머지 테스트(정지/승인/
  * 거절 등)에는 영향이 없다.
+ *
+ * signup()은 Hub/Company Feign 호출을 트랜잭션 밖에서 하도록 NOT_SUPPORTED로 되어 있어서,
+ * signupUser() 헬퍼가 만든 행은 이 클래스의 @Transactional과 무관한 별도 트랜잭션에서
+ * 커밋된다 — 즉 테스트가 끝나도 롤백되지 않고 실제로 남는다. cleanUpUsers()가 매 테스트 뒤
+ * p_users를 직접 비운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -68,7 +74,21 @@ class UserApiControllerTest {
 
 	@AfterEach
 	void cleanUpRefreshTokens() {
-		loggedInUserIds.forEach(refreshTokenRepository::deleteByUserId);
+		loggedInUserIds.forEach(refreshTokenRepository::deleteAllByUserId);
+	}
+
+	/**
+	 * signup()이 커밋한 행은 이 클래스의 @Transactional 롤백 범위 밖이라 여기서 직접 지운다.
+	 * TestTransaction.end()로 이 테스트가 남긴 진행 중인 트랜잭션을 먼저 정리한 뒤(원래도
+	 * 롤백될 것들이라 먼저 끝내도 결과는 같다) DELETE를 새 커넥션에서 즉시 커밋되게 실행한다 —
+	 * 그래야 signup()이 이미 커밋해버린 행도 실제로 지워진다.
+	 */
+	@AfterEach
+	void cleanUpUsers() {
+		if (TestTransaction.isActive()) {
+			TestTransaction.end();
+		}
+		jdbcTemplate.update("DELETE FROM p_users");
 	}
 
 	@Test
@@ -340,9 +360,31 @@ class UserApiControllerTest {
 		UUID userId = signupUser(username, slackId, role, hubId, companyId);
 		loggedInUserIds.add(userId);
 
-		entityManager.flush();
-		entityManager.clear();
+		// 같은 테스트 안에서 이 헬퍼를 두 번째로 부르는 경우(master, target 각각)엔 첫 호출이
+		// 이미 트랜잭션을 끝내둬서 flush()가 트랜잭션을 요구하는 예외를 던진다 — 활성 트랜잭션이
+		// 있을 때만 의미가 있으므로(signup()이 이미 별도 트랜잭션에서 실제로 커밋하기 때문에
+		// 원래도 필수는 아니었다) 있을 때만 실행한다.
+		if (TestTransaction.isActive()) {
+			entityManager.flush();
+			entityManager.clear();
+		}
 		jdbcTemplate.update("UPDATE p_users SET approval_status = 'APPROVED' WHERE username = ?", username);
+
+		// 이 UPDATE를 커밋해야 한다 — suspend()/reinstate()/delete()가 NOT_SUPPORTED라 같은
+		// 유저를 대상으로 나중에 호출되면 별도 트랜잭션에서 이 행을 다시 건드리는데, 이 UPDATE가
+		// 이 테스트의 트랜잭션 안에 미커밋 상태로 남아 있으면 그 행에 락이 걸린 채라 데드락에
+		// 빠진다(AuthApiControllerTest의 재가입 테스트에서 실제로 겪은 것과 같은 종류).
+		//
+		// 커밋 뒤 트랜잭션을 다시 시작하지 않는다 — 재시작하면 이 테스트 메서드가 그 뒤로도 계속
+		// 같은 영속성 컨텍스트를 쓰게 되는데, 이미 이 안에서 조회했던 엔티티(예: findByUsername으로
+		// targetId를 구할 때)가 1차 캐시에 남아있어서, suspend()/reinstate()가 별도 트랜잭션에서
+		// 실제로 커밋한 변경을 이후 조회(예: /users/me)가 못 보고 캐시된 옛 값을 반환하는 문제가
+		// 실제로 있었다. 트랜잭션 없이 두면 이후 호출들은 운영과 동일하게 각자 새 트랜잭션/영속성
+		// 컨텍스트로 커밋된 최신 값을 그대로 읽는다.
+		if (TestTransaction.isActive()) {
+			TestTransaction.flagForCommit();
+			TestTransaction.end();
+		}
 
 		String loginBody = """
 				{

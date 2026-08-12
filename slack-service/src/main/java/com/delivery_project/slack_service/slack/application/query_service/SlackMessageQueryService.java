@@ -5,6 +5,7 @@ import com.delivery_project.slack_service.global.exception.BusinessException;
 import com.delivery_project.slack_service.global.exception.ErrorCode;
 import com.delivery_project.slack_service.slack.application.result.SlackMessageQueryResult;
 import com.delivery_project.slack_service.slack.domain.entity.SlackMessage;
+import com.delivery_project.slack_service.slack.domain.entity.SlackMessageStatus;
 import com.delivery_project.slack_service.slack.domain.repository.SlackMessageQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class SlackMessageQueryService {
 
     private static final int DEFAULT_PAGE_SIZE = 10;
+
     private static final Set<Integer> ALLOWED_PAGE_SIZES =
             Set.of(10, 30, 50);
 
@@ -28,15 +30,19 @@ public class SlackMessageQueryService {
             UUID slackMessageId
     ) {
         SlackMessage slackMessage =
-                slackMessageQueryRepository
-                        .findById(slackMessageId)
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.SLACK_MESSAGE_NOT_FOUND
-                                )
-                        );
+                findSlackMessage(slackMessageId);
 
         return SlackMessageQueryResult.from(slackMessage);
+    }
+
+    public boolean isSent(
+            UUID slackMessageId
+    ) {
+        SlackMessage slackMessage =
+                findSlackMessage(slackMessageId);
+
+        return slackMessage.getStatus()
+                == SlackMessageStatus.SENT;
     }
 
     public PageData<SlackMessageQueryResult> findAll(
@@ -47,7 +53,8 @@ public class SlackMessageQueryService {
     ) {
         validatePage(page);
 
-        int validatedSize = validateSize(size);
+        int validatedSize =
+                validateSize(size);
 
         return slackMessageQueryRepository
                 .findAll(
@@ -57,6 +64,18 @@ public class SlackMessageQueryService {
                         sortDirection
                 )
                 .map(SlackMessageQueryResult::from);
+    }
+
+    private SlackMessage findSlackMessage(
+            UUID slackMessageId
+    ) {
+        return slackMessageQueryRepository
+                .findById(slackMessageId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.SLACK_MESSAGE_NOT_FOUND
+                        )
+                );
     }
 
     private void validatePage(

@@ -3,6 +3,7 @@ package com.delivery_project.user_service.user.application.command_service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -24,6 +25,7 @@ import com.delivery_project.user_service.global.security.TokenType;
 import com.delivery_project.user_service.user.application.command.UserLoginCommand;
 import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
 import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.persistence_service.UserPersistenceService;
 import com.delivery_project.user_service.user.application.port.CompanyPort;
 import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.application.port.TokenProvider;
@@ -35,7 +37,6 @@ import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.entity.User;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
-import com.delivery_project.user_service.user.domain.repository.UserInvalidationRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AuthCommandServiceTest {
@@ -45,9 +46,6 @@ class AuthCommandServiceTest {
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
-
-	@Mock
-	private UserInvalidationRepository userInvalidationRepository;
 
 	@Mock
 	private PasswordEncoder passwordEncoder;
@@ -60,6 +58,9 @@ class AuthCommandServiceTest {
 
 	@Mock
 	private CompanyPort companyPort;
+
+	@Mock
+	private UserPersistenceService userPersistenceService;
 
 	@InjectMocks
 	private AuthCommandService authCommandService;
@@ -75,7 +76,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -119,68 +120,6 @@ class AuthCommandServiceTest {
 	}
 
 	@Test
-	void 사전_중복체크는_통과했지만_저장시점에_username_제약을_위반하면_USER_DUPLICATE_USERNAME_예외가_발생한다() {
-		// given: existsByUsername 사전 체크와 저장 사이에 동시에 같은 username으로 가입
-		// 요청이 들어와, 사전 체크는 통과했지만 저장 시점에 부분 유니크 인덱스에 걸리는 상황을 재현
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException(
-						"could not execute statement; Detail: Key (username)=(kim123) already exists."));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.USER_DUPLICATE_USERNAME);
-	}
-
-	@Test
-	void 사전_중복체크는_통과했지만_저장시점에_slackId_제약을_위반하면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException(
-						"could not execute statement; Detail: Key (slack_id)=(U0123456789) already exists."));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
-	}
-
-	@Test
-	void 알_수_없는_제약_위반은_그대로_전파되어_GlobalExceptionHandler의_일반_처리로_넘어간다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"kim123", "Abcd1234!", "김철수", "U0123456789",
-				Role.COMPANY_MANAGER, null, UUID.randomUUID());
-
-		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenThrow(
-				new org.springframework.dao.DataIntegrityViolationException("unrelated constraint violation"));
-
-		// when & then
-		assertThatThrownBy(() -> authCommandService.signup(command))
-				.isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
-				.isNotInstanceOf(BusinessException.class);
-	}
-
-	@Test
 	void HUB_MANAGER인데_hubId가_없으면_INVALID_INPUT_VALUE_예외가_발생한다() {
 		// given
 		UserSignupCommand command = new UserSignupCommand(
@@ -219,7 +158,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000000")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -247,7 +186,7 @@ class AuthCommandServiceTest {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.HUB_NOT_FOUND);
 
-		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
 	}
 
 	@Test
@@ -269,7 +208,7 @@ class AuthCommandServiceTest {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
 
-		org.mockito.Mockito.verify(userCommandRepository, org.mockito.Mockito.never()).save(any(User.class));
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
 	}
 
 	@Test
@@ -284,7 +223,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("hub2")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000005")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		UserSignupResult result = authCommandService.signup(command);
@@ -306,8 +245,7 @@ class AuthCommandServiceTest {
 		when(userCommandRepository.existsByUsername("master3")).thenReturn(false);
 		when(userCommandRepository.existsBySlackId("U0000000006")).thenReturn(false);
 		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
-		when(userCommandRepository.save(any(User.class))).thenReturn(saved);
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
 
 		// when
 		authCommandService.signup(command);
@@ -325,8 +263,9 @@ class AuthCommandServiceTest {
 
 		when(userCommandRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
 		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
-		when(tokenProvider.generateAccessToken(approvedUser.getId(), Role.COMPANY_MANAGER)).thenReturn("access-token");
-		when(tokenProvider.generateRefreshToken(approvedUser.getId())).thenReturn("refresh-token");
+		when(tokenProvider.generateAccessToken(eq(approvedUser.getId()), eq(Role.COMPANY_MANAGER), any(UUID.class)))
+				.thenReturn("access-token");
+		when(tokenProvider.generateRefreshToken(eq(approvedUser.getId()), any(UUID.class))).thenReturn("refresh-token");
 		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
 		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
@@ -337,8 +276,9 @@ class AuthCommandServiceTest {
 		assertThat(result.accessToken()).isEqualTo("access-token");
 		assertThat(result.refreshToken()).isEqualTo("refresh-token");
 		assertThat(result.expiresIn()).isEqualTo(3600L);
+		// 로그인마다 새 세션(sessionId)이 발급되므로 정확한 값 대신 어떤 세션으로든 저장됐는지만 확인한다.
 		org.mockito.Mockito.verify(refreshTokenRepository)
-				.save(approvedUser.getId(), "refresh-token", Duration.ofMillis(1_209_600_000L));
+				.save(eq(approvedUser.getId()), any(UUID.class), eq("refresh-token"), eq(Duration.ofMillis(1_209_600_000L)));
 	}
 
 	@Test
@@ -395,19 +335,23 @@ class AuthCommandServiceTest {
 	}
 
 	@Test
-	void 정상_토큰_재발급시_새_토큰_쌍을_발급하고_RefreshToken을_교체한다() {
+	void 정상_토큰_재발급시_새_토큰_쌍을_발급하고_RefreshToken을_원자적으로_교체한다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
 		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
 		ReflectionTestUtils.setField(approvedUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("old-refresh-token");
 
-		when(tokenProvider.parseRefreshToken("old-refresh-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
-		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("old-refresh-token"));
+		when(tokenProvider.parseRefreshToken("old-refresh-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
-		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER)).thenReturn("new-access-token");
-		when(tokenProvider.generateRefreshToken(userId)).thenReturn("new-refresh-token");
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
 		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "old-refresh-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(true);
+		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER, sessionId)).thenReturn("new-access-token");
 		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
 		// when
@@ -416,8 +360,8 @@ class AuthCommandServiceTest {
 		// then
 		assertThat(result.accessToken()).isEqualTo("new-access-token");
 		assertThat(result.refreshToken()).isEqualTo("new-refresh-token");
-		org.mockito.Mockito.verify(refreshTokenRepository)
-				.save(userId, "new-refresh-token", Duration.ofMillis(1_209_600_000L));
+		org.mockito.Mockito.verify(refreshTokenRepository).compareAndRotate(
+				userId, sessionId, "old-refresh-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L));
 	}
 
 	@Test
@@ -427,7 +371,7 @@ class AuthCommandServiceTest {
 		UserRefreshCommand command = new UserRefreshCommand("access-token-used-as-refresh");
 
 		when(tokenProvider.parseRefreshToken("access-token-used-as-refresh"))
-				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS));
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, UUID.randomUUID()));
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.refresh(command))
@@ -436,14 +380,28 @@ class AuthCommandServiceTest {
 				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
 	}
 
+	/**
+	 * 조회와 비교를 애플리케이션에서 따로 하지 않고 Redis에서 원자적으로 처리하므로(compareAndRotate),
+	 * "저장된 값과 다름"과 "세션이 아예 없음"은 서비스 입장에서 둘 다 CAS 실패(false)로 동일하게
+	 * 관측된다 — 실제로 왜 실패했는지는 Redis 안에서만 구분되고 바깥으로 노출되지 않는다.
+	 */
 	@Test
 	void 저장된_RefreshToken과_다르면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("stolen-old-token");
 
-		when(tokenProvider.parseRefreshToken("stolen-old-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
-		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("current-token"));
+		when(tokenProvider.parseRefreshToken("stolen-old-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "stolen-old-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(false);
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.refresh(command))
@@ -456,10 +414,19 @@ class AuthCommandServiceTest {
 	void Redis에_RefreshToken이_없으면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("some-token");
 
-		when(tokenProvider.parseRefreshToken("some-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
-		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
+		when(tokenProvider.parseRefreshToken("some-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "some-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(false);
 
 		// when & then
 		assertThatThrownBy(() -> authCommandService.refresh(command))
@@ -474,8 +441,8 @@ class AuthCommandServiceTest {
 		UUID userId = UUID.randomUUID();
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(tokenProvider.parseRefreshToken("valid-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
-		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
+		when(tokenProvider.parseRefreshToken("valid-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, UUID.randomUUID()));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.empty());
 
 		// when & then
@@ -500,8 +467,8 @@ class AuthCommandServiceTest {
 		ReflectionTestUtils.setField(pendingUser, "id", userId);
 		UserRefreshCommand command = new UserRefreshCommand("valid-token");
 
-		when(tokenProvider.parseRefreshToken("valid-token")).thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH));
-		when(refreshTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
+		when(tokenProvider.parseRefreshToken("valid-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, UUID.randomUUID()));
 		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
 
 		// when & then
@@ -511,107 +478,81 @@ class AuthCommandServiceTest {
 				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
 	}
 
-	@Test
-	void 활성_MASTER가_없으면_MASTER_가입시_자동으로_승인된다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"master1", "Abcd1234!", "관리자", "U0000000001",
-				Role.MASTER, null, null);
-
-		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0000000001")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(0L);
-		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		UserSignupResult result = authCommandService.signup(command);
-
-		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.APPROVED);
-	}
+	// MASTER 최초 부트스트랩 자동 승인 로직은 UserPersistenceService.commitSignup()으로 옮겨갔다 —
+	// 관련 테스트는 UserPersistenceServiceTest 참고.
 
 	@Test
-	void 활성_MASTER가_이미_있으면_MASTER로_가입해도_PENDING으로_시작한다() {
-		// given
-		UserSignupCommand command = new UserSignupCommand(
-				"master2", "Abcd1234!", "관리자2", "U0000000002",
-				Role.MASTER, null, null);
-
-		when(userCommandRepository.existsByUsername("master2")).thenReturn(false);
-		when(userCommandRepository.existsBySlackId("U0000000002")).thenReturn(false);
-		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
-		when(userCommandRepository.countActiveMasters()).thenReturn(1L);
-		when(userCommandRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		UserSignupResult result = authCommandService.signup(command);
-
-		// then
-		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
-	}
-
-	@Test
-	void 정상_로그아웃시_RefreshToken을_삭제한다() {
+	void 정상_로그아웃시_그_세션의_RefreshToken을_삭제하고_세션을_블랙리스트에_등록한다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
 		// when
-		authCommandService.logout(userId);
+		authCommandService.logout(userId, authorizationHeader);
 
-		// then
-		org.mockito.Mockito.verify(refreshTokenRepository).deleteByUserIdOrThrow(userId);
-	}
-
-	@Test
-	void 정상_로그아웃시_Access_Token_무효화_시각도_기록한다() {
-		// given
-		UUID userId = UUID.randomUUID();
-
-		// when
-		authCommandService.logout(userId);
-
-		// then
-		org.mockito.Mockito.verify(userInvalidationRepository)
-				.invalidate(org.mockito.Mockito.eq(userId), any(java.time.Instant.class));
+		// then: 로그아웃을 요청한 기기의 세션만 끝난다(다른 기기 세션은 건드리지 않음)
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.blacklistSessionOrThrow(userId, sessionId, Duration.ofSeconds(3600L));
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
 	}
 
 	/**
 	 * 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태 재검증으로
-	 * 방어가 안 된다 — Redis 삭제 실패를 성공으로 위장하면 안 되므로 예외가 그대로 올라와야 한다.
+	 * 방어가 안 된다 — Redis 실패를 성공으로 위장하면 안 되므로 예외가 그대로 올라와야 한다.
 	 */
 	@Test
 	void Redis_장애로_RefreshToken_삭제가_실패하면_로그아웃도_실패한다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
-				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+				.when(refreshTokenRepository).deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
 
 		// when & then
-		assertThatThrownBy(() -> authCommandService.logout(userId))
+		assertThatThrownBy(() -> authCommandService.logout(userId, authorizationHeader))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
 	/**
-	 * Access Token 무효화는 Redis가 아니라 DB 아웃박스에 기록되므로, 뒤이은 Refresh Token
-	 * 삭제가 Redis 장애로 실패해도 이 기록 자체는 이미 남아 있어야 한다(호출까지는 됐는지 확인).
-	 * 실제로 그 기록이 롤백되지 않고 커밋까지 되는지는 @Transactional(noRollbackFor=...)에
-	 * 의존하는 부분이라 이 단위 테스트로는 못 보고, 실제 DB로 검증해야 한다.
+	 * 세션 블랙리스트 등록을 Refresh Token 삭제보다 먼저 하므로, 뒤이은 삭제가 Redis 장애로
+	 * 실패해도 블랙리스트 등록 자체는 이미 끝나 있어야 한다 — 그래야 삭제가 실패해서 이 refresh
+	 * token으로 재발급을 한 번 더 받아내더라도, 같은 sessionId를 물려받은 새 Access Token까지
+	 * Gateway에서 그대로 막힌다.
 	 */
 	@Test
-	void Redis_장애로_RefreshToken_삭제가_실패해도_무효화_기록_시도는_이미_끝난_뒤다() {
+	void Redis_장애로_RefreshToken_삭제가_실패해도_세션_블랙리스트_등록_시도는_이미_끝난_뒤다() {
 		// given
 		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
-				.when(refreshTokenRepository).deleteByUserIdOrThrow(userId);
+				.when(refreshTokenRepository).deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
 
 		// when
-		assertThatThrownBy(() -> authCommandService.logout(userId))
+		assertThatThrownBy(() -> authCommandService.logout(userId, authorizationHeader))
 				.isInstanceOf(IllegalStateException.class);
 
 		// then
-		org.mockito.Mockito.verify(userInvalidationRepository)
-				.invalidate(org.mockito.Mockito.eq(userId), any(java.time.Instant.class));
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.blacklistSessionOrThrow(userId, sessionId, Duration.ofSeconds(3600L));
 	}
 
 	private User createApprovedUser(String username, String encodedPassword, Role role) {

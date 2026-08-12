@@ -51,12 +51,16 @@ class ProductQueryServiceTest {
         void getProduct_success() {
             // Given
             UUID productId = UUID.randomUUID();
+            UUID callerId = UUID.randomUUID();
 
             Product product = mock(Product.class);
             given(product.getId()).willReturn(productId);
 
             ProductGetQuery productGetQuery =
-                    new ProductGetQuery(productId);
+                    new ProductGetQuery(
+                            callerId,
+                            productId
+                    );
 
             given(productQueryRepository.findById(productId))
                     .willReturn(Optional.of(product));
@@ -78,10 +82,14 @@ class ProductQueryServiceTest {
         @DisplayName("존재하지 않는 상품을 조회하면 PRODUCT_NOT_FOUND 예외가 발생한다.")
         void getProduct_fail_productNotFound() {
             // Given
+            UUID callerId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
 
             ProductGetQuery productGetQuery =
-                    new ProductGetQuery(productId);
+                    new ProductGetQuery(
+                            callerId,
+                            productId
+                    );
 
             given(productQueryRepository.findById(productId))
                     .willReturn(Optional.empty());
@@ -118,9 +126,11 @@ class ProductQueryServiceTest {
                     "createdAt"
             );
 
+            UUID callerId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
                     page,
                     size,
                     "createdAt,desc",
@@ -199,7 +209,10 @@ class ProductQueryServiceTest {
             // Given
             Integer page = -1;
 
+            UUID callerId = UUID.randomUUID();
+
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
                     page,
                     10,
                     "createdAt,desc",
@@ -248,7 +261,10 @@ class ProductQueryServiceTest {
                     "createdAt"
             );
 
+            UUID callerId = UUID.randomUUID();
+
             ProductSearchQuery command = new ProductSearchQuery(
+                    callerId,
                     page,
                     size,
                     "createdAt,desc",
@@ -274,7 +290,7 @@ class ProductQueryServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue(
                             "errorCode",
-                            ErrorCode.PRODUCT_SEARCH_INVALID_PRICE
+                            ErrorCode.PRODUCT_INVALID_SEARCH_PRICE
                     );
 
             verify(pageValidator)
