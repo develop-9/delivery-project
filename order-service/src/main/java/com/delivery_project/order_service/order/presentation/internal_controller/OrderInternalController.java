@@ -19,10 +19,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * 주문 내부 API. slack-service 의 AI 파트가 FeignClient 로 호출한다.
+ * 주문 내부 API. Slack/AI/Delivery Service 가 FeignClient 로 호출한다.
  *
  * <p>AI 가 최종 발송 시한({@code p_ai_histories.final_dispatch_deadline})을 산출하려면
  * 무엇을 몇 개 주문했는지가 필요하다. <b>시한 자체는 AI 가 계산하는 값이라 order 가 넘기지 않는다.</b>
@@ -40,18 +42,24 @@ public class OrderInternalController {
 	private final OrderCommandService orderCommandService;
 
 	@Operation(summary = "주문 상세 조회",
-			description = "AI 발송 시한 산출에 필요한 주문 정보를 반환한다. "
-					+ "공급·수령 업체, 요청사항, 주문 상품(상품 ID·수량)만 담고 상태·감사 필드는 내보내지 않는다.")
+			description = "AI 발송 시한 산출 등에 필요한 주문 정보를 반환한다. "
+					+ "상품명·업체명·출발/도착 허브ID는 항상 채워지고, include=requester일 때만 "
+					+ "요청자명을 추가로 조회한다(조회 실패 시에도 200을 유지하고 requesterName은 null).")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "조회 성공"),
 			@ApiResponse(responseCode = "404", description = "주문 없음 · 삭제됨")
 	})
 	@GetMapping("/{orderId}")
 	public ResponseEntity<SuccessResponse<OrderInternalDetailResponse>> getOrder(
-			@PathVariable UUID orderId
+			@PathVariable UUID orderId,
+			@RequestParam(required = false) String include
 	) {
+		Set<String> includeOptions = include == null || include.isBlank()
+				? Set.of()
+				: Set.copyOf(Arrays.asList(include.split(",")));
+
 		OrderInternalDetailResponse response = OrderInternalDetailResponse.from(
-				orderQueryService.getOrderForInternal(orderId));
+				orderQueryService.getOrderForInternal(orderId, includeOptions));
 		return ResponseEntity.ok(SuccessResponse.success(response));
 	}
 
