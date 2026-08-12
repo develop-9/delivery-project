@@ -79,6 +79,15 @@ public class RouteConfig {
 				.build();
 	}
 
+	@Bean
+	public RouteLocator slackServiceRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("slack-service", r -> r
+						.path("/api/v1/slack-messages/**", "/api/v1/ai-histories/**")
+						.uri("lb://SLACK-SERVICE"))
+				.build();
+	}
+
 	/**
 	 * 서비스별 Swagger 문서(/v3/api-docs)를 Gateway가 한곳(/swagger-ui.html)에서 모아 보여주기
 	 * 위한 프록시 라우트. {@code application.yaml}의 springdoc.swagger-ui.urls가 여기 등록된
