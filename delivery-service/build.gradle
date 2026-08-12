@@ -53,6 +53,9 @@ dependencies {
     // Monitoring
     implementation 'org.springframework.boot:spring-boot-starter-zipkin'
 
+    // swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
