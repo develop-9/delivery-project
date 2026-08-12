@@ -1,0 +1,154 @@
+services:
+
+  # Eureka Server
+  eureka-server:
+    image: ghcr.io/develop-9/delivery-project/eureka-server:latest
+
+    container_name: eureka-server
+
+    environment:
+      ZIPKIN_HOST: zipkin
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - delivery-network
+
+
+  # API Gateway
+  api-gateway:
+    image: ghcr.io/develop-9/delivery-project/api-gateway:latest
+
+    container_name: api-gateway
+
+    env_file:
+      - ../.env
+
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+      REDIS_HOST: redis
+
+    # 외부 요청의 단일 진입점
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  postgres:
+    image: postgres:16
+
+    container_name: postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+  redis:
+    image: redis:7-alpine
+
+    container_name: redis
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+
+    container_name: rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - delivery-network
+
+
+  zipkin:
+    image: openzipkin/zipkin:3
+
+    container_name: zipkin
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+
+
+networks:
+  delivery-network:
+    name: delivery-network
+    driver: bridge
