@@ -139,6 +139,46 @@ services:
     networks:
       - delivery-network
 
+  order-service:
+    build:
+      context: ..
+      dockerfile: order-service/Dockerfile
+      args:
+        JAR_FILE: order-service/build/libs/*.jar
+
+    env_file:
+      - ../.env
+
+    # env_file 보다 우선한다. 루트 .env 는 호스트 실행 기준 값(localhost·POSTGRES_PORT 등)을
+    # 담고 있어 그대로 쓰면 컨테이너 안에서 어긋난다. 컨테이너 기준 값으로 덮어쓴다.
+    #
+    # POSTGRES_DB 는 여기서 덮어쓰지 않는다. postgres 컨테이너가 만드는 DB 는
+    # 루트 .env 의 POSTGRES_DB 하나뿐이다 (docker-compose-infra.yaml).
+    # 서비스를 가르는 것은 application.yaml 의 default_schema(order_schema) 다.
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: order-service
+
+    ports:
+      - "9004:9004"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9004/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
 
 networks:
   delivery-network:
