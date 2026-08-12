@@ -15,6 +15,7 @@ services:
       # DB는 전 서비스 공용. 서비스 구분은 application.yaml의 default_schema가 한다.
       POSTGRES_DB: delivery_db
       REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
       ZIPKIN_HOST: zipkin
 
@@ -88,6 +89,8 @@ services:
       POSTGRES_DB: delivery_db
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
       ZIPKIN_HOST: zipkin
 
