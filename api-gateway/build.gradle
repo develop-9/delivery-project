@@ -48,6 +48,12 @@ dependencyManagement {
 	}
 }
 
+// 부트 실행 jar 만 남긴다. plain jar 가 함께 생기면
+// Dockerfile 의 build/libs/*.jar 글롭이 2개를 잡아 COPY 가 실패한다.
+tasks.named('jar') {
+	enabled = false
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 }
