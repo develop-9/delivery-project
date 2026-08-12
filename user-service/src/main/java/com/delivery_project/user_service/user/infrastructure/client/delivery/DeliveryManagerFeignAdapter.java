@@ -26,6 +26,11 @@ public class DeliveryManagerFeignAdapter implements DeliveryManagerPort {
 		} catch (FeignException.NotFound e) {
 			// 배송담당자 레코드가 없거나 이미 삭제됨 — 멱등 삭제로 취급.
 			log.info("[User] 연동할 배송담당자 레코드 없음 userId={}", userId);
+		} catch (FeignException.Conflict e) {
+			// 진행 중인 배송에 배정된 상태 — 서비스 장애가 아니라 삭제를 막아야 하는 정상적인
+			// 비즈니스 규칙 위반이므로, DELIVERY_SERVICE_UNAVAILABLE(503)과 구분해서 던진다.
+			log.info("[User] 진행 중인 배송이 있어 배송담당자 삭제 불가 userId={}", userId);
+			throw new BusinessException(ErrorCode.DELIVERY_MANAGER_HAS_ACTIVE_DELIVERY);
 		} catch (FeignException e) {
 			log.warn("[User] Delivery Service 연동 실패 userId={}", userId, e);
 			throw new BusinessException(ErrorCode.DELIVERY_SERVICE_UNAVAILABLE);

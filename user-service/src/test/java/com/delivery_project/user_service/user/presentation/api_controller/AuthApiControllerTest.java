@@ -10,10 +10,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
 import com.delivery_project.user_service.user.domain.entity.Role;
 import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
 import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
@@ -23,6 +26,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
+/**
+ * HubPort/CompanyPort는 실제 Hub/Company Service를 이 테스트 환경에서 띄우지 않으므로
+ * @MockitoBean으로 대체한다 — 기본 동작(예외 없이 통과)이 "허브/업체가 존재한다"는 뜻이라,
+ * hubId/companyId 검증 자체를 다루는 게 아닌 나머지 회원가입/로그인/로그아웃 테스트에 영향이 없다.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -45,6 +53,12 @@ class AuthApiControllerTest {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@MockitoBean
+	private HubPort hubPort;
+
+	@MockitoBean
+	private CompanyPort companyPort;
 
 	@Test
 	void 회원가입_성공시_201과_PENDING_상태를_반환한다() {
@@ -148,6 +162,36 @@ class AuthApiControllerTest {
 				.hasStatus(400)
 				.bodyJson()
 				.extractingPath("$.error.errorCode").isEqualTo("INVALID_INPUT_VALUE");
+	}
+
+	@Test
+	void 존재하지_않는_hubId로_가입하면_404를_반환한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		org.mockito.Mockito.doThrow(new com.delivery_project.user_service.global.exception.BusinessException(
+						com.delivery_project.user_service.global.exception.ErrorCode.HUB_NOT_FOUND))
+				.when(hubPort).validateExists(hubId);
+
+		String body = """
+				{
+				  "username": "hubmgr2",
+				  "password": "Abcd1234!",
+				  "name": "허브담당자2",
+				  "slackId": "U1111111112",
+				  "role": "HUB_MANAGER",
+				  "hubId": "%s"
+				}
+				""".formatted(hubId);
+
+		// when & then
+		assertThat(mvc.post().uri("/api/v1/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+				.hasStatus(404)
+				.bodyJson()
+				.extractingPath("$.error.errorCode").isEqualTo("HUB_NOT_FOUND");
+
+		assertThat(userCommandRepository.existsByUsername("hubmgr2")).isFalse();
 	}
 
 	@Test
@@ -309,7 +353,7 @@ class AuthApiControllerTest {
 				""".formatted(UUID.randomUUID());
 
 		// when & then: username/slack_id의 유일성은 삭제되지 않은 행에만 적용되는 부분 유니크
-		// 인덱스(UserTableIndexInitializer)라, 삭제된 사용자의 username 재사용은 더 이상 막히지 않는다.
+		// 인덱스(UserTableSchemaInitializer)라, 삭제된 사용자의 username 재사용은 더 이상 막히지 않는다.
 		assertThat(mvc.post().uri("/api/v1/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(reSignupBody))

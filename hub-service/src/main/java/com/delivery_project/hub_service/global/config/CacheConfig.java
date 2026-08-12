@@ -80,7 +80,7 @@ public class CacheConfig implements CachingConfigurer {
 	 *
 	 * <p><b>걸리는 범위는 {@code CacheInterceptor} 를 타는 호출, 즉 {@code @Cacheable} 같은 애너테이션
 	 * 경로뿐이다.</b> {@code CacheManager} 에서 꺼낸 {@code Cache} 를 직접 부르는 곳은 이 핸들러를
-	 * 거치지 않으므로 각자 예외를 처리해야 한다 ({@code HubCacheEvictor#clear}).
+	 * 거치지 않으므로 각자 예외를 처리해야 한다 ({@code HubCacheAdapter#clear}).
 	 */
 	@Override
 	public CacheErrorHandler errorHandler() {

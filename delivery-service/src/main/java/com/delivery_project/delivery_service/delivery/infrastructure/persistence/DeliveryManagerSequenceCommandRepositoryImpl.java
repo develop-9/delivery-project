@@ -31,4 +31,15 @@ public class DeliveryManagerSequenceCommandRepositoryImpl
     ){
         return springDataRepository.findForUpdate(managerType, hubId);
     }
+
+    @Override
+    public void createIfAbsent(
+            DeliveryManagerType managerType,
+            UUID hubId
+    ) {
+        springDataRepository.createIfAbsent(
+                managerType.name(),
+                hubId
+        );
+    }
 }

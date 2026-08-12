@@ -30,6 +30,18 @@ public class DeliveryManagerQueryRepositoryImpl
     }
 
     @Override
+    public Page<DeliveryManager> findAllByHubId(
+            UUID hubId,
+            Pageable pageable
+    ){
+        return springDataRepository
+                .findAllByHubIdAndDeletedAtIsNull(
+                        hubId,
+                        pageable
+                );
+    }
+
+    @Override
     public Optional<DeliveryManager> findByUserId(UUID userId) {
         return springDataRepository
                 .findByUserIdAndDeletedAtIsNull(userId);

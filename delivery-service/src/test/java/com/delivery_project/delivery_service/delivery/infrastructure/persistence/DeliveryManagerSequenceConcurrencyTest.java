@@ -2,6 +2,7 @@ package com.delivery_project.delivery_service.delivery.infrastructure.persistenc
 
 import com.delivery_project.delivery_service.delivery.domain.entity.DeliveryManagerSequence;
 import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryManagerType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.cloud.discovery.enabled=false",
         "management.tracing.enabled=false",
         "system.id=00000000-0000-0000-0000-000000000001",
+
+        "spring.flyway.enabled=false",
+
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.default_schema=delivery_schema"
 })
@@ -66,6 +70,9 @@ class DeliveryManagerSequenceConcurrencyTest {
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     @DisplayName("같은 DeliveryManagerSequence를 동시에 조회하면 PESSIMISTIC_WRITE 락으로 직렬화된다")
@@ -199,6 +206,141 @@ class DeliveryManagerSequenceConcurrencyTest {
 
         } finally {
             releaseFirstTransaction.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("Sequence가 없는 최초 상태에서 동시 요청이 들어와도 하나의 Sequence row에서 서로 다른 순번을 발급한다")
+    void concurrentInitialSequenceCreationIssuesUniqueSequences()
+            throws Exception {
+
+        jdbcTemplate.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_delivery_manager_sequence_scope
+                                                         ON delivery_schema.p_delivery_manager_sequences
+                                                         (manager_type, hub_id)
+                                                         NULLS NOT DISTINCT;
+            """);
+
+        // given
+        UUID hubId = UUID.randomUUID();
+        DeliveryManagerType type =
+                DeliveryManagerType.COMPANY_DELIVERY;
+
+        TransactionTemplate transactionTemplate =
+                new TransactionTemplate(
+                        transactionManager
+                );
+
+        ExecutorService executor =
+                Executors.newFixedThreadPool(2);
+
+        CountDownLatch ready =
+                new CountDownLatch(2);
+
+        CountDownLatch start =
+                new CountDownLatch(1);
+
+        try {
+            Callable<Integer> task = () -> {
+
+                ready.countDown();
+
+                if (!start.await(
+                        3,
+                        TimeUnit.SECONDS
+                )) {
+                    throw new IllegalStateException(
+                            "동시성 테스트 시작 대기 시간 초과"
+                    );
+                }
+
+                return transactionTemplate.execute(
+                        status -> {
+
+                            /*
+                             * 최초 요청이면 INSERT,
+                             * 이미 다른 요청이 생성했다면
+                             * ON CONFLICT DO NOTHING
+                             */
+                            repository.createIfAbsent(
+                                    type.name(),
+                                    hubId
+                            );
+
+                            /*
+                             * 생성된 하나의 Sequence row를
+                             * PESSIMISTIC_WRITE로 직렬화
+                             */
+                            DeliveryManagerSequence sequence =
+                                    repository.findForUpdate(
+                                            type,
+                                            hubId
+                                    ).orElseThrow();
+
+                            return sequence.issueNextSequence();
+                        }
+                );
+            };
+
+            Future<Integer> firstFuture =
+                    executor.submit(task);
+
+            Future<Integer> secondFuture =
+                    executor.submit(task);
+
+            // 두 Thread가 모두 준비될 때까지 기다림
+            assertTrue(
+                    ready.await(
+                            3,
+                            TimeUnit.SECONDS
+                    )
+            );
+
+            // 동시에 출발
+            start.countDown();
+
+            Integer firstSequence =
+                    firstFuture.get(
+                            5,
+                            TimeUnit.SECONDS
+                    );
+
+            Integer secondSequence =
+                    secondFuture.get(
+                            5,
+                            TimeUnit.SECONDS
+                    );
+
+            // then
+            assertNotEquals(
+                    firstSequence,
+                    secondSequence
+            );
+
+            assertTrue(
+                    (firstSequence == 0 && secondSequence == 1)
+                            || (firstSequence == 1 && secondSequence == 0)
+            );
+
+            DeliveryManagerSequence savedSequence =
+                    transactionTemplate.execute(
+                            status ->
+                                    repository.findForUpdate(
+                                            type,
+                                            hubId
+                                    ).orElseThrow()
+                    );
+
+            assertNotNull(savedSequence);
+
+            assertEquals(
+                    2,
+                    savedSequence.getNextSequence()
+            );
+
+        } finally {
+            start.countDown();
             executor.shutdownNow();
         }
     }

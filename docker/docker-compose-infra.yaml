@@ -120,6 +120,36 @@ services:
       - delivery-network
 
 
+  # Slack Service(비동기 메시지 발송)와 User Service(Redis 무효화 아웃박스 재시도)가 쓴다.
+  # 코드(spring-boot-starter-amqp)엔 이미 있었는데 공용 인프라 파일엔 빠져 있던 것을 추가함.
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      # 관리 UI(브라우저에서 큐 상태 확인용)
+      - "15672:15672"
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - delivery-network
+
+
   zipkin:
     image: openzipkin/zipkin:3
     container_name: zipkin
@@ -141,6 +171,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  rabbitmq-data:
 
 
 networks:

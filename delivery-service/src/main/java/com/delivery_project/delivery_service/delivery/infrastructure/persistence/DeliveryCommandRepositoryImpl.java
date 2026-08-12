@@ -1,10 +1,12 @@
 package com.delivery_project.delivery_service.delivery.infrastructure.persistence;
 
 import com.delivery_project.delivery_service.delivery.domain.entity.Delivery;
+import com.delivery_project.delivery_service.delivery.domain.enums.DeliveryStatus;
 import com.delivery_project.delivery_service.delivery.domain.repository.DeliveryCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,5 +32,19 @@ public class DeliveryCommandRepositoryImpl implements DeliveryCommandRepository 
     public Optional<Delivery> findById(UUID deliveryId){
         return springDataDeliveryRepository
                 .findByIdAndDeletedAtIsNull(deliveryId);
+    }
+
+    @Override
+    public boolean existsActiveByCompanyDeliveryManagerId(
+            UUID managerId
+    ) {
+        return springDataDeliveryRepository
+                .existsByCompanyDeliveryManagerIdAndStatusInAndDeletedAtIsNull(
+                        managerId,
+                        List.of(
+                                DeliveryStatus.HUB_ARRIVED,
+                                DeliveryStatus.DELIVERING
+                        )
+                );
     }
 }
