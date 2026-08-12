@@ -36,7 +36,9 @@ public class GlobalExceptionHandler {
                 exception.getErrorCode()
         );
 
-        return createResponse(exception.getErrorCode());
+        return createResponse(
+                exception.getErrorCode()
+        );
     }
 
     @ExceptionHandler(NoSuchElementException.class)
@@ -48,7 +50,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.NOT_FOUND);
+        return createResponse(
+                ErrorCode.NOT_FOUND
+        );
     }
 
     @ExceptionHandler(IllegalStateException.class)
@@ -60,7 +64,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_STATE);
+        return createResponse(
+                ErrorCode.INVALID_STATE
+        );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -72,7 +78,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+        return createResponse(
+                ErrorCode.INVALID_INPUT_VALUE
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -84,22 +92,32 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+        return createResponse(
+                ErrorCode.INVALID_INPUT_VALUE
+        );
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
     public ResponseEntity<ErrorResponse> handleInvalidRequestException(
             Exception exception
     ) {
         log.warn(
-                "[InvalidRequest] {}",
+                "[InvalidRequestException] {}",
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.INVALID_INPUT_VALUE);
+        return createResponse(
+                ErrorCode.INVALID_INPUT_VALUE
+        );
     }
 
-    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    @ExceptionHandler({
+            AccessDeniedException.class,
+            AuthorizationDeniedException.class
+    })
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(
             Exception exception
     ) {
@@ -108,7 +126,9 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.AUTH_FORBIDDEN);
+        return createResponse(
+                ErrorCode.AUTH_FORBIDDEN
+        );
     }
 
     // HTTP 요청은 필터체인이 먼저 401을 내므로 여기까지 오지 않는다.
@@ -122,27 +142,36 @@ public class GlobalExceptionHandler {
                 exception.getMessage()
         );
 
-        return createResponse(ErrorCode.AUTH_UNAUTHORIZED);
+        return createResponse(
+                ErrorCode.AUTH_UNAUTHORIZED
+        );
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
             NoResourceFoundException exception
     ) {
-        log.info(
+        log.warn(
                 "[NoResourceFoundException] path={}",
                 exception.getResourcePath()
         );
 
-        return createResponse(ErrorCode.NOT_FOUND);
+        return createResponse(
+                ErrorCode.NOT_FOUND
+        );
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception exception
     ) {
-        log.error("[Exception]", exception);
+        log.error(
+                "[Exception]",
+                exception
+        );
 
-        return createResponse(ErrorCode.INTERNAL_SERVER_ERROR);
+        return createResponse(
+                ErrorCode.INTERNAL_SERVER_ERROR
+        );
     }
 }
