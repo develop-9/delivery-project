@@ -27,7 +27,7 @@ import com.delivery_project.hub_service.hub.application.command.HubRouteUpdateCo
 import com.delivery_project.hub_service.hub.application.result.HubRouteCreateResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteDeleteResult;
 import com.delivery_project.hub_service.hub.application.result.HubRouteUpdateResult;
-import com.delivery_project.hub_service.hub.application.support.HubCacheEvictor;
+import com.delivery_project.hub_service.hub.application.port.HubCachePort;
 import com.delivery_project.hub_service.hub.domain.entity.Hub;
 import com.delivery_project.hub_service.hub.domain.entity.HubRoute;
 import com.delivery_project.hub_service.hub.domain.repository.HubCommandRepository;
@@ -55,7 +55,7 @@ class HubRouteCommandServiceTest {
 	private HubCommandRepository hubCommandRepository;
 
 	@Mock
-	private HubCacheEvictor HubCacheEvictor;
+	private HubCachePort hubCachePort;
 
 	@InjectMocks
 	private HubRouteCommandService hubRouteCommandService;
@@ -85,7 +85,7 @@ class HubRouteCommandServiceTest {
 			assertThat(result.arrivalHubName()).isEqualTo("경기 남부 센터");
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
 			assertThat(result.durationMin()).isEqualTo(70);
-			verify(HubCacheEvictor).evictAllHubPaths();
+			verify(hubCachePort).evictAllHubPaths();
 		}
 
 		@Test
@@ -193,7 +193,7 @@ class HubRouteCommandServiceTest {
 			assertThat(result.distanceKm()).isEqualByComparingTo("52.30");
 			assertThat(result.durationMin()).isEqualTo(90);
 			assertThat(hubRoute.getDistanceKm()).isEqualByComparingTo("52.30");
-			verify(HubCacheEvictor).evictAllHubPaths();
+			verify(hubCachePort).evictAllHubPaths();
 		}
 
 		@Test
@@ -253,7 +253,7 @@ class HubRouteCommandServiceTest {
 			// then
 			assertThat(result.affectedHubPairCount()).isEqualTo(25);
 			assertThat(hubRoute.isDeleted()).isTrue();
-			verify(HubCacheEvictor).evictAllHubPaths();
+			verify(hubCachePort).evictAllHubPaths();
 		}
 
 		@Test
