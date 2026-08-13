@@ -5,9 +5,13 @@ services:
     image: ghcr.io/develop-9/delivery-project/eureka-server:latest
 
     container_name: eureka-server
+    restart: unless-stopped
 
     environment:
       ZIPKIN_HOST: zipkin
+
+    ports:
+      - "8761:8761"
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
@@ -24,16 +28,16 @@ services:
     image: ghcr.io/develop-9/delivery-project/api-gateway:latest
 
     container_name: api-gateway
+    restart: unless-stopped
 
     env_file:
-      - ../.env
+      - .env
 
     environment:
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
       ZIPKIN_HOST: zipkin
       REDIS_HOST: redis
 
-    # 외부 요청의 단일 진입점
     ports:
       - "8080:8080"
 
@@ -65,6 +69,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
+    ports:
+      - "5432:5432"
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -91,6 +98,9 @@ services:
     volumes:
       - redis-data:/data
 
+    ports:
+      - "6379:6379"
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -115,6 +125,11 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
 
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      # 관리 UI(브라우저에서 큐 상태 확인용)
+      - "15672:15672"
+
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -130,6 +145,9 @@ services:
     image: openzipkin/zipkin:3
 
     container_name: zipkin
+
+    ports:
+      - "9411:9411"
 
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
