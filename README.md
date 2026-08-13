@@ -215,6 +215,33 @@ application
 
 ---
 
+# 🚀 실행 방법
+
+## 로컬 실행
+
+```bash
+# 1. 환경 변수 설정
+cp .env.example .env
+# .env를 열어 POSTGRES_*, GEMINI_API_KEY, SLACK_BOT_TOKEN 등 값 입력
+
+# 2. 공통 인프라 실행 (PostgreSQL, Redis, RabbitMQ, Eureka, Gateway, Zipkin)
+docker compose -f docker/docker-compose-infra.yaml up -d
+
+# 3. 마이크로서비스 실행 (User/Delivery/Company/Slack/Hub/Order)
+docker compose -f docker/docker-compose-service.yaml up -d
+```
+
+실행 후 API Gateway(`http://localhost:8080`)를 통해 모든 서비스에 접근할 수 있습니다.
+
+## Swagger API 문서
+
+Gateway에서 6개 서비스의 API 문서를 한 화면에 모아서 볼 수 있습니다.
+
+- 로컬: http://localhost:8080/swagger-ui/index.html
+- 배포: http://15.164.208.41:8080/swagger-ui/index.html
+
+---
+
 # 🛠 기술 스택
 
 ## Backend
