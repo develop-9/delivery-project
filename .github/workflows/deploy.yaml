@@ -731,7 +731,7 @@ jobs:
               order-service
             )
               
-            TIMEOUT=120
+            TIMEOUT=180
             INTERVAL=5
             
             for SERVICE in "${SERVICES[@]}"; do
