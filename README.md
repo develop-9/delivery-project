@@ -215,6 +215,12 @@ application
 
 ---
 
+# 🗂 ERD
+
+![ERD](docs/images/erd.png)
+
+---
+
 # 🚀 실행 방법
 
 ## 로컬 실행
