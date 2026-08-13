@@ -34,6 +34,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-zipkin'
 	//JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	//Flyway (스키마는 db/migration 이 소유한다. prod 는 ddl-auto: validate 라 테이블을 만들지 않는다)
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 	// validate
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	//spring web

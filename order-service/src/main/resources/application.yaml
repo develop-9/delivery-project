@@ -27,6 +27,21 @@ spring:
     password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
+  # 스키마는 Flyway 가 소유한다. 프로파일과 무관하게 항상 돈다.
+  # prod 는 ddl-auto: validate 라 테이블을 만들지 않는데, 배포 경로 어디에도 테이블을 만드는
+  # 주체가 없어서(docker/postgres/init.sql 은 CREATE SCHEMA 만 한다) EC2 새 DB 에서
+  # validate 실패로 무한 재기동에 빠졌다. 그 구멍을 메우는 설정이다.
+  # Hibernate 보다 먼저 실행된다(Boot 이 DataSource 초기화 시점에 돌린다).
+  flyway:
+    enabled: true
+    # 스키마가 없으면 Flyway 가 만든다. init.sql 에 의존하지 않는다.
+    schemas: order_schema
+    locations: classpath:db/migration
+    # 이미 ddl-auto 로 테이블이 만들어진 기존 DB 에는 baseline 을 찍고 V1 부터 적용한다.
+    # V1·V2 가 전부 멱등하게(IF NOT EXISTS / DROP→ADD) 쓰여 있어 안전하다.
+    baseline-on-migrate: true
+    baseline-version: 0
+
   # ddl-auto 는 프로파일별로 다르므로 여기에 두지 않는다.
   # 프로파일 없이 뜨면 스키마를 건드리지 않는 쪽(Hibernate 기본값)으로 동작한다.
   jpa:
@@ -108,31 +123,25 @@ spring:
     activate:
       on-profile: local
 
-  # ddl-auto 가 테이블을 만든 뒤 db/schema.sql 이 제약을 덧붙인다.
-  # 부분 인덱스·CHECK 는 ddl-auto 가 만들지 못해 이 스크립트가 없으면 안전망이 비는 상태가 된다.
-  # defer-datasource-initialization 이 있어야 Hibernate 다음에 실행된다 (기본은 그 전).
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
-
+  # 테이블은 Flyway 가 이미 만들어 둔 뒤다. db/schema.sql 은 V2 마이그레이션으로 옮겼고,
+  # 스키마 생성도 Flyway(schemas: order_schema)가 하므로 hbm2ddl.create_namespaces 도 뺐다.
+  #
+  # ⚠️ ddl-auto 를 update 로 남긴 것은 delivery-service 와 맞춘 것이고, 개발 중 엔티티 변경이
+  #    바로 반영되게 하려는 것이다. 대신 그 변경은 로컬에만 조용히 반영되고 마이그레이션에는
+  #    남지 않으므로, 그대로 배포하면 prod 의 validate 가 튕긴다.
+  #    엔티티 컬럼을 바꿨다면 db/migration 에 V3, V4... 를 반드시 같이 추가한다.
   jpa:
-    defer-datasource-initialization: true
     show-sql: true
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         format_sql: true
-        # docker/postgres/init.sql 이 스키마를 미리 만들어 두는 것이 원칙이지만,
-        # 볼륨이 이미 있으면 init.sql 은 다시 실행되지 않는다.
-        # 로컬에서만 Hibernate 가 스키마를 만들도록 열어 둔다.
-        hbm2ddl:
-          create_namespaces: true
 
 ---
-# 배포. 스키마는 별도 DDL 로 관리하고 앱은 검증만 한다.
-# 부분 인덱스·CHECK 제약은 ddl-auto 가 만들지 못하기 때문이다.
+# 배포. 스키마는 Flyway(db/migration)가 만들고 앱은 검증만 한다.
+# ddl-auto 가 운영 스키마를 건드리지 못하게 하고, 부분 인덱스·CHECK 제약처럼
+# ddl-auto 가 만들지 못하는 것까지 마이그레이션이 책임진다.
 spring:
   config:
     activate:
