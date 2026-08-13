@@ -32,6 +32,25 @@ spring:
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
 
+# 서비스별 /v3/api-docs를 한 Swagger UI(/swagger-ui.html)에서 드롭다운으로 모아 보여준다.
+# url은 RouteConfig.apiDocsRoutes()가 등록한 프록시 경로 — 서비스로 직접 안 가고 Gateway를
+# 거치게 해서, 각 서비스에 CORS를 따로 설정하지 않아도 브라우저에서 같은 origin으로 보이게 한다.
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service
+        url: /docs/user-service/v3/api-docs
+      - name: Company Service
+        url: /docs/company-service/v3/api-docs
+      - name: Hub Service
+        url: /docs/hub-service/v3/api-docs
+      - name: Slack Service
+        url: /docs/slack-service/v3/api-docs
+      - name: Delivery Service
+        url: /docs/delivery-service/v3/api-docs
+      - name: Order Service
+        url: /docs/order-service/v3/api-docs
+
 # Redis 장애 시 매 요청마다 타임아웃(2초)을 기다리지 않고, 임계치를 넘으면 즉시 fail-open
 # 처리한다(User Service와 동일 설정).
 resilience4j:

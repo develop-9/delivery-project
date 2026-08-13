@@ -7,6 +7,9 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.delivery_project.user_service.global.exception.BusinessException;
+import com.delivery_project.user_service.global.exception.ErrorCode;
+
 class UserTest {
 
 	@Test
@@ -25,14 +28,16 @@ class UserTest {
 	}
 
 	@Test
-	void 이미_처리된_사용자를_다시_승인하려하면_IllegalStateException이_발생한다() {
+	void 이미_처리된_사용자를_다시_승인하려하면_USER_ALREADY_PROCESSED_예외가_발생한다() {
 		// given
 		User user = createUser();
 		user.approve(UUID.randomUUID());
 
 		// when & then
 		assertThatThrownBy(() -> user.approve(UUID.randomUUID()))
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
 	}
 
 	@Test
@@ -73,14 +78,16 @@ class UserTest {
 	}
 
 	@Test
-	void 이미_처리된_사용자를_다시_거절하려하면_IllegalStateException이_발생한다() {
+	void 이미_처리된_사용자를_다시_거절하려하면_USER_ALREADY_PROCESSED_예외가_발생한다() {
 		// given
 		User user = createUser();
 		user.reject();
 
 		// when & then
 		assertThatThrownBy(user::reject)
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_ALREADY_PROCESSED);
 	}
 
 	@Test
@@ -129,6 +136,83 @@ class UserTest {
 		// when & then
 		assertThatThrownBy(user::reinstate)
 				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void HUB_MANAGER인데_hubId가_없으면_생성_시점에_BusinessException이_발생한다() {
+		// when & then
+		assertThatThrownBy(() -> User.builder()
+				.username("hub1")
+				.password("encoded-password")
+				.name("허브담당자")
+				.slackId("U0000000001")
+				.role(Role.HUB_MANAGER)
+				.build())
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+	}
+
+	@Test
+	void DELIVERY_MANAGER는_hubId_없이도_생성된다() {
+		// when
+		User user = User.builder()
+				.username("delivery1")
+				.password("encoded-password")
+				.name("배송담당자")
+				.slackId("U0000000002")
+				.role(Role.DELIVERY_MANAGER)
+				.build();
+
+		// then
+		assertThat(user.getHubId()).isNull();
+	}
+
+	@Test
+	void DELIVERY_MANAGER는_hubId와_함께도_생성된다() {
+		// when
+		User user = User.builder()
+				.username("delivery2")
+				.password("encoded-password")
+				.name("배송담당자")
+				.slackId("U0000000005")
+				.role(Role.DELIVERY_MANAGER)
+				.hubId(UUID.randomUUID())
+				.build();
+
+		// then
+		assertThat(user.getHubId()).isNotNull();
+	}
+
+	@Test
+	void COMPANY_MANAGER인데_companyId가_없으면_생성_시점에_BusinessException이_발생한다() {
+		// when & then
+		assertThatThrownBy(() -> User.builder()
+				.username("company1")
+				.password("encoded-password")
+				.name("업체담당자")
+				.slackId("U0000000003")
+				.role(Role.COMPANY_MANAGER)
+				.build())
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+	}
+
+	@Test
+	void MASTER는_hubId_companyId_없이도_생성된다() {
+		// when
+		User user = User.builder()
+				.username("master1")
+				.password("encoded-password")
+				.name("관리자")
+				.slackId("U0000000004")
+				.role(Role.MASTER)
+				.build();
+
+		// then
+		assertThat(user.getHubId()).isNull();
+		assertThat(user.getCompanyId()).isNull();
 	}
 
 	private User createUser() {

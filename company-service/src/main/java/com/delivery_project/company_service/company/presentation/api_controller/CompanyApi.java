@@ -7,6 +7,7 @@ import com.delivery_project.company_service.company.presentation.response.*;
 import com.delivery_project.company_service.global.response.ErrorResponse;
 import com.delivery_project.company_service.global.response.PageResponse;
 import com.delivery_project.company_service.global.response.SuccessResponse;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -62,6 +64,8 @@ public interface CompanyApi {
             )
     })
     ResponseEntity<SuccessResponse<CompanyCreateResponse>> createCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "업체 생성 요청 정보",
                     required = true,
@@ -113,6 +117,8 @@ public interface CompanyApi {
             )
     })
     ResponseEntity<SuccessResponse<CompanyUpdateResponse>> updateCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "수정할 업체 ID",
                     required = true
@@ -162,6 +168,8 @@ public interface CompanyApi {
             )
     })
     ResponseEntity<SuccessResponse<CompanyDeleteResponse>> deleteCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "삭제할 업체 ID",
                     required = true
@@ -192,6 +200,8 @@ public interface CompanyApi {
             )
     })
     ResponseEntity<SuccessResponse<CompanyGetResponse>> getCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "조회할 업체 ID",
                     required = true
@@ -222,6 +232,8 @@ public interface CompanyApi {
             )
     })
     ResponseEntity<SuccessResponse<PageResponse<CompanySearchDataResponse>>> getAllCompany(
+            @AuthenticationPrincipal JwtPrincipal jwtPrincipal,
+
             @Parameter(
                     description = "조회할 페이지 번호",
                     example = "0",

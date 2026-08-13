@@ -19,12 +19,14 @@ import com.delivery_project.delivery_service.global.exception.BusinessException;
 import com.delivery_project.delivery_service.global.exception.ErrorCode;
 import com.delivery_project.delivery_service.global.security.Role;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryCommandService {
@@ -342,6 +344,22 @@ public class DeliveryCommandService {
         manager.releaseFromDelivery();
 
         deliveryManagerCommandRepository.save(manager); // AVAILABLE
+
+        // 주문 쪽 재고 확정 차감 통보. 배송 완료 자체는 이미 끝난 일이라, 통보가
+        // 실패해도(Order Service 장애 등) 배송 완료 처리를 되돌리지 않는다 —
+        // complete()는 같은 주문에 여러 번 호출돼도 안전하게 설계돼 있어서 나중에
+        // 재시도로 회복 가능하다.
+        try {
+            orderPort.completeOrder(delivery.getOrderId());
+
+        } catch (Exception exception) {
+            log.error(
+                    "배송은 완료됐지만 Order Service 완료 통보에 실패했습니다. deliveryId={}, orderId={}",
+                    delivery.getId(),
+                    delivery.getOrderId(),
+                    exception
+            );
+        }
     }
 
     private void validateStatusUpdatePermission(

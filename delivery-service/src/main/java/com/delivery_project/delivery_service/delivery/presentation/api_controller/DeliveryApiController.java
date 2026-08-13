@@ -28,12 +28,13 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/deliveries")
-public class DeliveryApiController {
+public class DeliveryApiController implements DeliveryApi {
 
     private final DeliveryCommandService deliveryCommandService;
     private final DeliveryQueryService deliveryQueryService;
     private final DeliveryRouteQueryService deliveryRouteQueryService;
 
+    @Override
     @PatchMapping("/{deliveryId}/status")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryStatusUpdateResponse> updateDeliveryStatus(
@@ -53,6 +54,7 @@ public class DeliveryApiController {
         );
     }
 
+    @Override
     @GetMapping("/{deliveryId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryDetailResponse> getDelivery(
@@ -74,6 +76,7 @@ public class DeliveryApiController {
         );
     }
 
+    @Override
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<PageResponse<DeliveryListResponse>> getDeliveries(
@@ -115,6 +118,7 @@ public class DeliveryApiController {
         return SuccessResponse.success(response);
     }
 
+    @Override
     @GetMapping("/{deliveryId}/delivery-routes")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<List<DeliveryRouteDetailResponse>> getDeliveryRoutes(
@@ -140,6 +144,7 @@ public class DeliveryApiController {
         return SuccessResponse.success(response);
     }
 
+    @Override
     @PatchMapping("/{deliveryId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryUpdateResponse> updateDelivery(
@@ -161,6 +166,7 @@ public class DeliveryApiController {
         );
     }
 
+    @Override
     @DeleteMapping("/{deliveryId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryDeleteResponse> deleteDelivery(

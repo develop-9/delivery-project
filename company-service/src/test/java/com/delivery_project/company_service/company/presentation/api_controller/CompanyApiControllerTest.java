@@ -13,6 +13,9 @@ import com.delivery_project.company_service.company.presentation.request.Company
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.JwtPrincipal;
+import com.delivery_project.company_service.global.security.JwtTokenParser;
+import com.delivery_project.company_service.global.security.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,16 +24,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,38 +56,64 @@ class CompanyApiControllerTest {
     @MockitoBean
     private CompanyQueryService companyQueryService;
 
+    @MockitoBean
+    private JwtTokenParser jwtTokenParser;
+
     @Autowired
     private ObjectMapper objectMapper;
 
     @Nested
     @DisplayName("업체 생성 API 테스트")
     class CreateCompany {
+
         @Test
         @DisplayName("업체 생성에 성공한다.")
         void createCompany_success() throws Exception {
-
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID hubId = UUID.randomUUID();
             UUID companyId = UUID.randomUUID();
 
-            CompanyCreateRequest request = new CompanyCreateRequest(
-                    hubId,
-                    CompanyType.PRODUCER,
-                    "테스트 업체",
-                    "서울특별시 강남구"
-            );
+            CompanyCreateRequest request =
+                    new CompanyCreateRequest(
+                            hubId,
+                            CompanyType.PRODUCER,
+                            "테스트 업체",
+                            "서울특별시 강남구"
+                    );
 
             CompanyCreateResult result =
                     CompanyCreateResult.from(companyId);
 
-            when(companyCommandService.createCompany(any(CompanyCreateCommand.class)))
+            when(companyCommandService.createCompany(
+                    any(CompanyCreateCommand.class)
+            ))
                     .thenReturn(result);
 
             // When & Then
             mockMvc.perform(
                             post("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request))
+                                    .content(
+                                            objectMapper.writeValueAsString(request)
+                                    )
                     )
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.companyId")
@@ -94,18 +128,41 @@ class CompanyApiControllerTest {
         @DisplayName("업체명이 비어있으면 업체 생성에 실패한다.")
         void createCompany_fail_whenNameIsBlank() throws Exception {
             // Given
-            CompanyCreateRequest request = new CompanyCreateRequest(
-                    UUID.randomUUID(),
-                    CompanyType.PRODUCER,
-                    "",
-                    "서울특별시 강남구"
-            );
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
+            UUID hubId = UUID.randomUUID();
+
+            CompanyCreateRequest request =
+                    new CompanyCreateRequest(
+                            hubId,
+                            CompanyType.PRODUCER,
+                            "",
+                            "서울특별시 강남구"
+                    );
 
             // When & Then
             mockMvc.perform(
                             post("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request))
+                                    .content(
+                                            objectMapper.writeValueAsString(request)
+                                    )
                     )
                     .andExpect(status().isBadRequest());
 
@@ -123,6 +180,23 @@ class CompanyApiControllerTest {
         void updateCompany_success() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
@@ -143,6 +217,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             put("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request))
                     )
@@ -164,6 +239,23 @@ class CompanyApiControllerTest {
         void updateCompany_fail_whenInvalidRequest() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
 
             CompanyUpdateRequest request = new CompanyUpdateRequest(
@@ -176,6 +268,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             put("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request))
                     )
@@ -193,6 +286,23 @@ class CompanyApiControllerTest {
         void updateCompany_fail_whenCompanyNotFound() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
@@ -212,6 +322,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             put("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request))
                     )
@@ -232,6 +343,23 @@ class CompanyApiControllerTest {
         void deleteCompany_success() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
             Instant deletedAt = Instant.now();
 
@@ -248,6 +376,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             delete("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                     )
                     .andExpect(status().isOk())
                     .andExpect(
@@ -273,6 +402,23 @@ class CompanyApiControllerTest {
         void deleteCompany_fail_whenCompanyNotFound() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
 
             when(companyCommandService.deleteCompany(
@@ -284,6 +430,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             delete("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                     )
                     .andExpect(status().isNotFound());
 
@@ -305,6 +452,23 @@ class CompanyApiControllerTest {
         void getCompany_success() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
 
@@ -323,6 +487,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             get("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                     )
                     .andExpect(status().isOk())
                     .andExpect(
@@ -360,6 +525,23 @@ class CompanyApiControllerTest {
         void getCompany_fail_whenCompanyNotFound() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID companyId = UUID.randomUUID();
 
             when(companyQueryService.getCompany(
@@ -371,6 +553,7 @@ class CompanyApiControllerTest {
             // When & Then
             mockMvc.perform(
                             get("/api/v1/companies/{companyId}", companyId)
+                                    .with(authentication(authentication))
                     )
                     .andExpect(status().isNotFound());
 
@@ -391,6 +574,23 @@ class CompanyApiControllerTest {
         void getAllCompany_success() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             UUID hubId = UUID.randomUUID();
 
             CompanySearchResult result = mock(CompanySearchResult.class);
@@ -416,6 +616,7 @@ class CompanyApiControllerTest {
             // When
             mockMvc.perform(
                             get("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .param("page", "0")
                                     .param("size", "10")
                                     .param("sort", "createdAt,desc")
@@ -445,6 +646,23 @@ class CompanyApiControllerTest {
         void getAllCompany_success_withDefaultParameter() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             CompanySearchResult result = mock(CompanySearchResult.class);
 
             when(result.content())
@@ -468,6 +686,7 @@ class CompanyApiControllerTest {
             // When
             mockMvc.perform(
                             get("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .contentType(MediaType.APPLICATION_JSON)
                     )
 
@@ -491,11 +710,29 @@ class CompanyApiControllerTest {
         void getAllCompany_fail_whenInvalidCompanyType() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             String invalidCompanyType = "INVALID_TYPE";
 
             // When
             mockMvc.perform(
                             get("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .param("page", "0")
                                     .param("size", "10")
                                     .param("sort", "createdAt,desc")
@@ -514,11 +751,29 @@ class CompanyApiControllerTest {
         void getAllCompany_fail_whenInvalidPage() throws Exception {
 
             // Given
+            UUID callerId = UUID.randomUUID();
+
+            JwtPrincipal jwtPrincipal =
+                    new JwtPrincipal(
+                            callerId,
+                            Role.MASTER
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            jwtPrincipal,
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_MASTER")
+                            )
+                    );
+
             String invalidPage = "abc";
 
             // When
             mockMvc.perform(
                             get("/api/v1/companies")
+                                    .with(authentication(authentication))
                                     .param("page", invalidPage)
                                     .contentType(MediaType.APPLICATION_JSON)
                     )

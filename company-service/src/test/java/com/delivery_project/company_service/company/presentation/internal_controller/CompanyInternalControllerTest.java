@@ -7,6 +7,7 @@ import com.delivery_project.company_service.company.domain.entity.CompanyType;
 import com.delivery_project.company_service.global.config.SecurityConfig;
 import com.delivery_project.company_service.global.exception.BusinessException;
 import com.delivery_project.company_service.global.exception.ErrorCode;
+import com.delivery_project.company_service.global.security.JwtTokenParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class CompanyInternalControllerTest {
     @MockitoBean
     private CompanyQueryService companyQueryService;
 
+    @MockitoBean
+    private JwtTokenParser jwtTokenParser;
+
     @Nested
     @DisplayName("업체 단건 조회 API 테스트")
     class GetCompany {
@@ -45,12 +49,15 @@ class CompanyInternalControllerTest {
         void getCompany_success() throws Exception {
             // given
             UUID companyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
 
             InternalCompanyGetResult result =
                     new InternalCompanyGetResult(
                             companyId,
                             "테스트 업체",
-                            CompanyType.PRODUCER
+                            CompanyType.PRODUCER,
+                            hubId,
+                            "서울특별시 강남구 테헤란로 123"
                     );
 
             given(companyQueryService.getCompanyForInternal(
@@ -69,7 +76,9 @@ class CompanyInternalControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.companyId").value(companyId.toString()))
                     .andExpect(jsonPath("$.data.name").value("테스트 업체"))
-                    .andExpect(jsonPath("$.data.type").value("PRODUCER"));
+                    .andExpect(jsonPath("$.data.type").value("PRODUCER"))
+                    .andExpect(jsonPath("$.data.hubId").value(hubId.toString()))
+                    .andExpect(jsonPath("$.data.address").value("서울특별시 강남구 테헤란로 123"));
 
             then(companyQueryService)
                     .should()

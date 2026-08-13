@@ -30,6 +30,11 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
     }
 
     @Override
+    public List<Product> findByCompanyId(UUID companyId) {
+        return springDataProductRepository.findByCompanyId(companyId);
+    }
+
+    @Override
     public Page<Product> search(
             UUID companyId,
             String name,
@@ -95,7 +100,7 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
             QProduct product,
             String name
     ) {
-        return name != null
+        return name != null && !name.isBlank()
                 ? product.name.contains(name)
                 : null;
     }

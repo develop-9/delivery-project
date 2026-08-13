@@ -25,10 +25,11 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/delivery-managers")
-public class DeliveryManagerApiController {
+public class DeliveryManagerApiController implements DeliveryManagerApi{
     private final DeliveryManagerCommandService deliveryManagerCommandService;
     private final DeliveryManagerQueryService deliveryManagerQueryService;
 
+    @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse<DeliveryManagerCreateResponse> createDeliveryManager(
@@ -47,6 +48,7 @@ public class DeliveryManagerApiController {
         return SuccessResponse.success(response);
     }
 
+    @Override
     @GetMapping("/{managerId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDetailResponse> getDeliveryManager(
@@ -65,6 +67,7 @@ public class DeliveryManagerApiController {
         return SuccessResponse.success(DeliveryManagerDetailResponse.from(result));
     }
 
+    @Override
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<PageResponse<DeliveryManagerListResponse>>
@@ -92,6 +95,7 @@ public class DeliveryManagerApiController {
         return SuccessResponse.success(response);
     }
 
+    @Override
     @GetMapping("/me")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDetailResponse> getMyDeliveryManager(
@@ -110,6 +114,7 @@ public class DeliveryManagerApiController {
                 DeliveryManagerDetailResponse.from(result));
     }
 
+    @Override
     @PatchMapping("/{managerId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerUpdateResponse> updateDeliveryManager(
@@ -127,6 +132,7 @@ public class DeliveryManagerApiController {
         return SuccessResponse.success(DeliveryManagerUpdateResponse.from(result));
     }
 
+    @Override
     @DeleteMapping("/{managerId}")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse<DeliveryManagerDeleteResponse> deleteDeliveryManager(

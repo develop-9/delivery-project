@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -93,6 +94,17 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
 		log.warn("[Global] 데이터 무결성 제약 위반 message={}", e.getMessage());
+		return createResponse(ErrorCode.INVALID_STATE);
+	}
+
+	/**
+	 * 조회 시점엔 조건을 통과했지만(예: 승인 상태가 아직 PENDING), 커밋 시점에 다른 요청이
+	 * 먼저 같은 행을 바꿔버려 @Version이 충돌을 감지한 경우. 애플리케이션 계층의 사전 확인만
+	 * 으로는 못 막는 마지막 방어선이라, 여기서도 같은 종류의 응답으로 변환해준다.
+	 */
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(OptimisticLockingFailureException e) {
+		log.info("[Global] 낙관적 락 충돌 message={}", e.getMessage());
 		return createResponse(ErrorCode.INVALID_STATE);
 	}
 

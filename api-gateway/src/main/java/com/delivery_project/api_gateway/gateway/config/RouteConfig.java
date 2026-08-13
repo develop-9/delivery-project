@@ -27,6 +27,15 @@ public class RouteConfig {
 	}
 
 	@Bean
+	public RouteLocator companyServiceRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("company-service", r -> r
+						.path("/api/v1/companies/**", "/api/v1/products/**")
+						.uri("lb://COMPANY-SERVICE"))
+				.build();
+	}
+
+	@Bean
 	public RouteLocator deliveryServiceRoutes(
 			RouteLocatorBuilder builder
 	) {
@@ -66,6 +75,51 @@ public class RouteConfig {
 		return builder.routes()
 				.route("order-service", r -> r
 						.path("/api/v1/orders/**", "/api/v1/order-snapshots/**", "/api/v1/inventories/**")
+						.uri("lb://ORDER-SERVICE"))
+				.build();
+	}
+
+	@Bean
+	public RouteLocator slackServiceRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("slack-service", r -> r
+						.path("/api/v1/slack-messages/**", "/api/v1/ai-histories/**")
+						.uri("lb://SLACK-SERVICE"))
+				.build();
+	}
+
+	/**
+	 * 서비스별 Swagger 문서(/v3/api-docs)를 Gateway가 한곳(/swagger-ui.html)에서 모아 보여주기
+	 * 위한 프록시 라우트. {@code application.yaml}의 springdoc.swagger-ui.urls가 여기 등록된
+	 * /docs/{서비스명}/v3/api-docs 경로를 그대로 가리킨다 — 실제 서비스로 직접 요청하면 CORS
+	 * 설정이 없어 브라우저에서 막히므로, Gateway를 거쳐 같은 origin으로 보이게 한다.
+	 */
+	@Bean
+	public RouteLocator apiDocsRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("user-service-docs", r -> r
+						.path("/docs/user-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/user-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://USER-SERVICE"))
+				.route("company-service-docs", r -> r
+						.path("/docs/company-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/company-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://COMPANY-SERVICE"))
+				.route("hub-service-docs", r -> r
+						.path("/docs/hub-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/hub-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://HUB-SERVICE"))
+				.route("slack-service-docs", r -> r
+						.path("/docs/slack-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/slack-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://SLACK-SERVICE"))
+				.route("delivery-service-docs", r -> r
+						.path("/docs/delivery-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/delivery-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://DELIVERY-SERVICE"))
+				.route("order-service-docs", r -> r
+						.path("/docs/order-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/order-service/v3/api-docs", "/v3/api-docs"))
 						.uri("lb://ORDER-SERVICE"))
 				.build();
 	}

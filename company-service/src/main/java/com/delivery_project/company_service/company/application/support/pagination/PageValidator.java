@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PageValidator {
 
+    private static final int DEFAULT_PAGE_SIZE = 10;
+
     // page 검증
     public int validatePage(Integer page) {
         if (page == null || page < 0) {
@@ -20,12 +22,12 @@ public class PageValidator {
     // size 검증
     public int normalizeSize(Integer size) {
         if (size == null) {
-            return 10;
+            return DEFAULT_PAGE_SIZE;
         }
 
         return switch (size) {
             case 10, 30, 50 -> size;
-            default -> 10;
+            default -> DEFAULT_PAGE_SIZE;
         };
     }
 

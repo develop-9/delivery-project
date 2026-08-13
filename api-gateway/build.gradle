@@ -28,6 +28,7 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 	implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j'
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:3.1.0'
 	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
@@ -45,6 +46,12 @@ dependencyManagement {
 	imports {
 		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
 	}
+}
+
+// 부트 실행 jar 만 남긴다. plain jar 가 함께 생기면
+// Dockerfile 의 build/libs/*.jar 글롭이 2개를 잡아 COPY 가 실패한다.
+tasks.named('jar') {
+	enabled = false
 }
 
 tasks.named('test') {
