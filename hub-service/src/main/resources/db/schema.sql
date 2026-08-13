@@ -10,16 +10,20 @@
 --     - MAIN 인데 남을 가리키는 허브가 DB 에 남는다
 --
 -- 언제 실행되나
---   local  : Hibernate 가 테이블을 만든 뒤 애플리케이션이 자동 실행한다
---            (application.yaml 의 spring.sql.init + defer-datasource-initialization)
---   prod   : ddl-auto 가 validate 라 앱이 스키마를 못 만든다. 배포 전에 사람이 직접 적용한다.
---              psql -h <host> -U <user> -d delivery_db -f schema.sql
+--   local · prod 모두 애플리케이션이 기동할 때 자동 실행한다. 순서도 같다.
+--   ddl-auto: update 가 테이블을 만든 뒤 이 파일이 그 위에 제약을 덧붙인다
+--   (application.yaml 의 spring.sql.init + defer-datasource-initialization).
+--
+--   배포 파이프라인이 psql 로 미리 적용해 두는 것도 그대로 유효하다.
+--   멱등이라 앱이 다시 실행해도 결과가 같다.
+--     psql -h <host> -U <user> -d delivery_db -f schema.sql
 --
 -- 두 가지 성질을 지킨다. 새 문장을 추가할 때도 마찬가지다.
 --   멱등     : 몇 번을 돌려도 결과가 같다
 --              (PostgreSQL 은 ADD CONSTRAINT 에 IF NOT EXISTS 가 없어 DROP 을 먼저 건다)
+--              배포 환경에서도 매 기동마다 실행되므로 이 성질이 특히 중요하다.
 --   무부작용 : SET search_path 를 쓰지 않고 스키마를 매번 한정한다.
---              local 에서는 커넥션 풀의 커넥션으로 실행되므로, 세션 설정을 바꾸면
+--              커넥션 풀의 커넥션으로 실행되므로, 세션 설정을 바꾸면
 --              그 커넥션이 풀에 반납된 뒤 다른 쿼리까지 영향을 받는다.
 
 -- ============================================================
