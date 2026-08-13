@@ -217,7 +217,7 @@ application
 
 # 🗂 ERD
 
-![ERD](docs/images/erd.png)
+<img width="2703" height="1716" alt="spartalogistics-erd-20260812" src="https://github.com/user-attachments/assets/d90cbc83-03aa-400b-81f2-cd33469aa6d7" />
 
 ---
 
