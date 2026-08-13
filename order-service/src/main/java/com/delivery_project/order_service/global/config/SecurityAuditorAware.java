@@ -1,5 +1,6 @@
 package com.delivery_project.order_service.global.config;
 
+import com.delivery_project.order_service.global.security.JwtAuthenticationFilter;
 import com.delivery_project.order_service.global.security.JwtPrincipal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,11 +50,30 @@ public class SecurityAuditorAware implements AuditorAware<UUID> {
 			return Optional.of(systemId);
 		}
 
-		if (authentication.getPrincipal() instanceof JwtPrincipal jwtPrincipal) {
-			return Optional.of(jwtPrincipal.userId());
+		return Optional.of(resolveCallerId(authentication));
+	}
+
+	/**
+	 * principal 에서 사용자 ID 를 꺼낸다.
+	 *
+	 * <p>{@code authentication.getName()} 을 쓰지 않는다. 그 메서드는 principal 이
+	 * {@code UserDetails} 나 {@code String} 이 아니면 {@code toString()} 을 돌려주는데,
+	 * {@link JwtAuthenticationFilter} 는 {@link JwtPrincipal} <b>객체</b>를 넣기 때문에
+	 * {@code JwtPrincipal[userId=..., role=...]} 같은 문자열이 넘어온다.
+	 * 그것을 UUID 로 파싱하면 인증이 정상이어도 매번 실패해 <b>모든 행의 작성자가 시스템 ID</b> 가 된다.
+	 *
+	 * <p>문자열로 만들었다 다시 파싱하는 우회를 없애고 principal 에서 직접 꺼낸다.
+	 * 이렇게 하면 record 필드가 늘거나 순서가 바뀌어도 영향을 받지 않는다.
+	 */
+	private UUID resolveCallerId(Authentication authentication) {
+		Object principal = authentication.getPrincipal();
+
+		if (principal instanceof JwtPrincipal jwtPrincipal) {
+			return jwtPrincipal.userId();
 		}
 
-		log.warn("[Audit] principal이 JwtPrincipal이 아니다 principal={}", authentication.getPrincipal());
-		return Optional.of(systemId);
+		log.warn("[Audit] 알 수 없는 principal 타입이라 시스템 ID 로 대체한다 : {}",
+				principal == null ? "null" : principal.getClass().getName());
+		return systemId;
 	}
 }

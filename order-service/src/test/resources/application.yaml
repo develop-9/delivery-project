@@ -1,6 +1,11 @@
 # 테스트는 로컬 개발자의 .env 값에 좌우되면 안 된다.
 # @DataJpaTest 가 인메모리 H2 로 대체하므로 datasource 는 여기서 지정하지 않는다.
 spring:
+  # 테스트 DB 는 H2 다. db/migration 은 PostgreSQL 전용(부분 인덱스 WHERE 절 등)이라
+  # 그대로 돌리면 깨진다. 테스트 스키마는 아래 ddl-auto: create-drop 이 만든다.
+  flyway:
+    enabled: false
+
   jpa:
     hibernate:
       ddl-auto: create-drop
