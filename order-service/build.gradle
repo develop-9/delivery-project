@@ -1,0 +1,81 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.delivery-project'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2025.1.2")
+}
+
+dependencies {
+	//Eureka 클라이언트 디펜던시
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	//OpenFeign (서비스 간 통신)
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	//Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	//액츄에이터
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	//zipkin 분산 추적
+	implementation 'org.springframework.boot:spring-boot-starter-zipkin'
+	//JPA
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	// validate
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	//spring web
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	//spring security (토큰 검증은 Gateway 담당. 여기서는 relay 된 토큰을 파싱만 한다)
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	//jjwt (게이트웨이가 넘긴 토큰 파싱용. 서명 검증은 게이트웨이가 이미 했다)
+	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+	//Swagger UI (API 검증용)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+	//lombok
+	compileOnly 'org.projectlombok:lombok'
+	//postgresql
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	// @DataJpaTest 는 데이터소스를 내장 DB 로 교체한다. 이 의존성이 없으면
+	// "Failed to replace DataSource with an embedded database" 로 컨텍스트 로딩이 실패한다.
+	// 테스트 런타임에만 올라가므로 운영/CI 실행에는 영향이 없다.
+	testRuntimeOnly 'com.h2database:h2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+// 부트 실행 jar 만 남긴다. plain jar 가 함께 생기면
+// Dockerfile 의 build/libs/*.jar 글롭이 2개를 잡아 COPY 가 실패한다.
+tasks.named('jar') {
+	enabled = false
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

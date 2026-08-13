@@ -1,0 +1,151 @@
+package com.delivery_project.slack_service.ai_history.presentation.api_controller;
+
+import com.delivery_project.slack_service.ai_history.application.query.AiHistorySearchQuery;
+import com.delivery_project.slack_service.ai_history.application.query_service.AiHistoryQueryService;
+import com.delivery_project.slack_service.ai_history.application.result.AiHistoryDetailResult;
+import com.delivery_project.slack_service.ai_history.application.result.AiHistoryListResult;
+import com.delivery_project.slack_service.ai_history.domain.entity.AiHistoryStatus;
+import com.delivery_project.slack_service.ai_history.presentation.response.AiHistoryDetailResponse;
+import com.delivery_project.slack_service.ai_history.presentation.response.AiHistoryListResponse;
+import com.delivery_project.slack_service.global.common.PageData;
+import com.delivery_project.slack_service.global.exception.BusinessException;
+import com.delivery_project.slack_service.global.exception.ErrorCode;
+import com.delivery_project.slack_service.global.response.PageResponse;
+import com.delivery_project.slack_service.global.response.SuccessResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Instant;
+import java.util.Locale;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/ai-histories")
+@RequiredArgsConstructor
+public class AiHistoryApiController implements AiHistoryApi {
+
+    private final AiHistoryQueryService aiHistoryQueryService;
+
+    @Override
+    @GetMapping("/{aiHistoryId}")
+    public ResponseEntity<SuccessResponse<AiHistoryDetailResponse>> findById(
+            @PathVariable UUID aiHistoryId
+    ) {
+        AiHistoryDetailResult result =
+                aiHistoryQueryService.findById(aiHistoryId);
+
+        AiHistoryDetailResponse response =
+                AiHistoryDetailResponse.from(result);
+
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
+    }
+
+    @Override
+    @GetMapping
+    public ResponseEntity<SuccessResponse<PageResponse<AiHistoryListResponse>>> findAll(
+            @RequestParam(required = false)
+            UUID orderId,
+
+            @RequestParam(required = false)
+            String status,
+
+            @RequestParam(required = false)
+            String modelName,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            Instant startDate,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            Instant endDate,
+
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @RequestParam(defaultValue = "10")
+            int size,
+
+            @RequestParam(defaultValue = "requestedAt,desc")
+            String sort
+    ) {
+        String[] sortValues = parseSort(sort);
+
+        AiHistorySearchQuery query =
+                AiHistorySearchQuery.of(
+                        orderId,
+                        parseStatus(status),
+                        modelName,
+                        startDate,
+                        endDate,
+                        page,
+                        size,
+                        sortValues[0],
+                        sortValues[1]
+                );
+
+        PageData<AiHistoryListResult> result =
+                aiHistoryQueryService.findAll(query);
+
+        PageResponse<AiHistoryListResponse> response =
+                PageResponse.from(
+                        result,
+                        AiHistoryListResponse::from
+                );
+
+        return ResponseEntity.ok(
+                SuccessResponse.success(response)
+        );
+    }
+
+    private AiHistoryStatus parseStatus(
+            String status
+    ) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+
+        try {
+            return AiHistoryStatus.valueOf(
+                    status.toUpperCase(Locale.ROOT)
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_AI_HISTORY_SEARCH_CONDITION
+            );
+        }
+    }
+
+    private String[] parseSort(
+            String sort
+    ) {
+        if (sort == null || sort.isBlank()) {
+            return new String[]{
+                    "requestedAt",
+                    "desc"
+            };
+        }
+
+        String[] sortValues =
+                sort.split(",", -1);
+
+        if (sortValues.length != 2) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_AI_HISTORY_SEARCH_CONDITION
+            );
+        }
+
+        return new String[]{
+                sortValues[0].trim(),
+                sortValues[1].trim()
+        };
+    }
+}

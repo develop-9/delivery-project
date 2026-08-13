@@ -1,0 +1,108 @@
+name: CI
+
+# PR 생성 또는 업데이트 시 CI 실행
+# develop, main 브랜치로 들어오는 Pull Request를 대상으로 검증 수행
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'user-service/**'
+      - '.github/workflows/user-service-ci.yaml'
+
+
+# Workflow에서 사용할 권한 설정
+# 현재 CI에서는 Repository Code 읽기만 필요하기 때문에 최소 권한 부여
+permissions:
+  contents: read
+
+
+jobs:
+  build:
+    # 실행 환경에서 수행할 작업 이름
+    name: User Service - Java 21 빌드 및 테스트
+
+    # GitHub Actions가 실행될 서버 환경
+    runs-on: ubuntu-latest
+
+    # User Service는 JPA/Redis를 쓰기 때문에 테스트가 Spring Context를 띄울 때
+    # 실제 연결 가능한 DB/Redis가 필요함 (eureka-server와 다른 점)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: delivery_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
+    # 모든 run 명령을 서비스 디렉터리에서 실행
+    defaults:
+      run:
+        working-directory: user-service
+
+
+    steps:
+
+      # 1. Repository Checkout
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v6
+
+
+      # 2. Java 21 설치 및 Gradle Cache 설정
+      - name: Java 21 설치
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+
+      # 3. Gradle Wrapper 검증
+      - name: Gradle Wrapper 검증
+        uses: gradle/actions/wrapper-validation@v4
+
+
+      # 4. Gradle 실행 권한 부여
+      - name: Gradle 실행 권한 부여
+        run: chmod +x gradlew
+
+
+      # 5. Application Build 및 Test 실행
+      # postgres/redis 서비스 컨테이너 값이 application.yaml의 기본값과
+      # 일치하도록 맞춰뒀기 때문에 별도 env 오버라이드 없이도 연결됨
+      - name: User Service 빌드 및 테스트
+        env:
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_ACCESSTOKEN_EXPIRATION: ${{ secrets.JWT_ACCESSTOKEN_EXPIRATION }}
+          JWT_REFRESHTOKEN_EXPIRATION: ${{ secrets.JWT_REFRESHTOKEN_EXPIRATION }}
+
+        run: ./gradlew build --no-daemon
+
+
+      # 6. 테스트 실패 시 결과 업로드
+      - name: 테스트 리포트 업로드
+        if: failure()
+
+        uses: actions/upload-artifact@v4
+
+        with:
+          name: test-report
+          path: user-service/build/reports/tests/

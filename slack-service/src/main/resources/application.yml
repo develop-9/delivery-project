@@ -1,0 +1,82 @@
+server:
+  port: 9003
+
+spring:
+  application:
+    name: slack-service
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: slack_schema
+        format_sql: true
+    open-in-view: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# 인증된 사용자가 없는 시스템 작업의 감사 필드에 사용하는 공통 시스템 ID
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
+# Gemini 생성형 AI API 설정
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-3.6-flash}
+
+# 게이트웨이가 relay한 토큰을 파싱하기 위한 키. user-service와 반드시 같은 값이어야 한다.
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans
+
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+slack:
+  base-url: ${SLACK_BASE_URL:https://slack.com/api}
+  bot-token: ${SLACK_BOT_TOKEN:}

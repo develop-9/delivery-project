@@ -1,0 +1,173 @@
+services:
+
+  # Eureka Server
+  eureka-server:
+    image: ghcr.io/develop-9/delivery-project/eureka-server:latest
+
+    container_name: eureka-server
+    restart: unless-stopped
+
+    environment:
+      ZIPKIN_HOST: zipkin
+
+    ports:
+      - "8761:8761"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - delivery-network
+
+
+  # API Gateway
+  api-gateway:
+    image: ghcr.io/develop-9/delivery-project/api-gateway:latest
+
+    container_name: api-gateway
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+      REDIS_HOST: redis
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  postgres:
+    image: postgres:16
+
+    container_name: postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+  redis:
+    image: redis:7-alpine
+
+    container_name: redis
+    restart: unless-stopped
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis-data:/data
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+
+    container_name: rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      # 관리 UI(브라우저에서 큐 상태 확인용)
+      - "15672:15672"
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - delivery-network
+
+
+  zipkin:
+    image: openzipkin/zipkin:3
+
+    container_name: zipkin
+    restart: unless-stopped
+
+    ports:
+      - "9411:9411"
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+
+
+networks:
+  delivery-network:
+    name: delivery-network
+    driver: bridge

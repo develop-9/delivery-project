@@ -1,0 +1,66 @@
+server:
+  port: 9002
+
+
+spring:
+  application:
+    name: company-service
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+
+    hibernate:
+      ddl-auto: update
+
+    properties:
+      hibernate:
+        default_schema: company_schema
+        format_sql: true
+
+    show-sql: true
+
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://${EUREKA_SERVER_HOST:localhost}:8761/eureka/
+
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+    export:
+      zipkin:
+        endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans
+
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+
+
+logging:
+  level:
+    root: INFO
+
+
+# Team 공통 시스템 주체 ID
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
+
+# JWT Value
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}

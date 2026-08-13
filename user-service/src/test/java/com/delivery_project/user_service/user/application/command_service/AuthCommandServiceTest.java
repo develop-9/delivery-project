@@ -1,0 +1,583 @@
+package com.delivery_project.user_service.user.application.command_service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
+import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.delivery_project.user_service.global.exception.BusinessException;
+import com.delivery_project.user_service.global.exception.ErrorCode;
+import com.delivery_project.user_service.global.security.JwtPrincipal;
+import com.delivery_project.user_service.global.security.TokenType;
+import com.delivery_project.user_service.user.application.command.UserLoginCommand;
+import com.delivery_project.user_service.user.application.command.UserRefreshCommand;
+import com.delivery_project.user_service.user.application.command.UserSignupCommand;
+import com.delivery_project.user_service.user.application.persistence_service.UserPersistenceService;
+import com.delivery_project.user_service.user.application.port.CompanyPort;
+import com.delivery_project.user_service.user.application.port.HubPort;
+import com.delivery_project.user_service.user.application.port.TokenProvider;
+import com.delivery_project.user_service.user.application.result.UserLoginResult;
+import com.delivery_project.user_service.user.application.result.UserRefreshResult;
+import com.delivery_project.user_service.user.application.result.UserSignupResult;
+import com.delivery_project.user_service.user.domain.entity.ApprovalStatus;
+import com.delivery_project.user_service.user.domain.entity.Role;
+import com.delivery_project.user_service.user.domain.entity.User;
+import com.delivery_project.user_service.user.domain.repository.RefreshTokenRepository;
+import com.delivery_project.user_service.user.domain.repository.UserCommandRepository;
+
+@ExtendWith(MockitoExtension.class)
+class AuthCommandServiceTest {
+
+	@Mock
+	private UserCommandRepository userCommandRepository;
+
+	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
+	private PasswordEncoder passwordEncoder;
+
+	@Mock
+	private TokenProvider tokenProvider;
+
+	@Mock
+	private HubPort hubPort;
+
+	@Mock
+	private CompanyPort companyPort;
+
+	@Mock
+	private UserPersistenceService userPersistenceService;
+
+	@InjectMocks
+	private AuthCommandService authCommandService;
+
+	@Test
+	void 정상_회원가입시_비밀번호가_암호화되어_저장되고_PENDING_상태로_결과가_반환된다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.userId()).isEqualTo(saved.getId());
+		assertThat(result.approvalStatus()).isEqualTo(ApprovalStatus.PENDING);
+	}
+
+	@Test
+	void username이_중복이면_USER_DUPLICATE_USERNAME_예외가_발생한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(true);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_USERNAME);
+	}
+
+	@Test
+	void slackId가_중복이면_USER_DUPLICATE_SLACK_ID_예외가_발생한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, UUID.randomUUID());
+
+		when(userCommandRepository.existsByUsername("kim123")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0123456789")).thenReturn(true);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_DUPLICATE_SLACK_ID);
+	}
+
+	@Test
+	void HUB_MANAGER인데_hubId가_없으면_INVALID_INPUT_VALUE_예외가_발생한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.HUB_MANAGER, null, null);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+	}
+
+	@Test
+	void COMPANY_MANAGER인데_companyId가_없으면_INVALID_INPUT_VALUE_예외가_발생한다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"kim123", "Abcd1234!", "김철수", "U0123456789",
+				Role.COMPANY_MANAGER, null, null);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+	}
+
+	@Test
+	void MASTER는_hubId_companyId_없이도_회원가입할_수_있다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master1", "Abcd1234!", "관리자", "U0000000000",
+				Role.MASTER, null, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("master1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000000")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.userId()).isEqualTo(saved.getId());
+	}
+
+	@Test
+	void 존재하지_않는_hubId로_가입하면_HUB_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub1", "Abcd1234!", "허브담당자", "U0000000003",
+				Role.HUB_MANAGER, hubId, null);
+
+		when(userCommandRepository.existsByUsername("hub1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000003")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.HUB_NOT_FOUND))
+				.when(hubPort).validateExists(hubId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.HUB_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
+	}
+
+	@Test
+	void 존재하지_않는_companyId로_가입하면_COMPANY_NOT_FOUND_예외가_발생한다() {
+		// given
+		UUID companyId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"company1", "Abcd1234!", "업체담당자", "U0000000004",
+				Role.COMPANY_MANAGER, null, companyId);
+
+		when(userCommandRepository.existsByUsername("company1")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000004")).thenReturn(false);
+		org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.COMPANY_NOT_FOUND))
+				.when(companyPort).validateExists(companyId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.signup(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.COMPANY_NOT_FOUND);
+
+		org.mockito.Mockito.verify(userPersistenceService, org.mockito.Mockito.never()).commitSignup(any(User.class));
+	}
+
+	@Test
+	void 존재하는_hubId로_가입하면_검증을_통과하고_정상_가입된다() {
+		// given
+		UUID hubId = UUID.randomUUID();
+		UserSignupCommand command = new UserSignupCommand(
+				"hub2", "Abcd1234!", "허브담당자2", "U0000000005",
+				Role.HUB_MANAGER, hubId, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("hub2")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000005")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
+
+		// when
+		UserSignupResult result = authCommandService.signup(command);
+
+		// then
+		assertThat(result.userId()).isEqualTo(saved.getId());
+		org.mockito.Mockito.verify(hubPort).validateExists(hubId);
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+	}
+
+	@Test
+	void MASTER는_hubId_companyId_검증_호출_없이_가입된다() {
+		// given
+		UserSignupCommand command = new UserSignupCommand(
+				"master3", "Abcd1234!", "관리자3", "U0000000006",
+				Role.MASTER, null, null);
+		User saved = createUser(command);
+
+		when(userCommandRepository.existsByUsername("master3")).thenReturn(false);
+		when(userCommandRepository.existsBySlackId("U0000000006")).thenReturn(false);
+		when(passwordEncoder.encode("Abcd1234!")).thenReturn("encoded-password");
+		when(userPersistenceService.commitSignup(any(User.class))).thenReturn(saved);
+
+		// when
+		authCommandService.signup(command);
+
+		// then
+		org.mockito.Mockito.verify(hubPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+		org.mockito.Mockito.verify(companyPort, org.mockito.Mockito.never()).validateExists(any(UUID.class));
+	}
+
+	@Test
+	void 로그인_성공시_토큰을_발급하고_RefreshToken을_저장한다() {
+		// given
+		UserLoginCommand command = new UserLoginCommand("kim123", "Abcd1234!");
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+
+		when(userCommandRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
+		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
+		when(tokenProvider.generateAccessToken(eq(approvedUser.getId()), eq(Role.COMPANY_MANAGER), any(UUID.class)))
+				.thenReturn("access-token");
+		when(tokenProvider.generateRefreshToken(eq(approvedUser.getId()), any(UUID.class))).thenReturn("refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+
+		// when
+		UserLoginResult result = authCommandService.login(command);
+
+		// then
+		assertThat(result.accessToken()).isEqualTo("access-token");
+		assertThat(result.refreshToken()).isEqualTo("refresh-token");
+		assertThat(result.expiresIn()).isEqualTo(3600L);
+		// 로그인마다 새 세션(sessionId)이 발급되므로 정확한 값 대신 어떤 세션으로든 저장됐는지만 확인한다.
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.save(eq(approvedUser.getId()), any(UUID.class), eq("refresh-token"), eq(Duration.ofMillis(1_209_600_000L)));
+	}
+
+	@Test
+	void 존재하지_않는_username으로_로그인하면_AUTH_INVALID_CREDENTIALS_예외가_발생한다() {
+		// given
+		UserLoginCommand command = new UserLoginCommand("no-such-user", "Abcd1234!");
+
+		when(userCommandRepository.findByUsername("no-such-user")).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.login(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS);
+	}
+
+	@Test
+	void 비밀번호가_틀리면_AUTH_INVALID_CREDENTIALS_예외가_발생한다() {
+		// given
+		UserLoginCommand command = new UserLoginCommand("kim123", "wrong-password");
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+
+		when(userCommandRepository.findByUsername("kim123")).thenReturn(Optional.of(approvedUser));
+		when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.login(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS);
+	}
+
+	@Test
+	void 승인되지_않은_사용자는_USER_NOT_APPROVED_예외가_발생한다() {
+		// given
+		UserLoginCommand command = new UserLoginCommand("pendinguser", "Abcd1234!");
+		User pendingUser = User.builder()
+				.username("pendinguser")
+				.password("encoded-password")
+				.name("대기자")
+				.slackId("U1234567890")
+				.role(Role.COMPANY_MANAGER)
+				.companyId(UUID.randomUUID())
+				.build();
+
+		when(userCommandRepository.findByUsername("pendinguser")).thenReturn(Optional.of(pendingUser));
+		when(passwordEncoder.matches("Abcd1234!", "encoded-password")).thenReturn(true);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.login(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	@Test
+	void 정상_토큰_재발급시_새_토큰_쌍을_발급하고_RefreshToken을_원자적으로_교체한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("old-refresh-token");
+
+		when(tokenProvider.parseRefreshToken("old-refresh-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "old-refresh-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(true);
+		when(tokenProvider.generateAccessToken(userId, Role.COMPANY_MANAGER, sessionId)).thenReturn("new-access-token");
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+
+		// when
+		UserRefreshResult result = authCommandService.refresh(command);
+
+		// then
+		assertThat(result.accessToken()).isEqualTo("new-access-token");
+		assertThat(result.refreshToken()).isEqualTo("new-refresh-token");
+		org.mockito.Mockito.verify(refreshTokenRepository).compareAndRotate(
+				userId, sessionId, "old-refresh-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L));
+	}
+
+	@Test
+	void Access_Token으로_재발급을_시도하면_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given: 같은 secret으로 발급되지만 tokenType이 ACCESS인 토큰(Access Token 형태)
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("access-token-used-as-refresh");
+
+		when(tokenProvider.parseRefreshToken("access-token-used-as-refresh"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, UUID.randomUUID()));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	/**
+	 * 조회와 비교를 애플리케이션에서 따로 하지 않고 Redis에서 원자적으로 처리하므로(compareAndRotate),
+	 * "저장된 값과 다름"과 "세션이 아예 없음"은 서비스 입장에서 둘 다 CAS 실패(false)로 동일하게
+	 * 관측된다 — 실제로 왜 실패했는지는 Redis 안에서만 구분되고 바깥으로 노출되지 않는다.
+	 */
+	@Test
+	void 저장된_RefreshToken과_다르면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("stolen-old-token");
+
+		when(tokenProvider.parseRefreshToken("stolen-old-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "stolen-old-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(false);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
+	}
+
+	@Test
+	void Redis에_RefreshToken이_없으면_AUTH_TOKEN_EXPIRED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		User approvedUser = createApprovedUser("kim123", "encoded-password", Role.COMPANY_MANAGER);
+		ReflectionTestUtils.setField(approvedUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("some-token");
+
+		when(tokenProvider.parseRefreshToken("some-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, sessionId));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(approvedUser));
+		when(tokenProvider.generateRefreshToken(userId, sessionId)).thenReturn("new-refresh-token");
+		when(tokenProvider.getRefreshTokenExpirationMillis()).thenReturn(1_209_600_000L);
+		when(refreshTokenRepository.compareAndRotate(
+				userId, sessionId, "some-token", "new-refresh-token", Duration.ofMillis(1_209_600_000L)))
+				.thenReturn(false);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_EXPIRED);
+	}
+
+	@Test
+	void 재발급시_사용자를_찾을_수_없으면_AUTH_TOKEN_INVALID_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UserRefreshCommand command = new UserRefreshCommand("valid-token");
+
+		when(tokenProvider.parseRefreshToken("valid-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, UUID.randomUUID()));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.AUTH_TOKEN_INVALID);
+	}
+
+	@Test
+	void 승인되지_않은_사용자는_재발급시_USER_NOT_APPROVED_예외가_발생한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		User pendingUser = User.builder()
+				.username("pendinguser2")
+				.password("encoded-password")
+				.name("대기자")
+				.slackId("U2234567890")
+				.role(Role.COMPANY_MANAGER)
+				.companyId(UUID.randomUUID())
+				.build();
+		ReflectionTestUtils.setField(pendingUser, "id", userId);
+		UserRefreshCommand command = new UserRefreshCommand("valid-token");
+
+		when(tokenProvider.parseRefreshToken("valid-token"))
+				.thenReturn(new JwtPrincipal(userId, null, TokenType.REFRESH, UUID.randomUUID()));
+		when(userCommandRepository.findById(userId)).thenReturn(Optional.of(pendingUser));
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.refresh(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_APPROVED);
+	}
+
+	// MASTER 최초 부트스트랩 자동 승인 로직은 UserPersistenceService.commitSignup()으로 옮겨갔다 —
+	// 관련 테스트는 UserPersistenceServiceTest 참고.
+
+	@Test
+	void 정상_로그아웃시_그_세션의_RefreshToken을_삭제하고_세션을_블랙리스트에_등록한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+
+		// when
+		authCommandService.logout(userId, authorizationHeader);
+
+		// then: 로그아웃을 요청한 기기의 세션만 끝난다(다른 기기 세션은 건드리지 않음)
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.blacklistSessionOrThrow(userId, sessionId, Duration.ofSeconds(3600L));
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
+	}
+
+	/**
+	 * 정지/삭제와 달리 로그아웃한 사용자는 여전히 APPROVED라 refresh()의 승인 상태 재검증으로
+	 * 방어가 안 된다 — Redis 실패를 성공으로 위장하면 안 되므로 예외가 그대로 올라와야 한다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패하면_로그아웃도_실패한다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
+
+		// when & then
+		assertThatThrownBy(() -> authCommandService.logout(userId, authorizationHeader))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * 세션 블랙리스트 등록을 Refresh Token 삭제보다 먼저 하므로, 뒤이은 삭제가 Redis 장애로
+	 * 실패해도 블랙리스트 등록 자체는 이미 끝나 있어야 한다 — 그래야 삭제가 실패해서 이 refresh
+	 * token으로 재발급을 한 번 더 받아내더라도, 같은 sessionId를 물려받은 새 Access Token까지
+	 * Gateway에서 그대로 막힌다.
+	 */
+	@Test
+	void Redis_장애로_RefreshToken_삭제가_실패해도_세션_블랙리스트_등록_시도는_이미_끝난_뒤다() {
+		// given
+		UUID userId = UUID.randomUUID();
+		UUID sessionId = UUID.randomUUID();
+		String authorizationHeader = "Bearer access-token";
+
+		when(tokenProvider.resolveToken(authorizationHeader)).thenReturn("access-token");
+		when(tokenProvider.parseAccessToken("access-token"))
+				.thenReturn(new JwtPrincipal(userId, Role.COMPANY_MANAGER, TokenType.ACCESS, sessionId));
+		when(tokenProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
+		org.mockito.Mockito.doThrow(new IllegalStateException("Redis 연결 실패"))
+				.when(refreshTokenRepository).deleteByUserIdAndSessionIdOrThrow(userId, sessionId);
+
+		// when
+		assertThatThrownBy(() -> authCommandService.logout(userId, authorizationHeader))
+				.isInstanceOf(IllegalStateException.class);
+
+		// then
+		org.mockito.Mockito.verify(refreshTokenRepository)
+				.blacklistSessionOrThrow(userId, sessionId, Duration.ofSeconds(3600L));
+	}
+
+	private User createApprovedUser(String username, String encodedPassword, Role role) {
+		User user = User.builder()
+				.username(username)
+				.password(encodedPassword)
+				.name("테스트유저")
+				.slackId("U" + UUID.randomUUID().toString().substring(0, 10))
+				.role(role)
+				.companyId(UUID.randomUUID())
+				.build();
+		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
+		ReflectionTestUtils.setField(user, "approvalStatus", ApprovalStatus.APPROVED);
+		return user;
+	}
+
+	private User createUser(UserSignupCommand command) {
+		return User.builder()
+				.username(command.username())
+				.password("encoded-password")
+				.name(command.name())
+				.slackId(command.slackId())
+				.role(command.role())
+				.hubId(command.hubId())
+				.companyId(command.companyId())
+				.build();
+	}
+}

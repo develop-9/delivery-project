@@ -1,0 +1,53 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: user-service
+  jackson:
+    time-zone: UTC
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:delivery_db}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        # 운영 스키마(user_schema)가 아니라 public을 쓴다. Hibernate는 CREATE SCHEMA를
+        # 내지 않으므로 스키마가 없는 환경(CI 등)에서 테스트가 환경에 좌우된다. hub-service도 동일.
+        default_schema: public
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+  refresh-secret: ${JWT_REFRESH_SECRET:local-dev-only-refresh-secret-key-please-override-in-env-file-32bytes-min}
+  access-token-expiration: 3600000
+  refresh-token-expiration: 1209600000
+
+encryption:
+  key: ${ENCRYPTION_KEY:local-dev-only-encryption-key-please-override-in-env-file}
+
+system:
+  id: ${SYSTEM_ID:00000000-0000-0000-0000-000000000000}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans

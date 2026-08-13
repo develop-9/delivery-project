@@ -1,0 +1,88 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      # 미설정 시 Redis가 죽으면 Lettuce가 재연결/큐잉을 계속 시도하며 커맨드가 거의
+      # 무한정 대기한다. RedisTokenBlacklistChecker가 이 타임아웃을 RedisCommandTimeoutException으로
+      # 받아 fail-open으로 넘어가므로, 값이 너무 크면 그동안 모든 인증 요청이 지연된다.
+      # 아래 httpclient 타임아웃(connect-timeout 2000ms)과 맞춘다.
+      timeout: 2000ms
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 2000
+            response-timeout: 5s
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "${CORS_ALLOWED_ORIGINS:http://localhost:3000}"
+                allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+                allowedHeaders: "*"
+                maxAge: 3600
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-in-env-file-32bytes-min}
+
+# 서비스별 /v3/api-docs를 한 Swagger UI(/swagger-ui.html)에서 드롭다운으로 모아 보여준다.
+# url은 RouteConfig.apiDocsRoutes()가 등록한 프록시 경로 — 서비스로 직접 안 가고 Gateway를
+# 거치게 해서, 각 서비스에 CORS를 따로 설정하지 않아도 브라우저에서 같은 origin으로 보이게 한다.
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service
+        url: /docs/user-service/v3/api-docs
+      - name: Company Service
+        url: /docs/company-service/v3/api-docs
+      - name: Hub Service
+        url: /docs/hub-service/v3/api-docs
+      - name: Slack Service
+        url: /docs/slack-service/v3/api-docs
+      - name: Delivery Service
+        url: /docs/delivery-service/v3/api-docs
+      - name: Order Service
+        url: /docs/order-service/v3/api-docs
+
+# Redis 장애 시 매 요청마다 타임아웃(2초)을 기다리지 않고, 임계치를 넘으면 즉시 fail-open
+# 처리한다(User Service와 동일 설정).
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+management:
+  # 라우팅 디버깅용 — 실제 등록된 Route 상태를 /actuator/gateway/routes로 바로 확인할 수 있게 한다.
+  # (PR #61에서 Delivery 라우팅 추가 중 확인할 방법이 없어서 요청받음, 이슈 #65)
+  endpoint:
+    gateway:
+      access: read-only
+  endpoints:
+    web:
+      exposure:
+        include: health,gateway
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      zipkin:
+        endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans

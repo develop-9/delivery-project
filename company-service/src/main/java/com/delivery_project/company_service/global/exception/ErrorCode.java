@@ -1,0 +1,93 @@
+package com.delivery_project.company_service.global.exception;
+
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+
+@Getter
+public enum ErrorCode {
+    // === common ===
+    // 400
+    EMPTY_FILE(HttpStatus.BAD_REQUEST, "파일이 비어 있습니다.", "EMPTY_FILE"),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "입력조건을 불충족하였습니다.", "INVALID_REQUEST"),
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "요청값이 올바르지 않습니다.", "INVALID_INPUT_VALUE"),
+    INVALID_PAGE(HttpStatus.BAD_REQUEST, "올바른 Page 입력이 아닙니다.", "INVALID_PAGE"),
+
+    // 401
+    AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 올바르지 않습니다.", "AUTH_UNAUTHORIZED"),
+
+    // 403
+    AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.", "AUTH_FORBIDDEN"),
+
+    // 404
+    NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다.", "NOT_FOUND"),
+
+    // 409
+    INVALID_STATE(HttpStatus.CONFLICT, "요청을 처리할 수 없는 상태입니다.", "INVALID_STATE"),
+
+    // 415
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 미디어 타입입니다.", "UNSUPPORTED_MEDIA_TYPE"),
+
+    // 500
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.", "INTERNAL_SERVER_ERROR"),
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다.", "FILE_UPLOAD_FAILED"),
+
+
+    // === company ===
+    // 400
+    COMPANY_INVALID_HUB_ID(HttpStatus.BAD_REQUEST, "허브 ID는 필수 필드입니다.", "COMPANY_INVALID_HUB_ID"),
+    COMPANY_INVALID_TYPE(HttpStatus.BAD_REQUEST, "타입은 필수 필드입니다.", "COMPANY_INVALID_TYPE"),
+    COMPANY_INVALID_NAME(HttpStatus.BAD_REQUEST, "업체의 이름은 필수 필드입니다.", "COMPANY_INVALID_NAME"),
+    COMPANY_INVALID_ADDRESS(HttpStatus.BAD_REQUEST, "업체의 주소는 필수 필드입니다.", "COMPANY_INVALID_ADDRESS"),
+
+    // 404
+    COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "업체가 존재하지 않습니다.", "COMPANY_NOT_FOUND"),
+
+
+    // === product ===
+    // 400
+    PRODUCT_INVALID_COMPANY_ID(HttpStatus.BAD_REQUEST, "업체 ID는 필수 필드입니다.", "PRODUCT_INVALID_COMPANY_ID"),
+    PRODUCT_INVALID_PRICE(HttpStatus.BAD_REQUEST, "금액은 1원 이상이어야합니다.", "PRODUCT_INVALID_PRICE"),
+    PRODUCT_INVALID_NAME(HttpStatus.BAD_REQUEST, "상품의 이름이 존재하지 않습니다.", "PRODUCT_INVALID_NAME"),
+    PRODUCT_INVALID_SEARCH_PRICE(HttpStatus.BAD_REQUEST, "잘못된 검색 금액 조건입니다.", "PRODUCT_INVALID_SEARCH_PRICE"),
+
+    // 404
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품이 존재하지 않습니다.", "PRODUCT_NOT_FOUND"),
+
+
+    // === internal ===
+    // user
+    // 404
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.", "USER_NOT_FOUND"),
+
+    // 503
+    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "USER-SERVICE 호출에 실패했습니다.", "USER_SERVICE_UNAVAILABLE"),
+
+    // hub
+    // 404
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "허브를 찾을 수 없습니다.", "HUB_NOT_FOUND"),
+
+    // 503
+    HUB_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "HUB-SERVICE 호출에 실패했습니다.", "HUB_SERVICE_UNAVAILABLE"),
+
+    // order
+    // 500
+    INVENTORY_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "재고 저장에 실패했습니다.", "INVENTORY_SAVE_FAILED"),
+
+    // 503
+    ORDER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "ORDER-SERVICE 호출에 실패했습니다.", "ORDER_SERVICE_UNAVAILABLE")
+    ;
+
+    private final HttpStatus status;
+    private final String message;
+    private final String code;
+
+    ErrorCode(
+            HttpStatus status,
+            String message,
+            String code
+    ) {
+        this.status = status;
+        this.message = message;
+        this.code = code;
+    }
+}

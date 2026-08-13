@@ -10,6 +10,9 @@ services:
 
     container_name: eureka-server
 
+    environment:
+      ZIPKIN_HOST: zipkin
+
     ports:
       - "8761:8761"
 
@@ -24,24 +27,43 @@ services:
 
   # API Gateway
   # 모든 클라이언트 요청의 단일 진입점 및 라우팅
-#  api-gateway:
-#    build:
-#      context: ..
-#      dockerfile: api-gateway/Dockerfile
-#      args:
-#        JAR_FILE: api-gateway/build/libs/*.jar
-#
-#    container_name: api-gateway
-#
-#    ports:
-#      - "8080:8080"
-#
-#    depends_on:
-#      eureka-server:
-#        condition: service_healthy
-#
-#    networks:
-#      - delivery-network
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/Dockerfile
+      args:
+        JAR_FILE: api-gateway/build/libs/*.jar
+
+    container_name: api-gateway
+
+    env_file:
+      - ../.env
+
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+      REDIS_HOST: redis
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      # Redis가 unhealthy면 Gateway 자체가 못 뜨는 건 fail-open 취지와 반대라, 컨테이너
+      # 프로세스가 뜨는 것까지만 기다리고 healthy는 요구하지 않는다.
+      redis:
+        condition: service_started
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
 
 
   postgres:
@@ -54,8 +76,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
+    # 호스트 포트만 바꿀 수 있게 한다. 컨테이너 안은 항상 5432 다.
+    # 네이티브 PostgreSQL 이 5432 를 점유한 PC 에서는 .env 에 POSTGRES_PORT 를 지정한다.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -96,9 +120,58 @@ services:
       - delivery-network
 
 
+  # Slack Service(비동기 메시지 발송)와 User Service(Redis 무효화 아웃박스 재시도)가 쓴다.
+  # 코드(spring-boot-starter-amqp)엔 이미 있었는데 공용 인프라 파일엔 빠져 있던 것을 추가함.
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      # 관리 UI(브라우저에서 큐 상태 확인용)
+      - "15672:15672"
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - delivery-network
+
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: zipkin
+
+    ports:
+      - "9411:9411"
+
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9411/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - delivery-network
+
+
 volumes:
   postgres-data:
   redis-data:
+  rabbitmq-data:
 
 
 networks:
