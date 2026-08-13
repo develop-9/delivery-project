@@ -93,9 +93,6 @@ public class RouteConfig {
 	 * 위한 프록시 라우트. {@code application.yaml}의 springdoc.swagger-ui.urls가 여기 등록된
 	 * /docs/{서비스명}/v3/api-docs 경로를 그대로 가리킨다 — 실제 서비스로 직접 요청하면 CORS
 	 * 설정이 없어 브라우저에서 막히므로, Gateway를 거쳐 같은 origin으로 보이게 한다.
-	 *
-	 * Delivery Service/Order Service는 아직 springdoc 의존성이 없어 /v3/api-docs 자체가
-	 * 없다 — 여기 추가하지 않았다. 두 서비스에 springdoc이 추가되면 라우트만 더하면 된다.
 	 */
 	@Bean
 	public RouteLocator apiDocsRoutes(RouteLocatorBuilder builder) {
@@ -116,6 +113,14 @@ public class RouteConfig {
 						.path("/docs/slack-service/v3/api-docs")
 						.filters(f -> f.rewritePath("/docs/slack-service/v3/api-docs", "/v3/api-docs"))
 						.uri("lb://SLACK-SERVICE"))
+				.route("delivery-service-docs", r -> r
+						.path("/docs/delivery-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/delivery-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://DELIVERY-SERVICE"))
+				.route("order-service-docs", r -> r
+						.path("/docs/order-service/v3/api-docs")
+						.filters(f -> f.rewritePath("/docs/order-service/v3/api-docs", "/v3/api-docs"))
+						.uri("lb://ORDER-SERVICE"))
 				.build();
 	}
 }
