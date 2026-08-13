@@ -1,0 +1,182 @@
+services:
+
+  user-service:
+    image: ghcr.io/develop-9/delivery-project/user-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: delivery_db
+      REDIS_HOST: redis
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      ZIPKIN_HOST: zipkin
+
+    container_name: user-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  delivery-service:
+    image: ghcr.io/develop-9/delivery-project/delivery-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_HOST: postgres
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: delivery-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  company-service:
+    image: ghcr.io/develop-9/delivery-project/company-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_HOST: postgres
+      EUREKA_SERVER_HOST: eureka-server
+      ZIPKIN_HOST: zipkin
+
+    container_name: company-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  slack-service:
+    image: ghcr.io/develop-9/delivery-project/slack-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: delivery_db
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: slack-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  order-service:
+    image: ghcr.io/develop-9/delivery-project/order-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: order-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9004/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+  hub-service:
+    image: ghcr.io/develop-9/delivery-project/hub-service:latest
+
+    env_file:
+      - .env
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      ZIPKIN_HOST: zipkin
+
+    container_name: hub-service
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9005/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - delivery-network
+
+
+networks:
+  delivery-network:
+    external: true
