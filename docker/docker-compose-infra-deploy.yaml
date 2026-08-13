@@ -145,6 +145,7 @@ services:
     image: openzipkin/zipkin:3
 
     container_name: zipkin
+    restart: unless-stopped
 
     ports:
       - "9411:9411"
